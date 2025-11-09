@@ -91,7 +91,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          -c max_connections=200
         ports:
           - 5433:5432
 
@@ -121,6 +120,13 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -p 5433 -U postgres -d pgmq_test -c "CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;"
+
+      - name: Increase PostgreSQL max_connections
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -p 5433 -U postgres -d postgres -c "ALTER SYSTEM SET max_connections = 200;"
+          psql -h localhost -p 5433 -U postgres -d postgres -c "SELECT pg_reload_conf();"
 
       - name: Run RSpec
         env:
