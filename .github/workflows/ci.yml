@@ -127,8 +127,9 @@ jobs:
           # Clone and install PGMQ extension
           git clone https://github.com/tembo-io/pgmq.git /tmp/pgmq
           cd /tmp/pgmq/pgmq-extension
-          make
-          sudo make install
+          # Use pg_config from the specific PostgreSQL version we're testing
+          make PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres }}/bin/pg_config
+          sudo make install PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres }}/bin/pg_config
 
           # Create extension in test database
           psql -h localhost -U postgres -d pgmq_test -c "CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;"
