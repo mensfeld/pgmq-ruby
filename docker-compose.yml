@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: quay.io/tembo/pg17-pgmq:latest
+    image: ghcr.io/pgmq/pg18-pgmq:v1.7.0
     container_name: pgmq_postgres_test
     environment:
       POSTGRES_USER: postgres

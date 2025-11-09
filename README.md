@@ -76,37 +76,37 @@ PGMQ-Ruby is a **low-level Ruby client** for PGMQ (PostgreSQL Message Queue). It
 
 ## PGMQ Feature Support
 
-This gem provides complete support for all core PGMQ SQL functions. Based on the [official PGMQ API](https://tembo-io.github.io/pgmq/api/sql/functions/):
+This gem provides complete support for all core PGMQ SQL functions. Based on the [official PGMQ API](https://pgmq.github.io/pgmq/):
 
 ### Sending Messages
-- [x] [send](https://tembo-io.github.io/pgmq/api/sql/functions/#send) - Send single message with optional delay
-- [x] [send_batch](https://tembo-io.github.io/pgmq/api/sql/functions/#send_batch) - Send multiple messages atomically
+- [x] **send** - Send single message with optional delay
+- [x] **send_batch** - Send multiple messages atomically
 
 ### Reading Messages
-- [x] [read](https://tembo-io.github.io/pgmq/api/sql/functions/#read) - Read single message with visibility timeout
-- [x] [read_batch](https://tembo-io.github.io/pgmq/api/sql/functions/#read) - Read multiple messages with visibility timeout
-- [x] [read_with_poll](https://tembo-io.github.io/pgmq/api/sql/functions/#read_with_poll) - Long-polling for efficient message consumption
-- [x] [pop](https://tembo-io.github.io/pgmq/api/sql/functions/#pop) - Atomic read + delete operation
+- [x] **read** - Read single message with visibility timeout
+- [x] **read_batch** - Read multiple messages with visibility timeout
+- [x] **read_with_poll** - Long-polling for efficient message consumption
+- [x] **pop** - Atomic read + delete operation
 
 ### Deleting/Archiving Messages
-- [x] [delete](https://tembo-io.github.io/pgmq/api/sql/functions/#delete-single) - Delete single message
-- [x] [delete_batch](https://tembo-io.github.io/pgmq/api/sql/functions/#delete-batch) - Delete multiple messages
-- [x] [archive](https://tembo-io.github.io/pgmq/api/sql/functions/#archive-single) - Archive single message for long-term storage
-- [x] [archive_batch](https://tembo-io.github.io/pgmq/api/sql/functions/#archive-batch) - Archive multiple messages
-- [x] [purge_queue](https://tembo-io.github.io/pgmq/api/sql/functions/#purge_queue) - Remove all messages from queue
+- [x] **delete** - Delete single message
+- [x] **delete_batch** - Delete multiple messages
+- [x] **archive** - Archive single message for long-term storage
+- [x] **archive_batch** - Archive multiple messages
+- [x] **purge_queue** - Remove all messages from queue
 
 ### Queue Management
-- [x] [create](https://tembo-io.github.io/pgmq/api/sql/functions/#create) - Create standard queue
-- [x] [create_partitioned](https://tembo-io.github.io/pgmq/api/sql/functions/#create_partitioned) - Create partitioned queue (requires pg_partman)
-- [x] [create_unlogged](https://tembo-io.github.io/pgmq/api/sql/functions/#create_unlogged) - Create unlogged queue (faster, no crash recovery)
-- [x] [drop_queue](https://tembo-io.github.io/pgmq/api/sql/functions/#drop_queue) - Delete queue and all messages
-- [x] [detach_archive](https://tembo-io.github.io/pgmq/api/sql/functions/#detach_archive) - Detach archive table from queue
+- [x] **create** - Create standard queue
+- [x] **create_partitioned** - Create partitioned queue (requires pg_partman)
+- [x] **create_unlogged** - Create unlogged queue (faster, no crash recovery)
+- [x] **drop_queue** - Delete queue and all messages
+- [x] **detach_archive** - Detach archive table from queue
 
 ### Utilities
-- [x] [set_vt](https://tembo-io.github.io/pgmq/api/sql/functions/#set_vt) - Update message visibility timeout
-- [x] [list_queues](https://tembo-io.github.io/pgmq/api/sql/functions/#list_queues) - List all queues with metadata
-- [x] [metrics](https://tembo-io.github.io/pgmq/api/sql/functions/#metrics) - Get queue metrics (length, age, total messages)
-- [x] [metrics_all](https://tembo-io.github.io/pgmq/api/sql/functions/#metrics_all) - Get metrics for all queues
+- [x] **set_vt** - Update message visibility timeout
+- [x] **list_queues** - List all queues with metadata
+- [x] **metrics** - Get queue metrics (length, age, total messages)
+- [x] **metrics_all** - Get metrics for all queues
 
 ### Ruby-Specific Enhancements
 - [x] **Transaction Support** - Atomic operations across multiple queues via `client.transaction do |txn|`
@@ -656,7 +656,7 @@ bundle exec rspec
 ```yaml
 services:
   postgres:
-    image: quay.io/tembo/pg17-pgmq:latest
+    image: ghcr.io/pgmq/pg18-pgmq:v1.7.0
     environment:
       POSTGRES_PASSWORD: postgres
     ports:
