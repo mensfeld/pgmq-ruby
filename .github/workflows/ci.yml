@@ -57,7 +57,6 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - 'jruby'
         postgres:
           - '14'
           - '15'
@@ -68,16 +67,6 @@ jobs:
           - ruby: '3.4'
             postgres: '17'
             coverage: 'true'
-        exclude:
-          # Only test JRuby against latest PostgreSQL (18) to reduce CI time
-          - ruby: 'jruby'
-            postgres: '14'
-          - ruby: 'jruby'
-            postgres: '15'
-          - ruby: 'jruby'
-            postgres: '16'
-          - ruby: 'jruby'
-            postgres: '17'
 
     services:
       postgres:

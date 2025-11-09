@@ -4,15 +4,6 @@ source 'https://rubygems.org'
 
 gemspec
 
-# Platform-specific PostgreSQL adapters
-platforms :ruby do
-  gem 'pg', '~> 1.5'
-end
-
-platforms :jruby do
-  gem 'jruby-pg', '~> 0.1'
-end
-
 group :development, :test do
   gem 'rake', '~> 13.0'
   gem 'rspec', '~> 3.12'
@@ -30,9 +21,5 @@ end
 
 group :development do
   gem 'pry', '~> 0.14'
-
-  # pry-byebug requires byebug which is a C extension (not JRuby compatible)
-  platforms :ruby do
-    gem 'pry-byebug', '~> 3.10'
-  end
+  gem 'pry-byebug', '~> 3.10'
 end

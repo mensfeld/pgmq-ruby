@@ -5,10 +5,6 @@ require 'securerandom'
 module DatabaseHelpers
   # Creates a test client with test database connection
   def create_test_client(**options)
-    # JRuby needs smaller pool sizes to avoid exhausting connections
-    if RUBY_PLATFORM == 'java' && !options.key?(:pool_size)
-      options[:pool_size] = 2
-    end
     PGMQ::Client.new(TEST_DB_PARAMS.merge(options))
   end
 
