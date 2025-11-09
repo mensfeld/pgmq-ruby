@@ -5,21 +5,13 @@ source 'https://rubygems.org'
 gemspec
 
 group :development, :test do
-  gem 'rake', '~> 13.0'
-  gem 'rspec', '~> 3.12'
+  gem 'rake'
+  gem 'rspec'
 end
 
 group :test do
-  # Rails integration testing (optional)
-  gem 'activejob', '~> 7.1', require: false
-  gem 'database_cleaner-sequel', '~> 2.0'
+  gem 'database_cleaner-sequel'
   # MessagePack serializer testing (optional)
-  gem 'msgpack', '~> 1.7', require: false
-  gem 'rails', '~> 7.1', require: false
-  gem 'simplecov', '~> 0.22', require: false
-end
-
-group :development do
-  gem 'pry', '~> 0.14'
-  gem 'pry-byebug', '~> 3.10'
+  gem 'msgpack', require: false
+  gem 'simplecov', require: false
 end
