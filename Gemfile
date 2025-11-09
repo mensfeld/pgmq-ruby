@@ -4,6 +4,11 @@ source 'https://rubygems.org'
 
 gemspec
 
+# Platform-specific PostgreSQL adapters
+platforms :jruby do
+  gem 'jruby-pg', '~> 0.1'
+end
+
 group :development, :test do
   gem 'rake', '~> 13.0'
   gem 'rspec', '~> 3.12'
