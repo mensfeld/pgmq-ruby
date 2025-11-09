@@ -125,8 +125,8 @@ jobs:
           sudo apt-get install -y postgresql-client-${{ matrix.postgres }} postgresql-server-dev-${{ matrix.postgres }} build-essential git
 
           # Clone and install PGMQ extension
-          git clone https://github.com/pgmq/pgmq.git /tmp/pgmq
-          cd /tmp/pgmq
+          git clone https://github.com/tembo-io/pgmq.git /tmp/pgmq
+          cd /tmp/pgmq/pgmq-extension
           make
           sudo make install
 
