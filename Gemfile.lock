@@ -3,7 +3,6 @@ PATH
   specs:
     pgmq-ruby (0.3.0)
       connection_pool (~> 2.4)
-      pg (~> 1.5)
 
 GEM
   remote: https://rubygems.org/
@@ -294,6 +293,7 @@ DEPENDENCIES
   database_cleaner-sequel (~> 2.0)
   jruby-pg (~> 0.1)
   msgpack (~> 1.7)
+  pg (~> 1.5)
   pgmq-ruby!
   pry (~> 0.14)
   pry-byebug (~> 3.10)

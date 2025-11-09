@@ -28,7 +28,7 @@ Gem::Specification.new do |spec|
   # Runtime dependencies
   spec.add_dependency 'connection_pool', '~> 2.4'
 
-  # PostgreSQL adapter
-  # Note: JRuby users should also install jruby-pg gem (handled in Gemfile)
-  spec.add_dependency 'pg', '~> 1.5'
+  # PostgreSQL adapter is platform-specific and specified in Gemfile:
+  # - MRI Ruby: pg gem (~> 1.5)
+  # - JRuby: jruby-pg gem (~> 0.1)
 end
