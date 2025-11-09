@@ -58,6 +58,7 @@ PGMQ-Ruby is a **low-level Ruby client** for PGMQ (PostgreSQL Message Queue). It
 - [Testing](#testing)
 - [Performance](#performance)
 - [Comparison with Other Solutions](#comparison-with-other-solutions)
+- [Future Improvements](#future-improvements)
 - [Development](#development)
 - [Contributing](#contributing)
 - [Resources](#resources)
@@ -724,6 +725,66 @@ Run your own benchmarks for accurate numbers in your environment.
 - You need advanced job scheduling
 - You already use Redis
 - You need web UI for monitoring
+
+## Future Improvements
+
+PGMQ-Ruby provides 100% coverage of core PGMQ SQL functions. The following advanced features are available in PGMQ but not yet implemented in this low-level client:
+
+### PostgreSQL LISTEN/NOTIFY Support
+
+**What it is:** PostgreSQL's built-in pub/sub system for real-time message notifications.
+
+**How it works:**
+- Enable notifications: `pgmq.enable_notify_insert('queue_name')`
+- Subscribe to channel: `LISTEN pgmq.q_queue_name.INSERT`
+- Get instant alerts when messages arrive (no polling needed)
+
+**Benefits:**
+- ⚡ **Lower latency**: Workers react instantly to new messages (milliseconds vs seconds)
+- 💰 **Reduced database load**: No constant polling queries when queue is empty
+- 🔋 **Lower CPU usage**: Workers sleep until woken by notifications
+- 📈 **Better scalability**: Multiple workers don't create polling overhead
+
+**Current workaround:** Use `read_with_poll()` for efficient polling (works well for most use cases)
+
+**Example use case (not yet supported):**
+```ruby
+# Enable notifications on queue
+client.enable_notify_insert("orders")
+
+# Worker listens for notifications (requires dedicated connection)
+conn.exec("LISTEN pgmq.q_orders.INSERT")
+
+loop do
+  # Block until notification arrives - no polling!
+  conn.wait_for_notify do |channel, pid, payload|
+    msg = client.read("orders", vt: 30)
+    process(msg)
+    client.delete("orders", msg.msg_id)
+  end
+end
+```
+
+**Caveats:**
+- Requires dedicated persistent connection (incompatible with connection pooling)
+- Doesn't work with PgBouncer in transaction mode
+- Not suitable for serverless environments
+
+**Status:** Planned for v1.0+. Current polling mechanism (`read_with_poll`) is sufficient for most applications.
+
+### Archive Partitioning Conversion
+
+**What it is:** `convert_archive_partitioned()` - Convert existing non-partitioned archive tables to partitioned ones.
+
+**Use case:** Optimize performance for queues with large archive tables accumulated over time.
+
+**Current workaround:** Use `create_partitioned()` when creating queues that will accumulate large archives.
+
+**Status:** Low priority. Users can create partitioned queues from the start.
+
+---
+
+**Note:** These are optional advanced features. PGMQ-Ruby already provides complete coverage of all essential queue operations and is production-ready.
 
 ## Development
 

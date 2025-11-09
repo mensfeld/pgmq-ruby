@@ -57,6 +57,7 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
+          - 'jruby'
         postgres:
           - '14'
           - '15'
@@ -67,6 +68,16 @@ jobs:
           - ruby: '3.4'
             postgres: '17'
             coverage: 'true'
+        exclude:
+          # Only test JRuby against latest PostgreSQL (18) to reduce CI time
+          - ruby: 'jruby'
+            postgres: '14'
+          - ruby: 'jruby'
+            postgres: '15'
+          - ruby: 'jruby'
+            postgres: '16'
+          - ruby: 'jruby'
+            postgres: '17'
 
     services:
       postgres:
@@ -103,6 +114,12 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: |
+          # Add PostgreSQL APT repository for newer versions
+          sudo apt-get update
+          sudo apt-get install -y curl ca-certificates
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+
           # Install dependencies for building PGMQ
           sudo apt-get update
           sudo apt-get install -y postgresql-client-${{ matrix.postgres }} postgresql-server-dev-${{ matrix.postgres }} build-essential git
