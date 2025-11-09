@@ -110,6 +110,17 @@ jobs:
           bundler-cache: true
           bundler: 'latest'
 
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create PGMQ extension
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -p 5433 -U postgres -d pgmq_test -c "CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;"
+
       - name: Run RSpec
         env:
           PG_HOST: localhost
