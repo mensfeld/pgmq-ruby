@@ -1,0 +1,148 @@
+name: CI
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '0 1 * * *'
+
+permissions:
+  contents: read
+
+env:
+  BUNDLE_RETRY: 6
+  BUNDLE_JOBS: 4
+
+jobs:
+  coditsu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+      - name: Download Coditsu script
+        run: |
+          curl -sSL https://api.coditsu.io/run/ci -o coditsu_script.sh
+          chmod +x coditsu_script.sh
+      - name: Verify Coditsu script checksum
+        run: |
+          EXPECTED_SHA256="0aecc5aa010f53fca264548a41467a2b0a1208d750ce1da3e98a217304cacbbc"
+
+          ACTUAL_SHA256=$(sha256sum coditsu_script.sh | awk '{ print $1 }')
+          if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+            echo "::error::Checksum verification failed. Expected $EXPECTED_SHA256 but got $ACTUAL_SHA256."
+            exit 1
+          fi
+      - name: Run Coditsu
+        run: ./coditsu_script.sh
+
+  specs:
+    name: Ruby ${{ matrix.ruby }} / PG ${{ matrix.postgres }}
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.5.0-preview1'
+          - '3.4'
+          - '3.3'
+          - '3.2'
+        postgres:
+          - '14'
+          - '15'
+          - '16'
+          - '17'
+          - '18'
+        include:
+          - ruby: '3.4'
+            postgres: '17'
+            coverage: 'true'
+
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pgmq_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Remove Gemfile.lock for Ruby dev/preview versions
+        if: contains(matrix.ruby, 'dev') || contains(matrix.ruby, 'preview') || contains(matrix.ruby, 'rc')
+        run: rm -f Gemfile.lock
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@d5126b9b3579e429dd52e51e68624dda2e05be25 # v1.267.0
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          bundler: 'latest'
+
+      - name: Install PGMQ extension
+        env:
+          PGPASSWORD: postgres
+        run: |
+          # Install dependencies for building PGMQ
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-${{ matrix.postgres }} postgresql-server-dev-${{ matrix.postgres }} build-essential git
+
+          # Clone and install PGMQ extension
+          git clone https://github.com/pgmq/pgmq.git /tmp/pgmq
+          cd /tmp/pgmq
+          make
+          sudo make install
+
+          # Create extension in test database
+          psql -h localhost -U postgres -d pgmq_test -c "CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;"
+
+      - name: Run RSpec
+        env:
+          PGMQ_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pgmq_test
+          ENFORCE_COVERAGE: ${{ matrix.coverage == 'true' && 'true' || 'false' }}
+          GITHUB_COVERAGE: ${{ matrix.coverage }}
+          CI: true
+        run: bundle exec rspec
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: matrix.coverage == 'true'
+        with:
+          files: ./coverage/coverage.xml
+          fail_ci_if_error: false
+
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - coditsu
+      - specs
+    steps:
+      - name: Check all jobs passed
+        if: |
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1
+      - run: echo "All CI checks passed!"

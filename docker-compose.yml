@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: quay.io/tembo/pg17-pgmq:latest
+    container_name: pgmq_postgres_test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pgmq_test
+    ports:
+      - "5433:5432"  # Use port 5433 locally to avoid conflicts
+    volumes:
+      - pgmq_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgmq_data:
