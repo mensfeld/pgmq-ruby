@@ -11,11 +11,11 @@ end
 
 group :test do
   # Rails integration testing (optional)
-  gem 'activejob', '~> 7.1', require: false
+  gem 'activejob', '~> 8.0', require: false
   gem 'database_cleaner-sequel', '~> 2.0'
   # MessagePack serializer testing (optional)
   gem 'msgpack', '~> 1.7', require: false
-  gem 'rails', '~> 7.1', require: false
+  gem 'rails', '~> 8.0', require: false
   gem 'simplecov', '~> 0.22', require: false
 end
 
