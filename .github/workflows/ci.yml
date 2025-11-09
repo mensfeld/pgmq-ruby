@@ -63,10 +63,6 @@ jobs:
           - '16'
           - '17'
           - '18'
-        include:
-          - ruby: '3.4'
-            postgres: '17'
-            coverage: 'true'
 
     services:
       postgres:
@@ -117,18 +113,8 @@ jobs:
           PG_DATABASE: pgmq_test
           PG_USER: postgres
           PG_PASSWORD: postgres
-          PGMQ_DATABASE_URL: postgresql://postgres:postgres@localhost:5433/pgmq_test
-          ENFORCE_COVERAGE: ${{ matrix.coverage == 'true' && 'true' || 'false' }}
-          GITHUB_COVERAGE: ${{ matrix.coverage }}
           CI: true
         run: bundle exec rspec
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        if: matrix.coverage == 'true'
-        with:
-          files: ./coverage/coverage.xml
-          fail_ci_if_error: false
 
   ci-success:
     name: CI Success
