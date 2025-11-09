@@ -8,13 +8,7 @@ SimpleCov.start do
   add_filter '/examples/'
   add_filter '/vendor/'
 
-  add_group 'Core', 'lib/pgmq/client.rb'
-  add_group 'Models', ['lib/pgmq/message.rb', 'lib/pgmq/metrics.rb', 'lib/pgmq/queue_metadata.rb']
-  add_group 'Infrastructure', 'lib/pgmq/connection.rb'
-  add_group 'Serializers', 'lib/pgmq/serializers'
-
-  minimum_coverage 80
-  minimum_coverage_by_file 70
+  minimum_coverage 97
 end
 
 require 'pgmq'

@@ -10,7 +10,6 @@ group :development, :test do
 end
 
 group :test do
-  gem 'database_cleaner-sequel'
   # MessagePack serializer testing (optional)
   gem 'msgpack', require: false
   gem 'simplecov', require: false
