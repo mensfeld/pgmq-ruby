@@ -81,7 +81,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:${{ matrix.postgres }}
+        image: quay.io/tembo/pg${{ matrix.postgres }}-pgmq:latest
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -109,30 +109,6 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
           bundler: 'latest'
-
-      - name: Install PGMQ extension
-        env:
-          PGPASSWORD: postgres
-        run: |
-          # Add PostgreSQL APT repository for newer versions
-          sudo apt-get update
-          sudo apt-get install -y curl ca-certificates
-          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-
-          # Install dependencies for building PGMQ
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client-${{ matrix.postgres }} postgresql-server-dev-${{ matrix.postgres }} build-essential git
-
-          # Clone and install PGMQ extension
-          git clone https://github.com/tembo-io/pgmq.git /tmp/pgmq
-          cd /tmp/pgmq/pgmq-extension
-          # Use pg_config from the specific PostgreSQL version we're testing
-          make PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres }}/bin/pg_config
-          sudo make install PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres }}/bin/pg_config
-
-          # Create extension in test database
-          psql -h localhost -U postgres -d pgmq_test -c "CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;"
 
       - name: Run RSpec
         env:
