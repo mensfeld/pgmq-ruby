@@ -51,6 +51,12 @@ RSpec.configure do |config|
   # Clean up any test queues after each test
   config.after do
     cleanup_test_queues
+
+    # JRuby needs extra time to close connections
+    if RUBY_PLATFORM == 'java'
+      GC.start
+      sleep 0.1
+    end
   end
 end
 
