@@ -81,7 +81,7 @@ jobs:
 
     services:
       postgres:
-        image: quay.io/tembo/pg${{ matrix.postgres }}-pgmq:latest
+        image: ghcr.io/pgmq/pg${{ matrix.postgres }}-pgmq:latest
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
