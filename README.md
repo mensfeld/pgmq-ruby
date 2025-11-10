@@ -28,8 +28,6 @@ PGMQ-Ruby is a Ruby client for PGMQ (PostgreSQL Message Queue). It provides dire
 - [Message Object](#message-object)
 - [Serializers](#serializers)
 - [Rails Integration](#rails-integration)
-- [Performance](#performance)
-- [Future Improvements](#future-improvements)
 - [Development](#development)
 - [License](#license)
 - [Author](#author)
@@ -539,46 +537,6 @@ client = PGMQ::Client.new(
   serializer: MySerializer.new
 )
 ```
-
-## Performance
-
-PGMQ-Ruby is designed for high throughput while maintaining simplicity.
-
-> **Note**: Formal benchmarks are planned for v1.0. The following are preliminary estimates based on similar PGMQ clients and PostgreSQL capabilities.
-
-**Estimated Performance** (Ruby 3.3, PostgreSQL 16, localhost):
-
-- **Send**: ~5,000-10,000 messages/sec (single)
-- **Send batch**: ~20,000-40,000 messages/sec (batch of 100)
-- **Read**: ~8,000-15,000 messages/sec
-- **Delete**: ~10,000-20,000 operations/sec
-
-Real-world performance depends on:
-- PostgreSQL configuration (shared_buffers, work_mem, etc.)
-- Network latency
-- Message payload size
-- Connection pool size
-- Whether queues are partitioned or unlogged
-
-Run your own benchmarks for accurate numbers in your environment.
-
-## Future Improvements
-
-PGMQ-Ruby provides 100% coverage of core PGMQ SQL functions. The following advanced features are available in PGMQ but not yet implemented in this low-level client:
-
-### Archive Partitioning Conversion
-
-**What it is:** `convert_archive_partitioned()` - Convert existing non-partitioned archive tables to partitioned ones.
-
-**Use case:** Optimize performance for queues with large archive tables accumulated over time.
-
-**Current workaround:** Use `create_partitioned()` when creating queues that will accumulate large archives.
-
-**Status:** Low priority. Users can create partitioned queues from the start.
-
----
-
-**Note:** PGMQ-Ruby already provides complete coverage of all essential queue operations and is production-ready. Advanced features like PostgreSQL LISTEN/NOTIFY support, worker process management, and automatic retries will be available in `pgmq-framework` (coming soon).
 
 ## Development
 
