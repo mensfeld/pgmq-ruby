@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe PGMQ::Client, '#validate_queue_name!' do
-  let(:client) { described_class.new }
+  let(:client) { described_class.new(TEST_DB_PARAMS) }
 
   describe 'valid queue names' do
     it 'accepts simple lowercase names' do

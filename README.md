@@ -7,7 +7,7 @@
 
 ## What is PGMQ-Ruby?
 
-PGMQ-Ruby is a **low-level Ruby client** for PGMQ (PostgreSQL Message Queue). It provides direct access to all PGMQ operations with a clean, minimal API - similar to how [rdkafka-ruby](https://github.com/karafka/rdkafka-ruby) relates to Kafka.
+PGMQ-Ruby is a low-level Ruby client for PGMQ (PostgreSQL Message Queue). It provides direct access to all PGMQ operations with a clean, minimal API - similar to how [rdkafka-ruby](https://github.com/karafka/rdkafka-ruby) relates to Kafka.
 
 **Think of it as:**
 
@@ -32,17 +32,6 @@ PGMQ-Ruby is a **low-level Ruby client** for PGMQ (PostgreSQL Message Queue). It
 
 > **Architecture Note**: This library follows the rdkafka-ruby/Karafka pattern - `pgmq-ruby` is the low-level foundation, while higher-level features (job processing, Rails integration, retry strategies) will live in `pgmq-framework` (similar to how Karafka builds on rdkafka-ruby).
 
-## Key Features
-
-- **100% PGMQ Feature Complete** - All SQL functions wrapped with idiomatic Ruby APIs
-- **PostgreSQL Native** - No Redis, RabbitMQ, or external message brokers required
-- **Thread-Safe** - Connection pooling with auto-reconnect and health checks
-- **Multi-Queue Operations** - Read/pop/delete/archive from multiple queues in single queries
-- **Framework Agnostic** - Works with Rails, Sinatra, Hanami, or plain Ruby
-- **Rails-Friendly** - Easy integration with ActiveRecord connection pools
-- **Minimal Dependencies** - Only `pg` and `connection_pool` gems required
-- **High Test Coverage** - 200 tests, 93%+ coverage
-
 ## Table of Contents
 
 - [Features](#features)
@@ -65,59 +54,38 @@ PGMQ-Ruby is a **low-level Ruby client** for PGMQ (PostgreSQL Message Queue). It
 - [License](#license)
 - [Author](#author)
 
-## Features
-
-- **Postgres-native**: No external dependencies, runs entirely in PostgreSQL
-- **Simple API**: Easy-to-use Ruby interface for queue operations
-- **Rails-ready**: ActiveJob adapter and Rails integration **coming in v1.0**
-- **Thread-safe**: Built-in connection pooling for concurrent use
-- **Pluggable serializers**: JSON (default), custom serializers supported
-- **Exactly-once delivery**: Within configurable visibility timeout windows
-- **Battle-tested**: Based on proven patterns from Python, Rust, and JS clients
-
 ## PGMQ Feature Support
 
 This gem provides complete support for all core PGMQ SQL functions. Based on the [official PGMQ API](https://pgmq.github.io/pgmq/):
 
-### Sending Messages
-- [x] **send** - Send single message with optional delay
-- [x] **send_batch** - Send multiple messages atomically
-
-### Reading Messages
-- [x] **read** - Read single message with visibility timeout
-- [x] **read_batch** - Read multiple messages with visibility timeout
-- [x] **read_with_poll** - Long-polling for efficient message consumption
-- [x] **pop** - Atomic read + delete operation
-
-### Deleting/Archiving Messages
-- [x] **delete** - Delete single message
-- [x] **delete_batch** - Delete multiple messages
-- [x] **archive** - Archive single message for long-term storage
-- [x] **archive_batch** - Archive multiple messages
-- [x] **purge_queue** - Remove all messages from queue
-
-### Queue Management
-- [x] **create** - Create standard queue
-- [x] **create_partitioned** - Create partitioned queue (requires pg_partman)
-- [x] **create_unlogged** - Create unlogged queue (faster, no crash recovery)
-- [x] **drop_queue** - Delete queue and all messages
-- [x] **detach_archive** - Detach archive table from queue
-
-### Utilities
-- [x] **set_vt** - Update message visibility timeout
-- [x] **list_queues** - List all queues with metadata
-- [x] **metrics** - Get queue metrics (length, age, total messages)
-- [x] **metrics_all** - Get metrics for all queues
-
-### Ruby-Specific Enhancements
-- [x] **Transaction Support** - Atomic operations across multiple queues via `client.transaction do |txn|`
-- [x] **Conditional JSONB Filtering** - Server-side message filtering using `conditional:` parameter
-- [x] **Multi-Queue Operations** - Read/pop/delete/archive from multiple queues in single queries
-- [x] **Enhanced Queue Validation** - 48-character limit enforcement and comprehensive name validation
-- [x] **Thread-Safe Connection Pooling** - Built-in connection pool for concurrent usage
-- [x] **Pluggable Serializers** - JSON (default) and MessagePack support with custom serializer API
-
-**100% Feature Complete** - All PGMQ SQL functions are fully supported with idiomatic Ruby APIs.
+| Category | Method | Description | Status |
+|----------|--------|-------------|--------|
+| **Sending** | `send` | Send single message with optional delay | ✅ |
+| | `send_batch` | Send multiple messages atomically | ✅ |
+| **Reading** | `read` | Read single message with visibility timeout | ✅ |
+| | `read_batch` | Read multiple messages with visibility timeout | ✅ |
+| | `read_with_poll` | Long-polling for efficient message consumption | ✅ |
+| | `pop` | Atomic read + delete operation | ✅ |
+| **Deleting/Archiving** | `delete` | Delete single message | ✅ |
+| | `delete_batch` | Delete multiple messages | ✅ |
+| | `archive` | Archive single message for long-term storage | ✅ |
+| | `archive_batch` | Archive multiple messages | ✅ |
+| | `purge_queue` | Remove all messages from queue | ✅ |
+| **Queue Management** | `create` | Create standard queue | ✅ |
+| | `create_partitioned` | Create partitioned queue (requires pg_partman) | ✅ |
+| | `create_unlogged` | Create unlogged queue (faster, no crash recovery) | ✅ |
+| | `drop_queue` | Delete queue and all messages | ✅ |
+| | `detach_archive` | Detach archive table from queue | ✅ |
+| **Utilities** | `set_vt` | Update message visibility timeout | ✅ |
+| | `list_queues` | List all queues with metadata | ✅ |
+| | `metrics` | Get queue metrics (length, age, total messages) | ✅ |
+| | `metrics_all` | Get metrics for all queues | ✅ |
+| **Ruby Enhancements** | Transaction Support | Atomic operations via `client.transaction do \|txn\|` | ✅ |
+| | Conditional Filtering | Server-side JSONB filtering with `conditional:` | ✅ |
+| | Multi-Queue Ops | Read/pop/delete/archive from multiple queues | ✅ |
+| | Queue Validation | 48-character limit and name validation | ✅ |
+| | Connection Pooling | Thread-safe connection pool for concurrency | ✅ |
+| | Pluggable Serializers | JSON (default) and MessagePack support | ✅ |
 
 ## Requirements
 
@@ -222,13 +190,6 @@ client = PGMQ::Client.new(
 client = PGMQ::Client.new('postgres://user:pass@localhost:5432/dbname')
 ```
 
-### Environment Variables
-
-```ruby
-# Uses PG_HOST, PG_PORT, PG_DATABASE, PG_USER, PG_PASSWORD
-client = PGMQ::Client.new
-```
-
 ### Rails ActiveRecord (Recommended for Rails apps)
 
 ```ruby
@@ -262,14 +223,11 @@ stats = client.stats
 puts "Pool size: #{stats[:size]}"           # => 10
 puts "Available: #{stats[:available]}"      # => 8 (2 in use)
 
-# Auto-reconnect handles connection failures gracefully
-# Subscribe to reconnection events for monitoring
-PGMQ::Notifications.subscribe('connection.auto_reconnect') do |event|
-  logger.warn "Database reconnected: #{event.payload[:error]}"
-end
-
 # Disable auto-reconnect if you prefer explicit error handling
-client = PGMQ::Client.new(auto_reconnect: false)
+client = PGMQ::Client.new(
+  'postgres://localhost/mydb',
+  auto_reconnect: false
+)
 ```
 
 **Connection Pool Benefits:**
@@ -324,6 +282,7 @@ Queue names must follow PostgreSQL identifier rules with PGMQ-specific constrain
 - Case-sensitive
 
 **Valid Queue Names:**
+
 ```ruby
 client.create("orders")           # ✓ Simple name
 client.create("high_priority")    # ✓ With underscore
@@ -333,6 +292,7 @@ client.create("a" * 47)          # ✓ Maximum length (47 chars)
 ```
 
 **Invalid Queue Names:**
+
 ```ruby
 client.create("123orders")        # ✗ Starts with number
 client.create("my-queue")         # ✗ Contains hyphen
@@ -730,48 +690,6 @@ Run your own benchmarks for accurate numbers in your environment.
 
 PGMQ-Ruby provides 100% coverage of core PGMQ SQL functions. The following advanced features are available in PGMQ but not yet implemented in this low-level client:
 
-### PostgreSQL LISTEN/NOTIFY Support
-
-**What it is:** PostgreSQL's built-in pub/sub system for real-time message notifications.
-
-**How it works:**
-- Enable notifications: `pgmq.enable_notify_insert('queue_name')`
-- Subscribe to channel: `LISTEN pgmq.q_queue_name.INSERT`
-- Get instant alerts when messages arrive (no polling needed)
-
-**Benefits:**
-- ⚡ **Lower latency**: Workers react instantly to new messages (milliseconds vs seconds)
-- 💰 **Reduced database load**: No constant polling queries when queue is empty
-- 🔋 **Lower CPU usage**: Workers sleep until woken by notifications
-- 📈 **Better scalability**: Multiple workers don't create polling overhead
-
-**Current workaround:** Use `read_with_poll()` for efficient polling (works well for most use cases)
-
-**Example use case (not yet supported):**
-```ruby
-# Enable notifications on queue
-client.enable_notify_insert("orders")
-
-# Worker listens for notifications (requires dedicated connection)
-conn.exec("LISTEN pgmq.q_orders.INSERT")
-
-loop do
-  # Block until notification arrives - no polling!
-  conn.wait_for_notify do |channel, pid, payload|
-    msg = client.read("orders", vt: 30)
-    process(msg)
-    client.delete("orders", msg.msg_id)
-  end
-end
-```
-
-**Caveats:**
-- Requires dedicated persistent connection (incompatible with connection pooling)
-- Doesn't work with PgBouncer in transaction mode
-- Not suitable for serverless environments
-
-**Status:** Planned for v1.0+. Current polling mechanism (`read_with_poll`) is sufficient for most applications.
-
 ### Archive Partitioning Conversion
 
 **What it is:** `convert_archive_partitioned()` - Convert existing non-partitioned archive tables to partitioned ones.
@@ -784,7 +702,7 @@ end
 
 ---
 
-**Note:** These are optional advanced features. PGMQ-Ruby already provides complete coverage of all essential queue operations and is production-ready.
+**Note:** PGMQ-Ruby already provides complete coverage of all essential queue operations and is production-ready. Advanced features like PostgreSQL LISTEN/NOTIFY support, worker process management, and automatic retries will be available in `pgmq-framework` (coming soon).
 
 ## Development
 

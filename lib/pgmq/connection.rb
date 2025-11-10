@@ -20,15 +20,6 @@ module PGMQ
   # @example With Rails ActiveRecord (reuses Rails connection pool)
   #   conn = PGMQ::Connection.new(-> { ActiveRecord::Base.connection.raw_connection })
   class Connection
-    # Default environment variables for connection parameters
-    ENV_VARS = {
-      host: 'PG_HOST',
-      port: 'PG_PORT',
-      dbname: 'PG_DATABASE',
-      user: 'PG_USER',
-      password: 'PG_PASSWORD'
-    }.freeze
-
     # Default connection pool size
     DEFAULT_POOL_SIZE = 5
 
@@ -40,12 +31,15 @@ module PGMQ
 
     # Creates a new connection manager
     #
-    # @param conn_params [String, Hash, Proc, nil] connection parameters or callable
+    # @param conn_params [String, Hash, Proc] connection parameters or callable
     # @param pool_size [Integer] size of the connection pool
     # @param pool_timeout [Integer] connection pool timeout in seconds
     # @param auto_reconnect [Boolean] automatically reconnect on connection errors
-    def initialize(conn_params = nil, pool_size: DEFAULT_POOL_SIZE, pool_timeout: DEFAULT_POOL_TIMEOUT,
+    # @raise [PGMQ::ConfigurationError] if conn_params is nil or invalid
+    def initialize(conn_params, pool_size: DEFAULT_POOL_SIZE, pool_timeout: DEFAULT_POOL_TIMEOUT,
                    auto_reconnect: true)
+      raise PGMQ::ConfigurationError, 'Connection parameters are required' if conn_params.nil?
+
       @conn_params = normalize_connection_params(conn_params)
       @pool_size = pool_size
       @pool_timeout = pool_timeout
@@ -134,15 +128,15 @@ module PGMQ
     end
 
     # Normalizes various connection parameter formats
-    # @param params [String, Hash, Proc, nil]
+    # @param params [String, Hash, Proc]
     # @return [Hash, Proc]
+    # @raise [PGMQ::ConfigurationError] if params format is invalid
     def normalize_connection_params(params)
       return params if params.respond_to?(:call) # Callable (e.g., proc for Rails)
       return parse_connection_string(params) if params.is_a?(String)
       return params if params.is_a?(Hash) && !params.empty?
 
-      # No params provided - use ENV vars
-      connection_params_from_env
+      raise PGMQ::ConfigurationError, 'Invalid connection parameters format'
     end
 
     # Parses a PostgreSQL connection string
@@ -160,15 +154,6 @@ module PGMQ
       end
     rescue PG::Error => e
       raise PGMQ::ConfigurationError, "Invalid connection string: #{e.message}"
-    end
-
-    # Builds connection parameters from environment variables
-    # @return [Hash] connection parameters
-    def connection_params_from_env
-      ENV_VARS.each_with_object({}) do |(key, env_var), params|
-        value = ENV.fetch(env_var, nil)
-        params[key] = value if value
-      end
     end
 
     # Creates the connection pool

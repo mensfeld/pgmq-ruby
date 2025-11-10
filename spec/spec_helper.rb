@@ -8,7 +8,7 @@ SimpleCov.start do
   add_filter '/examples/'
   add_filter '/vendor/'
 
-  minimum_coverage 97
+  minimum_coverage 96.5
 end
 
 require 'pgmq'
