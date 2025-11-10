@@ -63,7 +63,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | Multi-Queue Ops | Read/pop/delete/archive from multiple queues | ✅ |
 | | Queue Validation | 48-character limit and name validation | ✅ |
 | | Connection Pooling | Thread-safe connection pool for concurrency | ✅ |
-| | Pluggable Serializers | JSON (default) and MessagePack support | ✅ |
+| | Pluggable Serializers | JSON (default) with custom serializer support | ✅ |
 
 ## Requirements
 
@@ -217,13 +217,7 @@ client = PGMQ::Client.new(
 
 ### Custom Serializer
 
-```ruby
-# Use MessagePack instead of JSON
-client = PGMQ::Client.new(
-  'postgres://localhost/mydb',
-  serializer: PGMQ::Serializers::MessagePack.new
-)
-```
+You can implement custom serializers by subclassing `PGMQ::Serializers::Base`. See the "Serializers" section below for details.
 
 ## API Reference
 
@@ -276,7 +270,7 @@ client.create("123orders")        # ✗ Starts with number
 client.create("my-queue")         # ✗ Contains hyphen
 client.create("my.queue")         # ✗ Contains period
 client.create("a" * 48)          # ✗ Too long (48+ chars)
-# Raises PGMQ::InvalidQueueNameError
+# Raises PGMQ::Errors::InvalidQueueNameError
 ```
 
 ### Sending Messages
@@ -499,25 +493,16 @@ PGMQ-Ruby supports pluggable serializers for message payloads.
 
 ### JSON (Default)
 
+The default JSON serializer handles all standard Ruby objects that can be converted to JSON:
+
 ```ruby
 client = PGMQ::Client.new('postgres://localhost/mydb')
 # Uses JSON serializer by default
 ```
 
-### MessagePack
-
-```ruby
-# Gemfile
-gem 'msgpack'
-
-# Use MessagePack for better performance
-client = PGMQ::Client.new(
-  'postgres://localhost/mydb',
-  serializer: PGMQ::Serializers::MessagePack.new
-)
-```
-
 ### Custom Serializer
+
+Implement your own serializer by subclassing `PGMQ::Serializers::Base`:
 
 ```ruby
 class MySerializer < PGMQ::Serializers::Base

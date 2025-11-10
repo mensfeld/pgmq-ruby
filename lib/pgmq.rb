@@ -1,16 +1,14 @@
 # frozen_string_literal: true
 
-require_relative 'pgmq/version'
-require_relative 'pgmq/errors'
-require_relative 'pgmq/serializers/base'
-require_relative 'pgmq/serializers/json'
-require_relative 'pgmq/serializers/message_pack'
-require_relative 'pgmq/message'
-require_relative 'pgmq/metrics'
-require_relative 'pgmq/queue_metadata'
-require_relative 'pgmq/connection'
-require_relative 'pgmq/transaction'
-require_relative 'pgmq/client'
+require 'zeitwerk'
+
+loader = Zeitwerk::Loader.for_gem
+loader.inflector.inflect(
+  'pgmq' => 'PGMQ',
+  'json' => 'JSON'
+)
+loader.setup
+loader.eager_load
 
 # PGMQ - Low-level Ruby client for Postgres Message Queue
 #

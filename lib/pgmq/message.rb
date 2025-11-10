@@ -103,7 +103,7 @@ module PGMQ
         JSON.parse(value.to_s)
       end
     rescue JSON::ParserError, StandardError => e
-      raise PGMQ::SerializationError, "Failed to deserialize message: #{e.message}"
+      raise PGMQ::Errors::SerializationError, "Failed to deserialize message: #{e.message}"
     end
   end
 end

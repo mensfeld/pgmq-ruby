@@ -35,10 +35,10 @@ module PGMQ
     # @param pool_size [Integer] size of the connection pool
     # @param pool_timeout [Integer] connection pool timeout in seconds
     # @param auto_reconnect [Boolean] automatically reconnect on connection errors
-    # @raise [PGMQ::ConfigurationError] if conn_params is nil or invalid
+    # @raise [PGMQ::Errors::ConfigurationError] if conn_params is nil or invalid
     def initialize(conn_params, pool_size: DEFAULT_POOL_SIZE, pool_timeout: DEFAULT_POOL_TIMEOUT,
                    auto_reconnect: true)
-      raise PGMQ::ConfigurationError, 'Connection parameters are required' if conn_params.nil?
+      raise PGMQ::Errors::ConfigurationError, 'Connection parameters are required' if conn_params.nil?
 
       @conn_params = normalize_connection_params(conn_params)
       @pool_size = pool_size
@@ -51,7 +51,7 @@ module PGMQ
     #
     # @yield [PG::Connection] database connection
     # @return [Object] result of the block
-    # @raise [PGMQ::ConnectionError] if connection fails
+    # @raise [PGMQ::Errors::ConnectionError] if connection fails
     def with_connection
       retries = @auto_reconnect ? 1 : 0
       attempts = 0
@@ -69,11 +69,11 @@ module PGMQ
         # If connection error and auto_reconnect enabled, try once more
         retry if attempts <= retries && connection_lost_error?(e)
 
-        raise PGMQ::ConnectionError, "Database connection error: #{e.message}"
+        raise PGMQ::Errors::ConnectionError, "Database connection error: #{e.message}"
       rescue ConnectionPool::TimeoutError => e
-        raise PGMQ::ConnectionError, "Connection pool timeout: #{e.message}"
+        raise PGMQ::Errors::ConnectionError, "Connection pool timeout: #{e.message}"
       rescue ConnectionPool::PoolShuttingDownError => e
-        raise PGMQ::ConnectionError, "Connection pool is closed: #{e.message}"
+        raise PGMQ::Errors::ConnectionError, "Connection pool is closed: #{e.message}"
       end
     end
 
@@ -130,13 +130,13 @@ module PGMQ
     # Normalizes various connection parameter formats
     # @param params [String, Hash, Proc]
     # @return [Hash, Proc]
-    # @raise [PGMQ::ConfigurationError] if params format is invalid
+    # @raise [PGMQ::Errors::ConfigurationError] if params format is invalid
     def normalize_connection_params(params)
       return params if params.respond_to?(:call) # Callable (e.g., proc for Rails)
       return parse_connection_string(params) if params.is_a?(String)
       return params if params.is_a?(Hash) && !params.empty?
 
-      raise PGMQ::ConfigurationError, 'Invalid connection parameters format'
+      raise PGMQ::Errors::ConfigurationError, 'Invalid connection parameters format'
     end
 
     # Parses a PostgreSQL connection string
@@ -153,7 +153,7 @@ module PGMQ
         { conninfo: conn_string }
       end
     rescue PG::Error => e
-      raise PGMQ::ConfigurationError, "Invalid connection string: #{e.message}"
+      raise PGMQ::Errors::ConfigurationError, "Invalid connection string: #{e.message}"
     end
 
     # Creates the connection pool
@@ -165,7 +165,7 @@ module PGMQ
         create_connection(params)
       end
     rescue StandardError => e
-      raise PGMQ::ConnectionError, "Failed to create connection pool: #{e.message}"
+      raise PGMQ::Errors::ConnectionError, "Failed to create connection pool: #{e.message}"
     end
 
     # Creates a single database connection
@@ -183,7 +183,7 @@ module PGMQ
 
       conn
     rescue PG::Error => e
-      raise PGMQ::ConnectionError, "Failed to connect to database: #{e.message}"
+      raise PGMQ::Errors::ConnectionError, "Failed to connect to database: #{e.message}"
     end
   end
 end

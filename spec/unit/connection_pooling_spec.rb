@@ -111,7 +111,7 @@ RSpec.describe 'Connection pooling features' do
       # Try to acquire while exhausted
       expect do
         client.list_queues
-      end.to raise_error(PGMQ::ConnectionError, /pool timeout/)
+      end.to raise_error(PGMQ::Errors::ConnectionError, /pool timeout/)
 
       client.close
     end
@@ -205,7 +205,7 @@ RSpec.describe 'Connection pooling features' do
       expect { client.close }.not_to raise_error
 
       # Further operations should fail
-      expect { client.list_queues }.to raise_error(PGMQ::ConnectionError)
+      expect { client.list_queues }.to raise_error(PGMQ::Errors::ConnectionError)
     end
 
     it 'handles closing with connections in use' do

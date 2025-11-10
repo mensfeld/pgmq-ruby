@@ -29,7 +29,7 @@ module PGMQ
     #
     # @yield [PGMQ::Client] transactional client using the same connection
     # @return [Object] result of the block
-    # @raise [PGMQ::ConnectionError] if transaction fails
+    # @raise [PGMQ::Errors::ConnectionError] if transaction fails
     #
     # @example
     #   client.transaction do |txn|
@@ -43,7 +43,7 @@ module PGMQ
         end
       end
     rescue PG::Error, StandardError => e
-      raise PGMQ::ConnectionError, "Transaction failed: #{e.message}"
+      raise PGMQ::Errors::ConnectionError, "Transaction failed: #{e.message}"
     end
 
     # Minimal wrapper that ensures all operations use the transaction connection

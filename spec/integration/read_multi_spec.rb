@@ -101,7 +101,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     it 'validates all queue names' do
       expect do
         client.read_multi(['valid_queue', 'invalid-queue!'], vt: 30)
-      end.to raise_error(PGMQ::InvalidQueueNameError)
+      end.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
 
     it 'limits to 50 queues maximum' do
@@ -293,7 +293,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     it 'validates queue names' do
       expect do
         client.pop_multi(['invalid-name!'])
-      end.to raise_error(PGMQ::InvalidQueueNameError)
+      end.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
 
     it 'validates array input' do
@@ -370,7 +370,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     it 'validates all queue names' do
       expect do
         client.delete_multi({ 'invalid-name!' => [1, 2] })
-      end.to raise_error(PGMQ::InvalidQueueNameError)
+      end.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
 
     it 'is transactional (all or nothing)' do
@@ -443,7 +443,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     it 'validates all queue names' do
       expect do
         client.archive_multi({ 'invalid-name!' => [1] })
-      end.to raise_error(PGMQ::InvalidQueueNameError)
+      end.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
 
     it 'is transactional' do

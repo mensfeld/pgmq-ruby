@@ -71,7 +71,6 @@ Initial release of pgmq-ruby - a low-level Ruby client for PGMQ (PostgreSQL Mess
 ### Serialization
 - **[Feature]** Introduce pluggable serializer system.
 - **[Feature]** Provide JSON serializer (default).
-- **[Feature]** Provide MessagePack serializer (requires `msgpack` gem).
 - **[Feature]** Support custom serializers via `PGMQ::Serializers::Base`.
 
 ### Error Handling
@@ -101,4 +100,4 @@ Initial release of pgmq-ruby - a low-level Ruby client for PGMQ (PostgreSQL Mess
 - PostgreSQL >= 14 with PGMQ extension
 - `pg` gem (~> 1.5)
 - `connection_pool` gem (~> 2.4)
-- Optional: `msgpack` gem for MessagePack serializer
+- `zeitwerk` gem (~> 2.6)

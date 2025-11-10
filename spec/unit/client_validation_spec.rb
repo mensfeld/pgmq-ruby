@@ -35,49 +35,49 @@ RSpec.describe PGMQ::Client, '#validate_queue_name!' do
   describe 'invalid queue names' do
     it 'rejects nil' do
       expect { client.__send__(:validate_queue_name!, nil) }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /cannot be empty/
       )
     end
 
     it 'rejects empty string' do
       expect { client.__send__(:validate_queue_name!, '') }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /cannot be empty/
       )
     end
 
     it 'rejects whitespace-only string' do
       expect { client.__send__(:validate_queue_name!, '   ') }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /cannot be empty/
       )
     end
 
     it 'rejects names starting with number' do
       expect { client.__send__(:validate_queue_name!, '123queue') }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /must start with a letter or underscore/
       )
     end
 
     it 'rejects names with hyphens' do
       expect { client.__send__(:validate_queue_name!, 'my-queue') }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /must start with a letter or underscore/
       )
     end
 
     it 'rejects names with spaces' do
       expect { client.__send__(:validate_queue_name!, 'my queue') }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /must start with a letter or underscore/
       )
     end
 
     it 'rejects names with special characters' do
       expect { client.__send__(:validate_queue_name!, 'my.queue') }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /must start with a letter or underscore/
       )
     end
@@ -85,7 +85,7 @@ RSpec.describe PGMQ::Client, '#validate_queue_name!' do
     it 'rejects names with 48 characters' do
       long_name = 'a' * 48
       expect { client.__send__(:validate_queue_name!, long_name) }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /exceeds maximum length of 48 characters.*current length: 48/
       )
     end
@@ -93,7 +93,7 @@ RSpec.describe PGMQ::Client, '#validate_queue_name!' do
     it 'rejects names with 60 characters' do
       long_name = 'a' * 60
       expect { client.__send__(:validate_queue_name!, long_name) }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /exceeds maximum length of 48 characters.*current length: 60/
       )
     end
@@ -101,7 +101,7 @@ RSpec.describe PGMQ::Client, '#validate_queue_name!' do
     it 'includes queue name in length error message' do
       long_name = 'my_very_long_queue_name_that_exceeds_the_limit_48chars'
       expect { client.__send__(:validate_queue_name!, long_name) }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /Queue name '#{Regexp.escape(long_name)}'/
       )
     end

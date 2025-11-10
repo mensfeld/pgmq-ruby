@@ -21,11 +21,11 @@ RSpec.describe PGMQ::Client, :integration do
     end
 
     it 'raises error for invalid queue name' do
-      expect { client.create('123invalid') }.to raise_error(PGMQ::InvalidQueueNameError)
+      expect { client.create('123invalid') }.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
 
     it 'raises error for empty queue name' do
-      expect { client.create('') }.to raise_error(PGMQ::InvalidQueueNameError)
+      expect { client.create('') }.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
   end
 
@@ -636,7 +636,7 @@ RSpec.describe PGMQ::Client, :integration do
             txn.send(q1, { data: 'will_rollback' })
             raise 'Test error'
           end
-        end.to raise_error(PGMQ::ConnectionError, /Transaction failed/)
+        end.to raise_error(PGMQ::Errors::ConnectionError, /Transaction failed/)
 
         # Message should not be persisted
         msg = client.read(q1, vt: 30)
@@ -653,7 +653,7 @@ RSpec.describe PGMQ::Client, :integration do
             txn.send(q2, { data: 'message2' })
             raise StandardError, 'Rollback trigger'
           end
-        end.to raise_error(PGMQ::ConnectionError)
+        end.to raise_error(PGMQ::Errors::ConnectionError)
 
         # Neither message should be persisted
         msg1 = client.read(q1, vt: 30)
@@ -674,7 +674,7 @@ RSpec.describe PGMQ::Client, :integration do
             txn.send(q1, { data: 'in_txn' })
             raise 'Rollback'
           end
-        end.to raise_error(PGMQ::ConnectionError)
+        end.to raise_error(PGMQ::Errors::ConnectionError)
 
         # Only the first message should exist
         msg1 = client.read(q1, vt: 30)
@@ -695,7 +695,7 @@ RSpec.describe PGMQ::Client, :integration do
               conn.exec('INVALID SQL STATEMENT')
             end
           end
-        end.to raise_error(PGMQ::ConnectionError, /Transaction failed/)
+        end.to raise_error(PGMQ::Errors::ConnectionError, /Transaction failed/)
 
         # Message should not be persisted
         msg = client.read(q1, vt: 30)
@@ -740,7 +740,7 @@ RSpec.describe PGMQ::Client, :integration do
       too_long_name = 'a' * 48
 
       expect { client.create(too_long_name) }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /exceeds maximum length of 48 characters.*current length: 48/
       )
     end
@@ -749,7 +749,7 @@ RSpec.describe PGMQ::Client, :integration do
       way_too_long = 'q' * 60
 
       expect { client.create(way_too_long) }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /exceeds maximum length of 48 characters.*current length: 60/
       )
     end
@@ -807,17 +807,17 @@ RSpec.describe PGMQ::Client, :integration do
 
     it 'provides clear error messages for invalid names' do
       expect { client.create('123invalid') }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /must start with a letter or underscore/
       )
 
       expect { client.create('my-queue') }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /must start with a letter or underscore/
       )
 
       expect { client.create('') }.to raise_error(
-        PGMQ::InvalidQueueNameError,
+        PGMQ::Errors::InvalidQueueNameError,
         /cannot be empty/
       )
     end
@@ -837,7 +837,7 @@ RSpec.describe PGMQ::Client, :integration do
     end
 
     it 'raises error for invalid queue name' do
-      expect { client.create_unlogged('123invalid') }.to raise_error(PGMQ::InvalidQueueNameError)
+      expect { client.create_unlogged('123invalid') }.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
   end
 
@@ -859,7 +859,7 @@ RSpec.describe PGMQ::Client, :integration do
     end
 
     it 'raises error for invalid queue name' do
-      expect { client.detach_archive('123invalid') }.to raise_error(PGMQ::InvalidQueueNameError)
+      expect { client.detach_archive('123invalid') }.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
   end
 

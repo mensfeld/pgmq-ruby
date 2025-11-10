@@ -1,10 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'connection'
-require_relative 'message'
-require_relative 'metrics'
-require_relative 'queue_metadata'
-
 module PGMQ
   # Low-level client for interacting with PGMQ (Postgres Message Queue)
   #
@@ -54,9 +49,6 @@ module PGMQ
     # @example Connection hash
     #   client = PGMQ::Client.new(host: 'localhost', dbname: 'mydb', user: 'postgres')
     #
-    # @example With custom serializer
-    #   client = PGMQ::Client.new(serializer: PGMQ::Serializers::MessagePack.new)
-    #
     # @example Inject existing connection (for Rails)
     #   client = PGMQ::Client.new(-> { ActiveRecord::Base.connection.raw_connection })
     #
@@ -79,8 +71,8 @@ module PGMQ
     #
     # @param queue_name [String] name of the queue to create
     # @return [void]
-    # @raise [PGMQ::InvalidQueueNameError] if queue name is invalid
-    # @raise [PGMQ::ConnectionError] if database operation fails
+    # @raise [PGMQ::Errors::InvalidQueueNameError] if queue name is invalid
+    # @raise [PGMQ::Errors::ConnectionError] if database operation fails
     #
     # @example
     #   client.create("orders")
@@ -848,16 +840,16 @@ module PGMQ
 
     # Validates a queue name
     # @param queue_name [String] queue name to validate
-    # @raise [PGMQ::InvalidQueueNameError] if name is invalid
+    # @raise [PGMQ::Errors::InvalidQueueNameError] if name is invalid
     # @return [void]
     def validate_queue_name!(queue_name)
-      raise InvalidQueueNameError, 'Queue name cannot be empty' if queue_name.nil? || queue_name.to_s.strip.empty?
+      raise Errors::InvalidQueueNameError, 'Queue name cannot be empty' if queue_name.nil? || queue_name.to_s.strip.empty?
 
       # PGMQ creates tables with prefixes (pgmq.q_<name>, pgmq.a_<name>)
       # PostgreSQL has a 63-character limit for identifiers, but PGMQ enforces 48
       # to account for prefixes and potential suffixes
       if queue_name.to_s.length >= 48
-        raise InvalidQueueNameError,
+        raise Errors::InvalidQueueNameError,
               "Queue name '#{queue_name}' exceeds maximum length of 48 characters " \
               "(current length: #{queue_name.to_s.length})"
       end
@@ -866,7 +858,7 @@ module PGMQ
       # contain only letters, digits, underscores
       return if queue_name.to_s.match?(/\A[a-zA-Z_][a-zA-Z0-9_]*\z/)
 
-      raise InvalidQueueNameError,
+      raise Errors::InvalidQueueNameError,
             "Invalid queue name '#{queue_name}': must start with a letter or underscore " \
             'and contain only letters, digits, and underscores'
     end

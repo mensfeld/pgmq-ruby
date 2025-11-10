@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'json'
-require_relative 'base'
 
 module PGMQ
   module Serializers
@@ -19,28 +18,28 @@ module PGMQ
       #
       # @param obj [Object] the object to serialize (typically a Hash)
       # @return [String] JSON representation
-      # @raise [PGMQ::SerializationError] if serialization fails
+      # @raise [PGMQ::Errors::SerializationError] if serialization fails
       def serialize(obj)
         # If already a string, assume it's JSON and return as-is
         return obj if obj.is_a?(String)
 
         ::JSON.generate(obj)
       rescue ::JSON::GeneratorError, StandardError => e
-        raise PGMQ::SerializationError, "Failed to serialize object to JSON: #{e.message}"
+        raise PGMQ::Errors::SerializationError, "Failed to serialize object to JSON: #{e.message}"
       end
 
       # Deserializes a JSON string to a Ruby object
       #
       # @param str [String] JSON string to deserialize
       # @return [Object] deserialized object (typically a Hash)
-      # @raise [PGMQ::SerializationError] if deserialization fails
+      # @raise [PGMQ::Errors::SerializationError] if deserialization fails
       def deserialize(str)
         # If already a Hash, return as-is
         return str if str.is_a?(Hash)
 
         ::JSON.parse(str.to_s)
       rescue ::JSON::ParserError, StandardError => e
-        raise PGMQ::SerializationError, "Failed to deserialize JSON: #{e.message}"
+        raise PGMQ::Errors::SerializationError, "Failed to deserialize JSON: #{e.message}"
       end
     end
   end

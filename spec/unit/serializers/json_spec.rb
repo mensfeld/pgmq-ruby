@@ -32,7 +32,7 @@ RSpec.describe PGMQ::Serializers::JSON do
         raise JSON::GeneratorError, 'Cannot serialize'
       end
 
-      expect { serializer.serialize(unserializable) }.to raise_error(PGMQ::SerializationError)
+      expect { serializer.serialize(unserializable) }.to raise_error(PGMQ::Errors::SerializationError)
     end
   end
 
@@ -58,7 +58,7 @@ RSpec.describe PGMQ::Serializers::JSON do
 
     it 'raises SerializationError on invalid JSON' do
       input = 'not valid json{'
-      expect { serializer.deserialize(input) }.to raise_error(PGMQ::SerializationError)
+      expect { serializer.deserialize(input) }.to raise_error(PGMQ::Errors::SerializationError)
     end
   end
 

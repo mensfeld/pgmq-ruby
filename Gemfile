@@ -10,7 +10,5 @@ group :development, :test do
 end
 
 group :test do
-  # MessagePack serializer testing (optional)
-  gem 'msgpack', require: false
   gem 'simplecov', require: false
 end

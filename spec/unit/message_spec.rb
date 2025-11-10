@@ -107,7 +107,7 @@ RSpec.describe PGMQ::Message do
     end
 
     it 'raises SerializationError' do
-      expect { described_class.new(row_with_invalid_json) }.to raise_error(PGMQ::SerializationError)
+      expect { described_class.new(row_with_invalid_json) }.to raise_error(PGMQ::Errors::SerializationError)
     end
   end
 end

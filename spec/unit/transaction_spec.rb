@@ -37,7 +37,7 @@ RSpec.describe PGMQ::Transaction do
         client.transaction do |txn_client|
           # This should rollback
         end
-      end.to raise_error(PGMQ::ConnectionError, /Transaction failed/)
+      end.to raise_error(PGMQ::Errors::ConnectionError, /Transaction failed/)
     end
   end
 
