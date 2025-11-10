@@ -3,32 +3,17 @@
 [![Gem Version](https://badge.fury.io/rb/pgmq-ruby.svg)](https://badge.fury.io/rb/pgmq-ruby)
 [![Build Status](https://github.com/mensfeld/pgmq-ruby/workflows/ci/badge.svg)](https://github.com/mensfeld/pgmq-ruby/actions)
 
-**Low-level Ruby client for [PGMQ](https://github.com/pgmq/pgmq) - PostgreSQL Message Queue**
+**Ruby client for [PGMQ](https://github.com/pgmq/pgmq) - PostgreSQL Message Queue**
 
 ## What is PGMQ-Ruby?
 
-PGMQ-Ruby is a low-level Ruby client for PGMQ (PostgreSQL Message Queue). It provides direct access to all PGMQ operations with a clean, minimal API - similar to how [rdkafka-ruby](https://github.com/karafka/rdkafka-ruby) relates to Kafka.
+PGMQ-Ruby is a Ruby client for PGMQ (PostgreSQL Message Queue). It provides direct access to all PGMQ operations with a clean, minimal API - similar to how [rdkafka-ruby](https://github.com/karafka/rdkafka-ruby) relates to Kafka.
 
 **Think of it as:**
 
 - **Like AWS SQS** - but running entirely in PostgreSQL with no external dependencies
 - **Like Sidekiq/Resque** - but without Redis, using PostgreSQL for both data and queues
 - **Like rdkafka-ruby** - a thin, efficient wrapper around the underlying system (PGMQ SQL functions)
-
-## When to Use PGMQ-Ruby?
-
-**Use this library directly if you:**
-
-- Need low-level control over queue operations
-- Want to build custom job processing systems
-- Are integrating PGMQ into existing applications
-- Already use PostgreSQL and want to avoid additional infrastructure
-
-**Use a higher-level library if you:**
-
-- Need Rails ActiveJob integration → Use `pgmq-framework` (coming soon)
-- Want automatic retries and error handling → Use `pgmq-framework` (coming soon)
-- Need worker process management → Use `pgmq-framework` (coming soon)
 
 > **Architecture Note**: This library follows the rdkafka-ruby/Karafka pattern - `pgmq-ruby` is the low-level foundation, while higher-level features (job processing, Rails integration, retry strategies) will live in `pgmq-framework` (similar to how Karafka builds on rdkafka-ruby).
 
@@ -46,7 +31,6 @@ PGMQ-Ruby is a low-level Ruby client for PGMQ (PostgreSQL Message Queue). It pro
 - [Performance](#performance)
 - [Future Improvements](#future-improvements)
 - [Development](#development)
-- [Resources](#resources)
 - [License](#license)
 - [Author](#author)
 
@@ -203,7 +187,7 @@ client = PGMQ::Client.new(connection)
 
 ### Connection Pool Features
 
-PGMQ-Ruby includes connection pooling with monitoring and resilience features:
+PGMQ-Ruby includes connection pooling with resilience:
 
 ```ruby
 # Configure pool size and timeouts
@@ -337,7 +321,7 @@ msg = client.read_with_poll("queue_name",
 msg = client.pop("queue_name")
 ```
 
-#### Conditional Message Filtering (v0.3.0+)
+#### Conditional Message Filtering
 
 Filter messages by JSON payload content using server-side JSONB queries:
 
@@ -372,6 +356,7 @@ messages = client.read_with_poll("orders",
 ```
 
 **How Filtering Works:**
+
 - Filtering happens in PostgreSQL using JSONB containment operator (`@>`)
 - Only messages matching **ALL** conditions are returned (AND logic)
 - The `qty` parameter applies **after** filtering
@@ -422,7 +407,7 @@ all_metrics.each do |m|
 end
 ```
 
-### Transaction Support (v0.3.0+)
+### Transaction Support
 
 Low-level PostgreSQL transaction support for atomic operations. Transactions are a database primitive provided by PostgreSQL - this is a thin wrapper for convenience.
 
@@ -473,18 +458,21 @@ end
 ```
 
 **How Transactions Work:**
+
 - Wraps PostgreSQL's native transaction support (similar to rdkafka-ruby providing Kafka transactions)
 - All operations within the block execute in a single PostgreSQL transaction
 - If any operation fails, the entire transaction is rolled back automatically
 - The transactional client delegates all `PGMQ::Client` methods for convenience
 
 **Use Cases:**
+
 - **Multi-queue coordination**: Send related messages to multiple queues atomically
 - **Exactly-once processing**: Combine message deletion with application state updates
 - **Message routing**: Move messages between queues without losing data
 - **Batch operations**: Ensure all-or-nothing semantics for bulk operations
 
 **Important Notes:**
+
 - Transactions hold database locks - keep them short to avoid blocking
 - Long transactions can impact queue throughput
 - Read operations with long visibility timeouts may cause lock contention
@@ -552,50 +540,6 @@ client = PGMQ::Client.new(
 )
 ```
 
-### Setup (v1.0+)
-
-```bash
-# Generate initializer (coming in v1.0)
-rails generate pgmq:install
-
-# Creates: config/initializers/pgmq.rb
-```
-
-### ActiveJob Adapter (v1.0+)
-
-```ruby
-# config/application.rb
-config.active_job.queue_adapter = :pgmq
-
-# Job automatically uses PGMQ
-class ProcessOrderJob < ApplicationJob
-  queue_as :orders
-
-  def perform(order_id)
-    order = Order.find(order_id)
-    # Process order
-  end
-end
-```
-
-### Rake Tasks (v1.0+)
-
-```bash
-# Create queue
-rake pgmq:create_queue[orders]
-
-# Drop queue
-rake pgmq:drop_queue[orders]
-
-# Show metrics
-rake pgmq:metrics[orders]
-
-# Show all queue metrics
-rake pgmq:metrics_all
-```
-
-**Current Workaround**: Use the PGMQ::Client directly in your Rails app until v1.0 is released. See the standalone examples above.
-
 ## Performance
 
 PGMQ-Ruby is designed for high throughput while maintaining simplicity.
@@ -655,16 +599,6 @@ bundle exec rspec
 # Run console
 bundle exec bin/console
 ```
-
-## Resources
-
-- [PGMQ Documentation](https://github.com/pgmq/pgmq)
-- [PGMQ Extension](https://github.com/pgmq/pgmq)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-
-## License
-
-The gem is available as open source under the terms of the [LGPL-3.0 License](https://opensource.org/licenses/LGPL-3.0).
 
 ## Author
 
