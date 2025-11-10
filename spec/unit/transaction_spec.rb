@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe PGMQ::Transaction do
-  let(:client) { PGMQ::Client.new }
+  let(:client) { PGMQ::Client.new(TEST_DB_PARAMS) }
   let(:mock_conn) { instance_double(PG::Connection) }
   let(:mock_pool_conn) { instance_double(PG::Connection) }
 
@@ -42,7 +42,7 @@ RSpec.describe PGMQ::Transaction do
   end
 
   describe PGMQ::Transaction::TransactionalClient do
-    let(:parent_client) { PGMQ::Client.new }
+    let(:parent_client) { PGMQ::Client.new(TEST_DB_PARAMS) }
     let(:txn_conn) { instance_double(PG::Connection) }
     let(:txn_client) { described_class.new(parent_client, txn_conn) }
 
