@@ -34,7 +34,6 @@ PGMQ-Ruby is a low-level Ruby client for PGMQ (PostgreSQL Message Queue). It pro
 
 ## Table of Contents
 
-- [Features](#features)
 - [PGMQ Feature Support](#pgmq-feature-support)
 - [Requirements](#requirements)
 - [Installation](#installation)
@@ -44,12 +43,9 @@ PGMQ-Ruby is a low-level Ruby client for PGMQ (PostgreSQL Message Queue). It pro
 - [Message Object](#message-object)
 - [Serializers](#serializers)
 - [Rails Integration](#rails-integration)
-- [Testing](#testing)
 - [Performance](#performance)
-- [Comparison with Other Solutions](#comparison-with-other-solutions)
 - [Future Improvements](#future-improvements)
 - [Development](#development)
-- [Contributing](#contributing)
 - [Resources](#resources)
 - [License](#license)
 - [Author](#author)
@@ -600,48 +596,6 @@ rake pgmq:metrics_all
 
 **Current Workaround**: Use the PGMQ::Client directly in your Rails app until v1.0 is released. See the standalone examples above.
 
-## Testing
-
-### With Docker
-
-```bash
-# Start PostgreSQL with PGMQ extension
-docker compose up -d
-
-# Run tests
-bundle exec rspec
-```
-
-### docker-compose.yml
-
-```yaml
-services:
-  postgres:
-    image: ghcr.io/pgmq/pg18-pgmq:v1.7.0
-    environment:
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-```
-
-### Test Helpers
-
-```ruby
-RSpec.configure do |config|
-  config.before(:suite) do
-    PGMQ.configure do |c|
-      c.connection_string = "postgres://postgres:postgres@localhost:5432/pgmq_test"
-    end
-
-    @client = PGMQ::Client.new
-  end
-
-  config.before(:each) do
-    # Clean up queues between tests
-  end
-end
-```
-
 ## Performance
 
 PGMQ-Ruby is designed for high throughput while maintaining simplicity.
@@ -663,28 +617,6 @@ Real-world performance depends on:
 - Whether queues are partitioned or unlogged
 
 Run your own benchmarks for accurate numbers in your environment.
-
-## Comparison with Other Solutions
-
-| Feature | PGMQ-Ruby | Sidekiq | DelayedJob | AWS SQS |
-|---------|-----------|---------|------------|---------|
-| Infrastructure | PostgreSQL | Redis | PostgreSQL | AWS Cloud |
-| Exactly-once delivery | ✓ | ✗ | ✓ | ✓ |
-| Visibility timeout | ✓ | ✗ | ✗ | ✓ |
-| Message archiving | ✓ | ✗ | ✗ | ✗ |
-| Operational cost | Low | Low | Low | Pay-per-use |
-| Learning curve | Low | Medium | Low | Medium |
-
-**Use PGMQ when:**
-- You already use PostgreSQL
-- You want SQS-like semantics without AWS
-- You need exactly-once delivery guarantees
-- You want to avoid Redis dependency
-
-**Use Sidekiq when:**
-- You need advanced job scheduling
-- You already use Redis
-- You need web UI for monitoring
 
 ## Future Improvements
 
@@ -723,16 +655,6 @@ bundle exec rspec
 # Run console
 bundle exec bin/console
 ```
-
-## Contributing
-
-Bug reports and pull requests are welcome on GitHub at https://github.com/mensfeld/pgmq-ruby.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin feature/my-new-feature`)
-5. Create a new Pull Request
 
 ## Resources
 

@@ -695,7 +695,7 @@ RSpec.describe PGMQ::Client, :integration do
               conn.exec('INVALID SQL STATEMENT')
             end
           end
-        end.to raise_error
+        end.to raise_error(PGMQ::ConnectionError, /Transaction failed/)
 
         # Message should not be persisted
         msg = client.read(q1, vt: 30)
