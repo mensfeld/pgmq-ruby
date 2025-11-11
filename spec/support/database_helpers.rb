@@ -77,7 +77,9 @@ RSpec.configure do |config|
   # Skip integration tests if PGMQ is not available
   config.before(:each, :integration) do
     unless pgmq_available?
-      skip "PGMQ extension not available. Run 'docker compose up -d' to start PostgreSQL with PGMQ."
+      skip(
+        "PGMQ extension not available. Run 'docker compose up -d' to start PostgreSQL with PGMQ."
+      )
     end
   end
 end
