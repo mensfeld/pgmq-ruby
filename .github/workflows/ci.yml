@@ -102,6 +102,23 @@ jobs:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
         run: bundle exec rspec
 
+  yard-lint:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@2a7b30092b0caf9c046252510f9273b4875f3db9 # v1.254.0
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+      - name: Run yard-lint
+        run: bundle exec yard-lint lib/
+
   coditsu:
     timeout-minutes: 5
     runs-on: ubuntu-latest
@@ -133,6 +150,7 @@ jobs:
     needs:
       - coditsu
       - specs
+      - yard-lint
     steps:
       - name: Check all jobs passed
         if: |
