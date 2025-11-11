@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe 'PGMQ::Client#read_multi', :integration do
+RSpec.describe PGMQ::Client::MultiQueue, :integration do
   let(:client) { PGMQ::Client.new(TEST_DB_PARAMS) }
   let(:queue1) { test_queue_name('multi1') }
   let(:queue2) { test_queue_name('multi2') }
