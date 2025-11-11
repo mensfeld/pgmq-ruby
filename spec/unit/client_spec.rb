@@ -2,8 +2,40 @@
 
 require 'spec_helper'
 
-RSpec.describe PGMQ::Client, '#validate_queue_name!' do
+RSpec.describe PGMQ::Client do
   let(:client) { described_class.new(TEST_DB_PARAMS) }
+
+  describe 'initialization', :integration do
+    it 'accepts a PGMQ::Connection object' do
+      connection = PGMQ::Connection.new(TEST_DB_PARAMS)
+      injected_client = PGMQ::Client.new(connection)
+
+      expect(injected_client.connection).to eq(connection)
+
+      # Verify it works
+      queue_name = test_queue_name('inject')
+      injected_client.create(queue_name)
+      queues = injected_client.list_queues
+      expect(queues.map(&:queue_name)).to include(queue_name)
+
+      injected_client.drop_queue(queue_name)
+      injected_client.close
+    end
+
+    it 'creates connection from connection string' do
+      client = PGMQ::Client.new('postgres://postgres:postgres@localhost:5433/pgmq_test')
+      expect(client.connection).to be_a(PGMQ::Connection)
+      client.close
+    end
+
+    it 'creates connection from hash parameters' do
+      client = PGMQ::Client.new(TEST_DB_PARAMS)
+      expect(client.connection).to be_a(PGMQ::Connection)
+      client.close
+    end
+  end
+
+  describe '#validate_queue_name!' do
 
   describe 'valid queue names' do
     it 'accepts simple lowercase names' do
@@ -105,5 +137,6 @@ RSpec.describe PGMQ::Client, '#validate_queue_name!' do
         /Queue name '#{Regexp.escape(long_name)}'/
       )
     end
+  end
   end
 end

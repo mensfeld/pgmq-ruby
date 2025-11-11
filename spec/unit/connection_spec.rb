@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe 'Connection pooling features' do
+RSpec.describe PGMQ::Connection do
   let(:conn_params) { TEST_DB_PARAMS }
 
   describe 'pool statistics' do
