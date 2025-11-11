@@ -106,8 +106,10 @@ RSpec.describe PGMQ::Message do
       row.merge('message' => 'not valid json{')
     end
 
-    it 'raises SerializationError' do
-      expect { described_class.new(row_with_invalid_json) }.to raise_error(PGMQ::Errors::SerializationError)
+    it 'raises SerializationError on access (lazy deserialization)' do
+      msg = described_class.new(row_with_invalid_json)
+      # Accessing the payload triggers lazy deserialization
+      expect { msg.payload }.to raise_error(PGMQ::Errors::SerializationError)
     end
   end
 end

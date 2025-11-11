@@ -481,11 +481,60 @@ msg.enqueued_at     # => 2025-01-15 10:30:00 UTC
 msg.vt              # => 2025-01-15 10:30:30 UTC (visibility timeout)
 msg.message         # => { "data" => "value" }
 msg.payload         # => alias for message
+msg.raw_message     # => "{\"data\":\"value\"}" (raw JSON string before deserialization)
 
 # Hash-like access
 msg[:data]          # => "value"
 msg["data"]         # => "value"
 ```
+
+### Lazy Deserialization
+
+Messages use **deferred deserialization** (inspired by Karafka) - the payload is only deserialized when accessed:
+
+```ruby
+# Message is read from database but NOT deserialized yet
+msg = client.read("queue", vt: 30)
+
+# Raw message is always available without deserialization overhead
+msg.raw_message     # => "{\"order_id\":123}" (instant, no parsing)
+
+# Deserialization happens here on first access
+data = msg.payload  # => { "order_id" => 123 }
+
+# Subsequent accesses use the cached deserialized value
+msg.payload         # No deserialization overhead
+msg[:order_id]      # Uses cached value
+```
+
+**Performance Benefits:**
+
+- **Reduced CPU usage** - Skip deserialization for messages you filter out
+- **Lower memory pressure** - Deserialized objects only exist when needed
+- **Batch processing efficiency** - Read 100 messages but only deserialize the 10 you process
+
+**Example Use Case:**
+
+```ruby
+# Read 50 messages but only process high-priority ones
+messages = client.read_batch("orders", vt: 30, qty: 50)
+
+messages.each do |msg|
+  # Quick metadata check - no deserialization yet
+  next if msg.read_ct > 3  # Skip messages read too many times
+
+  # Deserialization only happens here for processed messages
+  if msg.payload["priority"] == "high"
+    process_order(msg.payload)
+    client.delete("orders", msg.msg_id)
+  end
+end
+```
+
+This pattern is especially valuable when:
+- Reading large batches and filtering based on metadata first
+- Using conditional filtering where some messages may not match your criteria
+- Processing messages selectively based on business logic
 
 ## Serializers
 

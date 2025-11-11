@@ -27,6 +27,9 @@ module PGMQ
     # @return [Hash, Object] the message payload
     attr_reader :message
 
+    # @return [String, Hash] the raw message before deserialization
+    attr_reader :raw_message
+
     # Creates a new Message from a database row
     # @param row [Hash] database row from PG result
     # @param serializer [PGMQ::Serializers::Base] serializer for deserializing message
@@ -35,7 +38,23 @@ module PGMQ
       @read_ct = row['read_ct'].to_i
       @enqueued_at = parse_timestamp(row['enqueued_at'])
       @vt = parse_timestamp(row['vt'])
-      @message = deserialize_message(row['message'], serializer)
+
+      # Deferred deserialization: store raw message and serializer
+      # Message will be deserialized on first access (Karafka-style)
+      @raw_message = row['message']
+      @serializer = serializer
+      @message = nil
+      @deserialized = false
+    end
+
+    # Lazy deserialization - only deserialize when message is accessed
+    # @return [Hash, Object]
+    def message
+      return @message if @deserialized
+
+      @message = deserialize_message(@raw_message, @serializer)
+      @deserialized = true
+      @message
     end
 
     # Alias for message_id
@@ -50,9 +69,9 @@ module PGMQ
     # @param key [String, Symbol] the key to access
     # @return [Object, nil]
     def [](key)
-      return nil unless @message.respond_to?(:[])
+      return nil unless message.respond_to?(:[])
 
-      @message[key.to_s] || @message[key.to_sym]
+      message[key.to_s] || message[key.to_sym]
     end
 
     # Returns a hash representation of the message
@@ -63,7 +82,7 @@ module PGMQ
         read_ct: @read_ct,
         enqueued_at: @enqueued_at,
         vt: @vt,
-        message: @message
+        message: message
       }
     end
 

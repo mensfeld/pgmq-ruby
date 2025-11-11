@@ -55,8 +55,9 @@ RSpec.describe PGMQ::QueueMetadata do
   describe '#inspect' do
     it 'returns string representation' do
       expect(metadata.inspect).to include('PGMQ::QueueMetadata')
-      expect(metadata.inspect).to include('queue_name=my_queue')
-      expect(metadata.inspect).to include('partitioned=true')
+      # Data.define uses quotes for string values
+      expect(metadata.inspect).to include('queue_name="my_queue"')
+      expect(metadata.inspect).to include('is_partitioned=true')
     end
   end
 

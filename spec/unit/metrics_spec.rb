@@ -52,7 +52,8 @@ RSpec.describe PGMQ::Metrics do
   describe '#inspect' do
     it 'returns string representation' do
       expect(metrics.inspect).to include('PGMQ::Metrics')
-      expect(metrics.inspect).to include('queue_name=orders')
+      # Data.define uses quotes for string values
+      expect(metrics.inspect).to include('queue_name="orders"')
       expect(metrics.inspect).to include('queue_length=42')
     end
   end
