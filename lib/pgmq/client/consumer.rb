@@ -65,7 +65,12 @@ module PGMQ
       #   end
       #
       # @example With conditional filtering
-      #   messages = client.read_batch("orders", vt: 30, qty: 10, conditional: { priority: "high" })
+      #   messages = client.read_batch(
+      #     "orders",
+      #     vt: 30,
+      #     qty: 10,
+      #     conditional: { priority: "high" }
+      #   )
       def read_batch(
         queue_name,
         vt: DEFAULT_VT,

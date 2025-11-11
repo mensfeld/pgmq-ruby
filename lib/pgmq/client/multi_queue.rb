@@ -31,7 +31,12 @@ module PGMQ
       #
       # @example Poll all queues efficiently (single connection, single query)
       #   loop do
-      #     messages = client.read_multi(['orders', 'emails', 'webhooks'], vt: 30, qty: 10, limit: 10)
+      #     messages = client.read_multi(
+      #       ['orders', 'emails', 'webhooks'],
+      #       vt: 30,
+      #       qty: 10,
+      #       limit: 10
+      #     )
       #     break if messages.empty?
       #     messages.each { |msg| process(msg) }
       #   end

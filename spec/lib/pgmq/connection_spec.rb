@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
-
 RSpec.describe PGMQ::Connection do
   let(:conn_params) { TEST_DB_PARAMS }
 
   describe 'pool statistics' do
     it 'provides pool size and available connections' do
-      connection = PGMQ::Connection.new(conn_params, pool_size: 3)
+      connection = described_class.new(conn_params, pool_size: 3)
 
       stats = connection.stats
 
@@ -18,7 +16,7 @@ RSpec.describe PGMQ::Connection do
     end
 
     it 'tracks available connections when in use' do
-      connection = PGMQ::Connection.new(conn_params, pool_size: 2)
+      connection = described_class.new(conn_params, pool_size: 2)
 
       stats_before = connection.stats
       expect(stats_before[:available]).to eq(2)
@@ -70,7 +68,7 @@ RSpec.describe PGMQ::Connection do
 
   describe 'connection verification' do
     it 'verifies connections before use when auto_reconnect enabled' do
-      connection = PGMQ::Connection.new(conn_params, auto_reconnect: true)
+      connection = described_class.new(conn_params, auto_reconnect: true)
 
       verified = false
 
@@ -84,7 +82,7 @@ RSpec.describe PGMQ::Connection do
     end
 
     it 'skips verification when auto_reconnect disabled' do
-      connection = PGMQ::Connection.new(conn_params, auto_reconnect: false)
+      connection = described_class.new(conn_params, auto_reconnect: false)
 
       # Should work normally without verification
       expect do
