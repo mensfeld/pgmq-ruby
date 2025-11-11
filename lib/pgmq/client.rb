@@ -821,8 +821,8 @@ module PGMQ
 
     # Validates a queue name
     # @param queue_name [String] queue name to validate
-    # @raise [PGMQ::Errors::InvalidQueueNameError] if name is invalid
     # @return [void]
+    # @raise [PGMQ::Errors::InvalidQueueNameError] if name is invalid
     def validate_queue_name!(queue_name)
       raise Errors::InvalidQueueNameError, 'Queue name cannot be empty' if queue_name.nil? || queue_name.to_s.strip.empty?
 

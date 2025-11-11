@@ -41,8 +41,8 @@ module PGMQ
   class << self
     # Convenience method to create a new client
     #
-    # @param args [Array] arguments to pass to PGMQ::Client.new
     # @return [PGMQ::Client] new client instance
+    # @see PGMQ::Client#initialize
     #
     # @example
     #   client = PGMQ.new('postgres://localhost/mydb')
