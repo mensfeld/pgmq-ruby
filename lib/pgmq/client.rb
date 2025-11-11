@@ -117,9 +117,11 @@ module PGMQ
       # PostgreSQL has a 63-character limit for identifiers, but PGMQ enforces 48
       # to account for prefixes and potential suffixes
       if queue_name.to_s.length >= 48
-        raise Errors::InvalidQueueNameError,
-              "Queue name '#{queue_name}' exceeds maximum length of 48 characters " \
-              "(current length: #{queue_name.to_s.length})"
+        raise(
+          Errors::InvalidQueueNameError,
+          "Queue name '#{queue_name}' exceeds maximum length of 48 characters " \
+          "(current length: #{queue_name.to_s.length})"
+        )
       end
 
       # PostgreSQL identifier rules: start with letter or underscore,
