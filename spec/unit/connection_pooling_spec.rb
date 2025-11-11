@@ -125,7 +125,7 @@ RSpec.describe 'Connection pooling features' do
 
       threads = Array.new(10) do |i|
         Thread.new do
-          client.send(queue, { thread: i })
+          client.send(queue, to_json_msg({ thread: i }))
         end
       end
 
@@ -178,7 +178,7 @@ RSpec.describe 'Connection pooling features' do
 
       5.times do |i|
         fibers << Fiber.new do
-          client.send(queue, { fiber: i })
+          client.send(queue, to_json_msg({ fiber: i }))
           results << i
           Fiber.yield
         end

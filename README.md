@@ -103,15 +103,16 @@ client = PGMQ::Client.new(
 # Create a queue
 client.create('orders')
 
-# Send a message
-msg_id = client.send('orders', { order_id: 123, total: 99.99 })
+# Send a message (must be JSON string)
+msg_id = client.send('orders', '{"order_id":123,"total":99.99}')
 
 # Read a message (30 second visibility timeout)
 msg = client.read('orders', vt: 30)
-puts msg.payload  # => { "order_id" => 123, "total" => 99.99 }
+puts msg.message  # => "{\"order_id\":123,\"total\":99.99}" (raw JSON string)
 
-# Process and delete
-process_order(msg.payload)
+# Parse and process (you handle deserialization)
+data = JSON.parse(msg.message)
+process_order(data)
 client.delete('orders', msg.msg_id)
 
 # Or archive for long-term storage
@@ -137,7 +138,9 @@ class OrderProcessor
       msg = @client.read('orders', vt: 30)
       break unless msg
 
-      process_order(msg.payload)
+      # Parse JSON yourself
+      data = JSON.parse(msg.message)
+      process_order(data)
       @client.delete('orders', msg.msg_id)
     end
   end
@@ -215,9 +218,6 @@ client = PGMQ::Client.new(
 - **Health checks** - Verifies connections before use to prevent stale connection errors
 - **Monitoring** - Track pool utilization with `client.stats`
 
-### Custom Serializer
-
-You can implement custom serializers by subclassing `PGMQ::Serializers::Base`. See the "Serializers" section below for details.
 
 ## API Reference
 
@@ -276,19 +276,19 @@ client.create("a" * 48)          # ✗ Too long (48+ chars)
 ### Sending Messages
 
 ```ruby
-# Send single message
-msg_id = client.send("queue_name", { data: "value" })
+# Send single message (must be JSON string)
+msg_id = client.send("queue_name", '{"data":"value"}')
 
 # Send with delay (seconds)
-msg_id = client.send("queue_name", { data: "value" }, delay: 60)
+msg_id = client.send("queue_name", '{"data":"value"}', delay: 60)
 
-# Send batch
+# Send batch (array of JSON strings)
 msg_ids = client.send_batch("queue_name", [
-  { order: 1 },
-  { order: 2 },
-  { order: 3 }
+  '{"order":1}',
+  '{"order":2}',
+  '{"order":3}'
 ])
-# => [101, 102, 103]
+# => ["101", "102", "103"]
 ```
 
 ### Reading Messages
@@ -296,7 +296,7 @@ msg_ids = client.send_batch("queue_name", [
 ```ruby
 # Read single message
 msg = client.read("queue_name", vt: 30)
-# => #<PGMQ::Message msg_id=1 payload={...}>
+# => #<PGMQ::Message msg_id="1" message="{...}">
 
 # Read batch
 messages = client.read_batch("queue_name", vt: 30, qty: 10)
@@ -409,9 +409,9 @@ Execute atomic operations across multiple queues or combine queue operations wit
 # Atomic operations across multiple queues
 client.transaction do |txn|
   # Send to multiple queues atomically
-  txn.send("orders", { order_id: 123 })
-  txn.send("notifications", { user_id: 456, type: "order_created" })
-  txn.send("analytics", { event: "order_placed" })
+  txn.send("orders", '{"order_id":123}')
+  txn.send("notifications", '{"user_id":456,"type":"order_created"}')
+  txn.send("analytics", '{"event":"order_placed"}')
 end
 
 # Process message and update application state atomically
@@ -420,8 +420,9 @@ client.transaction do |txn|
   msg = txn.read("orders", vt: 30)
 
   if msg
-    # Update your database
-    Order.create!(external_id: msg.payload["order_id"])
+    # Parse and update your database
+    data = JSON.parse(msg.message)
+    Order.create!(external_id: data["order_id"])
 
     # Delete message only if database update succeeds
     txn.delete("orders", msg.msg_id)
@@ -430,8 +431,8 @@ end
 
 # Automatic rollback on errors
 client.transaction do |txn|
-  txn.send("queue1", { data: "message1" })
-  txn.send("queue2", { data: "message2" })
+  txn.send("queue1", '{"data":"message1"}')
+  txn.send("queue2", '{"data":"message2"}')
 
   raise "Something went wrong!"
   # Both messages are rolled back - neither queue receives anything
@@ -441,10 +442,13 @@ end
 client.transaction do |txn|
   msg = txn.read("pending_orders", vt: 30)
 
-  if msg && msg.payload["priority"] == "high"
-    # Move to high-priority queue
-    txn.send("priority_orders", msg.payload)
-    txn.delete("pending_orders", msg.msg_id)
+  if msg
+    data = JSON.parse(msg.message)
+    if data["priority"] == "high"
+      # Move to high-priority queue
+      txn.send("priority_orders", msg.message)
+      txn.delete("pending_orders", msg.msg_id)
+    end
   end
 end
 ```
@@ -472,55 +476,128 @@ end
 
 ## Message Object
 
+PGMQ-Ruby is a **low-level transport library** - it returns raw values from PostgreSQL without any transformation. You are responsible for parsing JSON and type conversion.
+
 ```ruby
 msg = client.read("queue", vt: 30)
 
-msg.msg_id          # => 123 (bigint)
-msg.read_ct         # => 1 (read count)
-msg.enqueued_at     # => 2025-01-15 10:30:00 UTC
-msg.vt              # => 2025-01-15 10:30:30 UTC (visibility timeout)
-msg.message         # => { "data" => "value" }
-msg.payload         # => alias for message
+# All values are strings as returned by PostgreSQL
+msg.msg_id          # => "123" (String, not Integer)
+msg.id              # => "123" (alias for msg_id)
+msg.read_ct         # => "1" (String, not Integer)
+msg.enqueued_at     # => "2025-01-15 10:30:00+00" (String, not Time)
+msg.vt              # => "2025-01-15 10:30:30+00" (String, not Time)
+msg.message         # => "{\"data\":\"value\"}" (Raw JSONB as JSON string)
+msg.headers         # => "{\"trace_id\":\"abc123\"}" (Raw JSONB as JSON string, optional)
+msg.queue_name      # => "my_queue" (only present for multi-queue operations, otherwise nil)
 
-# Hash-like access
-msg[:data]          # => "value"
-msg["data"]         # => "value"
+# You handle JSON parsing
+data = JSON.parse(msg.message)  # => { "data" => "value" }
+metadata = JSON.parse(msg.headers) if msg.headers  # => { "trace_id" => "abc123" }
+
+# You handle type conversion if needed
+id = msg.msg_id.to_i           # => 123
+read_count = msg.read_ct.to_i  # => 1
+enqueued = Time.parse(msg.enqueued_at)  # => 2025-01-15 10:30:00 UTC
 ```
 
-## Serializers
+### Message Headers
 
-PGMQ-Ruby supports pluggable serializers for message payloads.
-
-### JSON (Default)
-
-The default JSON serializer handles all standard Ruby objects that can be converted to JSON:
+PGMQ supports optional message headers via the `headers` JSONB column:
 
 ```ruby
-client = PGMQ::Client.new('postgres://localhost/mydb')
-# Uses JSON serializer by default
+# Sending with headers requires direct SQL or a custom wrapper
+# (pgmq-ruby focuses on the core PGMQ API which doesn't have a send_with_headers function)
+
+# Reading messages with headers
+msg = client.read("queue", vt: 30)
+if msg.headers
+  metadata = JSON.parse(msg.headers)
+  trace_id = metadata["trace_id"]
+  correlation_id = metadata["correlation_id"]
+end
 ```
 
-### Custom Serializer
+### Why Raw Values?
 
-Implement your own serializer by subclassing `PGMQ::Serializers::Base`:
+This library follows the **rdkafka-ruby philosophy** - provide a thin, performant wrapper around the underlying system:
+
+1. **No assumptions** - Your application decides how to parse timestamps, convert types, etc.
+2. **Framework-agnostic** - Works equally well with Rails, Sinatra, or plain Ruby
+3. **Zero overhead** - No hidden type conversion or object allocation
+4. **Explicit control** - You see exactly what PostgreSQL returns
+
+Higher-level features (automatic deserialization, type conversion, instrumentation) belong in framework layers built on top of this library.
+
+## Working with JSON
+
+PGMQ stores messages as JSONB in PostgreSQL. You must handle JSON serialization yourself:
+
+### Sending Messages
 
 ```ruby
-class MySerializer < PGMQ::Serializers::Base
-  def serialize(obj)
-    # Convert Ruby object to string for storage
-    obj.to_json
+# Simple hash
+msg = { order_id: 123, status: "pending" }
+client.send("orders", msg.to_json)
+
+# Using JSON.generate for explicit control
+client.send("orders", JSON.generate(order_id: 123, status: "pending"))
+
+# Pre-serialized JSON string
+json_str = '{"order_id":123,"status":"pending"}'
+client.send("orders", json_str)
+```
+
+### Reading Messages
+
+```ruby
+msg = client.read("orders", vt: 30)
+
+# Parse JSON yourself
+data = JSON.parse(msg.message)
+puts data["order_id"]  # => 123
+puts data["status"]    # => "pending"
+
+# Handle parsing errors
+begin
+  data = JSON.parse(msg.message)
+rescue JSON::ParserError => e
+  logger.error "Invalid JSON in message #{msg.msg_id}: #{e.message}"
+  client.delete("orders", msg.msg_id)  # Remove invalid message
+end
+```
+
+### Helper Pattern (Optional)
+
+For convenience, you can wrap the client in your own helper:
+
+```ruby
+class QueueHelper
+  def initialize(client)
+    @client = client
   end
 
-  def deserialize(str)
-    # Convert stored string back to Ruby object
-    JSON.parse(str)
+  def send(queue, data)
+    @client.send(queue, data.to_json)
+  end
+
+  def read(queue, vt:)
+    msg = @client.read(queue, vt: vt)
+    return nil unless msg
+
+    OpenStruct.new(
+      id: msg.msg_id.to_i,
+      data: JSON.parse(msg.message),
+      read_count: msg.read_ct.to_i,
+      raw: msg
+    )
   end
 end
 
-client = PGMQ::Client.new(
-  'postgres://localhost/mydb',
-  serializer: MySerializer.new
-)
+helper = QueueHelper.new(client)
+helper.send("orders", { order_id: 123 })
+msg = helper.read("orders", vt: 30)
+puts msg.data["order_id"]  # => 123
 ```
 
 ## Development

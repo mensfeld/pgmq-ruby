@@ -50,22 +50,44 @@ module PGMQ
     #
     # @private
     class TransactionalClient
-      def initialize(parent, conn)
+      # @param parent [PGMQ::Client] parent client instance
+      # @param conn [PG::Connection] transaction connection
+      def initialize(
+        parent,
+        conn
+      )
         @parent = parent
         @conn = conn
       end
 
       # Forward all method calls to parent, but use our transaction connection
+      # @param method [Symbol] method name
+      # @return [Object] result of method call
       def method_missing(method, ...)
         @parent.respond_to?(method, true) ? @parent.__send__(method, ...) : super
       end
 
       # Override Object#send to call parent's send method
-      def send(queue_name, message, delay: 0)
+      # @param queue_name [String] queue name
+      # @param message [String] message as JSON string
+      # @param delay [Integer] delay in seconds
+      # @return [String] message ID
+      def send(
+        queue_name,
+        message,
+        delay: 0
+      )
         @parent.send(queue_name, message, delay: delay)
       end
 
-      def respond_to_missing?(method, include_private = false)
+      # Check if method exists on parent
+      # @param method [Symbol] method name
+      # @param include_private [Boolean] include private methods
+      # @return [Boolean] true if method exists
+      def respond_to_missing?(
+        method,
+        include_private = false
+      )
         @parent.respond_to?(method, include_private) || super
       end
 

@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 require 'zeitwerk'
+require 'time'
 
 loader = Zeitwerk::Loader.for_gem
 loader.inflector.inflect(
-  'pgmq' => 'PGMQ',
-  'json' => 'JSON'
+  'pgmq' => 'PGMQ'
 )
 loader.setup
 loader.eager_load
@@ -41,8 +41,8 @@ module PGMQ
   class << self
     # Convenience method to create a new client
     #
-    # @param args [Array] arguments to pass to PGMQ::Client.new
     # @return [PGMQ::Client] new client instance
+    # @see PGMQ::Client#initialize
     #
     # @example
     #   client = PGMQ.new('postgres://localhost/mydb')

@@ -36,8 +36,12 @@ module PGMQ
     # @param pool_timeout [Integer] connection pool timeout in seconds
     # @param auto_reconnect [Boolean] automatically reconnect on connection errors
     # @raise [PGMQ::Errors::ConfigurationError] if conn_params is nil or invalid
-    def initialize(conn_params, pool_size: DEFAULT_POOL_SIZE, pool_timeout: DEFAULT_POOL_TIMEOUT,
-                   auto_reconnect: true)
+    def initialize(
+      conn_params,
+      pool_size: DEFAULT_POOL_SIZE,
+      pool_timeout: DEFAULT_POOL_TIMEOUT,
+      auto_reconnect: true
+    )
       raise PGMQ::Errors::ConfigurationError, 'Connection parameters are required' if conn_params.nil?
 
       @conn_params = normalize_connection_params(conn_params)
@@ -176,12 +180,10 @@ module PGMQ
       return params.call if params.respond_to?(:call)
 
       # Create new connection from parameters
-      conn = PG.connect(params[:conninfo] || params)
-
-      # Set some sensible defaults for type mapping
-      conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)
-
-      conn
+      # Low-level library: return all values as strings from PostgreSQL
+      # No automatic type conversion - let higher-level frameworks handle parsing
+      # conn.type_map_for_results intentionally NOT set
+      PG.connect(params[:conninfo] || params)
     rescue PG::Error => e
       raise PGMQ::Errors::ConnectionError, "Failed to connect to database: #{e.message}"
     end

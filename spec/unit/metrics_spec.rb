@@ -15,28 +15,28 @@ RSpec.describe PGMQ::Metrics do
   end
 
   describe '#initialize' do
-    it 'parses queue name' do
+    it 'returns queue name as string' do
       expect(metrics.queue_name).to eq('orders')
     end
 
-    it 'parses queue length' do
-      expect(metrics.queue_length).to eq(42)
+    it 'returns queue length as string' do
+      expect(metrics.queue_length).to eq('42')
     end
 
-    it 'parses newest message age' do
-      expect(metrics.newest_msg_age_sec).to eq(5)
+    it 'returns newest message age as string' do
+      expect(metrics.newest_msg_age_sec).to eq('5')
     end
 
-    it 'parses oldest message age' do
-      expect(metrics.oldest_msg_age_sec).to eq(120)
+    it 'returns oldest message age as string' do
+      expect(metrics.oldest_msg_age_sec).to eq('120')
     end
 
-    it 'parses total messages' do
-      expect(metrics.total_messages).to eq(1000)
+    it 'returns total messages as string' do
+      expect(metrics.total_messages).to eq('1000')
     end
 
-    it 'parses scrape time' do
-      expect(metrics.scrape_time).to be_a(Time)
+    it 'returns scrape time as string' do
+      expect(metrics.scrape_time).to eq('2025-01-15 10:00:00 UTC')
     end
   end
 
@@ -44,16 +44,17 @@ RSpec.describe PGMQ::Metrics do
     it 'returns hash representation' do
       hash = metrics.to_h
       expect(hash[:queue_name]).to eq('orders')
-      expect(hash[:queue_length]).to eq(42)
-      expect(hash[:total_messages]).to eq(1000)
+      expect(hash[:queue_length]).to eq('42')
+      expect(hash[:total_messages]).to eq('1000')
     end
   end
 
   describe '#inspect' do
     it 'returns string representation' do
       expect(metrics.inspect).to include('PGMQ::Metrics')
-      expect(metrics.inspect).to include('queue_name=orders')
-      expect(metrics.inspect).to include('queue_length=42')
+      # Data.define uses quotes for string values
+      expect(metrics.inspect).to include('queue_name="orders"')
+      expect(metrics.inspect).to include('queue_length="42"')
     end
   end
 
