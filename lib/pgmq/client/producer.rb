@@ -13,14 +13,15 @@ module PGMQ
       # @param message [String] message as JSON string (for PostgreSQL JSONB)
       # @param delay [Integer] delay in seconds before message becomes visible
       # @return [String] message ID as string
-      # @note Users must serialize to JSON themselves. Higher-level frameworks
-      #       should handle serialization.
       #
       # @example
       #   msg_id = client.send("orders", '{"order_id":123,"total":99.99}')
       #
       # @example With delay
       #   msg_id = client.send("orders", '{"data":"value"}', delay: 60)
+      #
+      # @note Users must serialize to JSON themselves. Higher-level frameworks
+      #       should handle serialization.
       def send(
         queue_name,
         message,
