@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
-
 RSpec.describe 'PGMQ::Errors' do
   describe 'error hierarchy' do
     it 'has BaseError inheriting from StandardError' do

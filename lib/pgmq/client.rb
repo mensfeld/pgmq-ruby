@@ -106,24 +106,33 @@ module PGMQ
     # @return [void]
     # @raise [PGMQ::Errors::InvalidQueueNameError] if name is invalid
     def validate_queue_name!(queue_name)
-      raise Errors::InvalidQueueNameError, 'Queue name cannot be empty' if queue_name.nil? || queue_name.to_s.strip.empty?
+      if queue_name.nil? || queue_name.to_s.strip.empty?
+        raise(
+          Errors::InvalidQueueNameError,
+          'Queue name cannot be empty'
+        )
+      end
 
       # PGMQ creates tables with prefixes (pgmq.q_<name>, pgmq.a_<name>)
       # PostgreSQL has a 63-character limit for identifiers, but PGMQ enforces 48
       # to account for prefixes and potential suffixes
       if queue_name.to_s.length >= 48
-        raise Errors::InvalidQueueNameError,
-              "Queue name '#{queue_name}' exceeds maximum length of 48 characters " \
-              "(current length: #{queue_name.to_s.length})"
+        raise(
+          Errors::InvalidQueueNameError,
+          "Queue name '#{queue_name}' exceeds maximum length of 48 characters " \
+          "(current length: #{queue_name.to_s.length})"
+        )
       end
 
       # PostgreSQL identifier rules: start with letter or underscore,
       # contain only letters, digits, underscores
       return if queue_name.to_s.match?(/\A[a-zA-Z_][a-zA-Z0-9_]*\z/)
 
-      raise Errors::InvalidQueueNameError,
-            "Invalid queue name '#{queue_name}': must start with a letter or underscore " \
-            'and contain only letters, digits, and underscores'
+      raise(
+        Errors::InvalidQueueNameError,
+        "Invalid queue name '#{queue_name}': must start with a letter or underscore " \
+        'and contain only letters, digits, and underscores'
+      )
     end
   end
 end

@@ -42,7 +42,12 @@ module PGMQ
       pool_timeout: DEFAULT_POOL_TIMEOUT,
       auto_reconnect: true
     )
-      raise PGMQ::Errors::ConfigurationError, 'Connection parameters are required' if conn_params.nil?
+      if conn_params.nil?
+        raise(
+          PGMQ::Errors::ConfigurationError,
+          'Connection parameters are required'
+        )
+      end
 
       @conn_params = normalize_connection_params(conn_params)
       @pool_size = pool_size

@@ -100,7 +100,7 @@ module PGMQ
       #
       # @example Clean up after batch processing across queues
       #   messages = client.read_multi(['q1', 'q2', 'q3'], qty: 10)
-      #   deletions = messages.group_by(&:queue_name).transform_values { |msgs| msgs.map(&:msg_id) }
+      #   deletions = messages.group_by(&:queue_name).transform_values { |mss| mss.map(&:msg_id) }
       #   client.delete_multi(deletions)
       def delete_multi(deletions)
         raise ArgumentError, 'deletions must be a hash' unless deletions.is_a?(Hash)
