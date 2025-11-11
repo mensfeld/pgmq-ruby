@@ -52,7 +52,10 @@ module PGMQ
     class TransactionalClient
       # @param parent [PGMQ::Client] parent client instance
       # @param conn [PG::Connection] transaction connection
-      def initialize(parent, conn)
+      def initialize(
+        parent,
+        conn
+      )
         @parent = parent
         @conn = conn
       end
@@ -69,7 +72,11 @@ module PGMQ
       # @param message [String] message as JSON string
       # @param delay [Integer] delay in seconds
       # @return [String] message ID
-      def send(queue_name, message, delay: 0)
+      def send(
+        queue_name,
+        message,
+        delay: 0
+      )
         @parent.send(queue_name, message, delay: delay)
       end
 
@@ -77,7 +84,10 @@ module PGMQ
       # @param method [Symbol] method name
       # @param include_private [Boolean] include private methods
       # @return [Boolean] true if method exists
-      def respond_to_missing?(method, include_private = false)
+      def respond_to_missing?(
+        method,
+        include_private = false
+      )
         @parent.respond_to?(method, include_private) || super
       end
 

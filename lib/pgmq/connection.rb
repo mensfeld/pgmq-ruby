@@ -36,8 +36,12 @@ module PGMQ
     # @param pool_timeout [Integer] connection pool timeout in seconds
     # @param auto_reconnect [Boolean] automatically reconnect on connection errors
     # @raise [PGMQ::Errors::ConfigurationError] if conn_params is nil or invalid
-    def initialize(conn_params, pool_size: DEFAULT_POOL_SIZE, pool_timeout: DEFAULT_POOL_TIMEOUT,
-                   auto_reconnect: true)
+    def initialize(
+      conn_params,
+      pool_size: DEFAULT_POOL_SIZE,
+      pool_timeout: DEFAULT_POOL_TIMEOUT,
+      auto_reconnect: true
+    )
       raise PGMQ::Errors::ConfigurationError, 'Connection parameters are required' if conn_params.nil?
 
       @conn_params = normalize_connection_params(conn_params)
