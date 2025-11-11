@@ -32,16 +32,12 @@ module PGMQ
     # @return [PGMQ::Connection] the connection manager
     attr_reader :connection
 
-    # @return [PGMQ::Serializers::Base] the message serializer
-    attr_reader :serializer
-
     # Creates a new PGMQ client
     #
     # @param conn_params [String, Hash, Proc, PGMQ::Connection, nil] connection parameters
     # @param pool_size [Integer] connection pool size
     # @param pool_timeout [Integer] connection pool timeout in seconds
     # @param auto_reconnect [Boolean] automatically reconnect on connection errors (default: true)
-    # @param serializer [PGMQ::Serializers::Base, nil] message serializer (default: JSON)
     #
     # @example Connection string
     #   client = PGMQ::Client.new('postgres://user:pass@localhost/db')
@@ -55,16 +51,14 @@ module PGMQ
     # @example Disable auto-reconnect
     #   client = PGMQ::Client.new(auto_reconnect: false)
     def initialize(conn_params = nil, pool_size: Connection::DEFAULT_POOL_SIZE,
-                   pool_timeout: Connection::DEFAULT_POOL_TIMEOUT,
-                   auto_reconnect: true,
-                   serializer: nil)
+      pool_timeout: Connection::DEFAULT_POOL_TIMEOUT,
+      auto_reconnect: true)
       @connection = if conn_params.is_a?(Connection)
                       conn_params
                     else
                       Connection.new(conn_params, pool_size: pool_size, pool_timeout: pool_timeout,
                                                   auto_reconnect: auto_reconnect)
                     end
-      @serializer = serializer || Serializers::JSON.new
     end
 
     # Creates a new queue
@@ -146,7 +140,7 @@ module PGMQ
 
       return false if result.ntuples.zero?
 
-      result[0]['drop_queue'] == true
+      result[0]['drop_queue'] == 't'
     end
 
     # Lists all queues
@@ -167,28 +161,28 @@ module PGMQ
     # Sends a message to a queue
     #
     # @param queue_name [String] name of the queue
-    # @param message [Hash, Object] message payload
+    # @param message [String] message as JSON string (for PostgreSQL JSONB)
     # @param delay [Integer] delay in seconds before message becomes visible
-    # @return [Integer] message ID
+    # @return [String] message ID as string
+    # @note Users must serialize to JSON themselves. Higher-level frameworks
+    #       should handle serialization.
     #
     # @example
-    #   msg_id = client.send("orders", { order_id: 123, total: 99.99 })
+    #   msg_id = client.send("orders", '{"order_id":123,"total":99.99}')
     #
     # @example With delay
-    #   msg_id = client.send("orders", { data: "value" }, delay: 60)
+    #   msg_id = client.send("orders", '{"data":"value"}', delay: 60)
     def send(queue_name, message, delay: 0)
       validate_queue_name!(queue_name)
-
-      serialized = @serializer.serialize(message)
 
       result = with_connection do |conn|
         conn.exec_params(
           'SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::integer)',
-          [queue_name, serialized, delay]
+          [queue_name, message, delay]
         )
       end
 
-      result[0]['send'].to_i
+      result[0]['send']
     end
 
     # Sends multiple messages to a queue in a batch
@@ -208,14 +202,12 @@ module PGMQ
       validate_queue_name!(queue_name)
       return [] if messages.empty?
 
-      serialized_messages = messages.map { |msg| @serializer.serialize(msg) }
-
       # Use PostgreSQL array parameter binding for security
       # PG gem will properly encode the array values
       result = with_connection do |conn|
         # Create array encoder for proper PostgreSQL array formatting
         encoder = PG::TextEncoder::Array.new
-        encoded_array = encoder.encode(serialized_messages)
+        encoded_array = encoder.encode(messages)
 
         conn.exec_params(
           'SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::integer)',
@@ -223,7 +215,7 @@ module PGMQ
         )
       end
 
-      result.map { |row| row['send_batch'].to_i }
+      result.map { |row| row['send_batch'] }
     end
 
     # Reads a message from the queue
@@ -261,7 +253,7 @@ module PGMQ
 
       return nil if result.ntuples.zero?
 
-      Message.new(result[0], serializer: @serializer)
+      Message.new(result[0])
     end
 
     # Reads multiple messages from the queue
@@ -298,7 +290,7 @@ module PGMQ
         end
       end
 
-      result.map { |row| Message.new(row, serializer: @serializer) }
+      result.map { |row| Message.new(row) }
     end
 
     # Reads messages with long-polling support
@@ -347,7 +339,7 @@ module PGMQ
         end
       end
 
-      result.map { |row| Message.new(row, serializer: @serializer) }
+      result.map { |row| Message.new(row) }
     end
 
     # Reads from multiple queues in a single query
@@ -403,13 +395,7 @@ module PGMQ
       end
 
       result.map do |row|
-        msg = Message.new(row, serializer: @serializer)
-        # Add queue_name as an attribute
-        msg.instance_variable_set(:@queue_name, row['queue_name'])
-        def msg.queue_name
-          @queue_name
-        end
-        msg
+        Message.new(row)
       end
     end
 
@@ -492,7 +478,7 @@ module PGMQ
 
       return nil if result.ntuples.zero?
 
-      Message.new(result[0], serializer: @serializer)
+      Message.new(result[0])
     end
 
     # Pops a message from multiple queues (atomic read + delete)
@@ -539,12 +525,7 @@ module PGMQ
 
       return nil if result.ntuples.zero?
 
-      msg = Message.new(result[0], serializer: @serializer)
-      msg.instance_variable_set(:@queue_name, result[0]['queue_name'])
-      def msg.queue_name
-        @queue_name
-      end
-      msg
+      Message.new(result[0])
     end
 
     # Deletes a message from the queue
@@ -567,7 +548,7 @@ module PGMQ
 
       return false if result.ntuples.zero?
 
-      result[0]['delete'] == true
+      result[0]['delete'] == 't'
     end
 
     # Deletes multiple messages from the queue
@@ -593,7 +574,7 @@ module PGMQ
         )
       end
 
-      result.map { |row| row['delete'].to_i }
+      result.map { |row| row['delete'] }
     end
 
     # Archives a message
@@ -616,7 +597,7 @@ module PGMQ
 
       return false if result.ntuples.zero?
 
-      result[0]['archive'] == true
+      result[0]['archive'] == 't'
     end
 
     # Archives multiple messages
@@ -642,7 +623,7 @@ module PGMQ
         )
       end
 
-      result.map { |row| row['archive'].to_i }
+      result.map { |row| row['archive'] }
     end
 
     # Updates the visibility timeout for a message
@@ -667,7 +648,7 @@ module PGMQ
 
       return nil if result.ntuples.zero?
 
-      Message.new(result[0], serializer: @serializer)
+      Message.new(result[0])
     end
 
     # Deletes specific messages from multiple queues in a single transaction
@@ -755,7 +736,7 @@ module PGMQ
         conn.exec_params('SELECT pgmq.purge_queue($1::text)', [queue_name])
       end
 
-      result[0]['purge_queue'].to_i
+      result[0]['purge_queue']
     end
 
     # Gets metrics for a specific queue

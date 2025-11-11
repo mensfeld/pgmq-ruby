@@ -13,11 +13,5 @@ RSpec.describe PGMQ do
       client = described_class.new(conn_string)
       expect(client).to be_a(PGMQ::Client)
     end
-
-    it 'supports custom serializer' do
-      client = described_class.new(TEST_DB_PARAMS, serializer: PGMQ::Serializers::JSON.new)
-      expect(client).to be_a(PGMQ::Client)
-      expect(client.serializer).to be_a(PGMQ::Serializers::JSON)
-    end
   end
 end

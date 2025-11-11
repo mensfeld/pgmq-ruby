@@ -176,12 +176,10 @@ module PGMQ
       return params.call if params.respond_to?(:call)
 
       # Create new connection from parameters
-      conn = PG.connect(params[:conninfo] || params)
-
-      # Set some sensible defaults for type mapping
-      conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)
-
-      conn
+      # Low-level library: return all values as strings from PostgreSQL
+      # No automatic type conversion - let higher-level frameworks handle parsing
+      # conn.type_map_for_results intentionally NOT set
+      PG.connect(params[:conninfo] || params)
     rescue PG::Error => e
       raise PGMQ::Errors::ConnectionError, "Failed to connect to database: #{e.message}"
     end

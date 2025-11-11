@@ -13,33 +13,32 @@ RSpec.describe PGMQ::QueueMetadata do
   end
 
   describe '#initialize' do
-    it 'parses queue name' do
+    it 'returns queue name as string' do
       expect(metadata.queue_name).to eq('my_queue')
     end
 
-    it 'parses created_at timestamp' do
-      expect(metadata.created_at).to be_a(Time)
-      expect(metadata.created_at.year).to eq(2025)
+    it 'returns created_at as string timestamp' do
+      expect(metadata.created_at).to eq('2025-01-15 09:00:00 UTC')
     end
 
-    it 'parses is_partitioned boolean' do
-      expect(metadata.is_partitioned).to be true
+    it 'returns is_partitioned as PostgreSQL boolean string' do
+      expect(metadata.is_partitioned).to eq('t')
     end
 
-    it 'parses is_unlogged boolean' do
-      expect(metadata.is_unlogged).to be false
+    it 'returns is_unlogged as PostgreSQL boolean string' do
+      expect(metadata.is_unlogged).to eq('f')
     end
   end
 
   describe '#partitioned?' do
     it 'returns partitioned status' do
-      expect(metadata.partitioned?).to be true
+      expect(metadata.partitioned?).to eq('t')
     end
   end
 
   describe '#unlogged?' do
     it 'returns unlogged status' do
-      expect(metadata.unlogged?).to be false
+      expect(metadata.unlogged?).to eq('f')
     end
   end
 
@@ -47,8 +46,8 @@ RSpec.describe PGMQ::QueueMetadata do
     it 'returns hash representation' do
       hash = metadata.to_h
       expect(hash[:queue_name]).to eq('my_queue')
-      expect(hash[:is_partitioned]).to be true
-      expect(hash[:is_unlogged]).to be false
+      expect(hash[:is_partitioned]).to eq('t')
+      expect(hash[:is_unlogged]).to eq('f')
     end
   end
 
@@ -57,31 +56,23 @@ RSpec.describe PGMQ::QueueMetadata do
       expect(metadata.inspect).to include('PGMQ::QueueMetadata')
       # Data.define uses quotes for string values
       expect(metadata.inspect).to include('queue_name="my_queue"')
-      expect(metadata.inspect).to include('is_partitioned=true')
+      expect(metadata.inspect).to include('is_partitioned="t"')
     end
   end
 
-  context 'with boolean values as actual booleans' do
-    let(:row_with_booleans) do
-      row.merge('is_partitioned' => false, 'is_unlogged' => true)
+  context 'with different PostgreSQL boolean representations' do
+    it 'handles PostgreSQL boolean "f"' do
+      row_with_f = row.merge('is_partitioned' => 'f', 'is_unlogged' => 'f')
+      m = described_class.new(row_with_f)
+      expect(m.is_partitioned).to eq('f')
+      expect(m.is_unlogged).to eq('f')
     end
 
-    it 'handles boolean values' do
-      m = described_class.new(row_with_booleans)
-      expect(m.is_partitioned).to be false
-      expect(m.is_unlogged).to be true
-    end
-  end
-
-  context 'with string boolean values' do
-    let(:row_with_strings) do
-      row.merge('is_partitioned' => 'true', 'is_unlogged' => 'false')
-    end
-
-    it 'parses string booleans' do
-      m = described_class.new(row_with_strings)
-      expect(m.is_partitioned).to be true
-      expect(m.is_unlogged).to be false
+    it 'handles PostgreSQL boolean "t"' do
+      row_with_t = row.merge('is_partitioned' => 't', 'is_unlogged' => 't')
+      m = described_class.new(row_with_t)
+      expect(m.is_partitioned).to eq('t')
+      expect(m.is_unlogged).to eq('t')
     end
   end
 end

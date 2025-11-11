@@ -34,15 +34,15 @@ RSpec.describe PGMQ::Client, :integration do
 
     it 'sends and reads a message' do
       message_data = { order_id: 123, status: 'pending' }
-      msg_id = client.send(queue_name, message_data)
+      msg_id = client.send(queue_name, to_json_msg(message_data))
 
-      expect(msg_id).to be_a(Integer)
-      expect(msg_id).to be > 0
+      expect(msg_id).to be_a(String)
+      expect(msg_id.to_i).to be > 0
 
       msg = client.read(queue_name, vt: 30)
       expect(msg).to be_a(PGMQ::Message)
       expect(msg.msg_id).to eq(msg_id)
-      expect(msg.payload).to eq({ 'order_id' => 123, 'status' => 'pending' })
+      expect(JSON.parse(msg.message)).to eq({ 'order_id' => 123, 'status' => 'pending' })
     end
 
     it 'returns nil when queue is empty' do
@@ -51,8 +51,8 @@ RSpec.describe PGMQ::Client, :integration do
     end
 
     it 'sends message with delay' do
-      msg_id = client.send(queue_name, { test: 'data' }, delay: 2)
-      expect(msg_id).to be_a(Integer)
+      msg_id = client.send(queue_name, to_json_msg({ test: 'data' }), delay: 2)
+      expect(msg_id).to be_a(String)
 
       # Message should not be visible immediately
       msg = client.read(queue_name, vt: 30)
@@ -64,7 +64,7 @@ RSpec.describe PGMQ::Client, :integration do
       # Now message should be visible
       msg = client.read(queue_name, vt: 30)
       expect(msg).not_to be_nil
-      expect(msg.payload).to eq({ 'test' => 'data' })
+      expect(JSON.parse(msg.message)).to eq({ 'test' => 'data' })
     end
   end
 
@@ -73,9 +73,9 @@ RSpec.describe PGMQ::Client, :integration do
 
     it 'sends and reads multiple messages' do
       messages = [
-        { id: 1, data: 'first' },
-        { id: 2, data: 'second' },
-        { id: 3, data: 'third' }
+        to_json_msg({ id: 1, data: 'first' }),
+        to_json_msg({ id: 2, data: 'second' }),
+        to_json_msg({ id: 3, data: 'third' })
       ]
 
       msg_ids = client.send_batch(queue_name, messages)
@@ -84,7 +84,8 @@ RSpec.describe PGMQ::Client, :integration do
 
       read_messages = client.read_batch(queue_name, vt: 30, qty: 3)
       expect(read_messages.size).to eq(3)
-      expect(read_messages.map { |m| m[:data] }).to contain_exactly('first', 'second', 'third')
+      parsed_data = read_messages.map { |m| JSON.parse(m.message)['data'] }
+      expect(parsed_data).to contain_exactly('first', 'second', 'third')
     end
 
     it 'handles empty batch' do
@@ -97,7 +98,7 @@ RSpec.describe PGMQ::Client, :integration do
     before { ensure_test_queue(client, queue_name) }
 
     it 'deletes a message' do
-      client.send(queue_name, { test: 'data' })
+      client.send(queue_name, to_json_msg({ test: 'data' }))
       msg = client.read(queue_name, vt: 30)
 
       result = client.delete(queue_name, msg.msg_id)
@@ -118,7 +119,8 @@ RSpec.describe PGMQ::Client, :integration do
     before { ensure_test_queue(client, queue_name) }
 
     it 'deletes multiple messages' do
-      client.send_batch(queue_name, [{ a: 1 }, { b: 2 }, { c: 3 }])
+      batch = [to_json_msg({ a: 1 }), to_json_msg({ b: 2 }), to_json_msg({ c: 3 })]
+      client.send_batch(queue_name, batch)
       messages = client.read_batch(queue_name, vt: 30, qty: 3)
 
       deleted_ids = client.delete_batch(queue_name, messages.map(&:msg_id))
@@ -134,7 +136,7 @@ RSpec.describe PGMQ::Client, :integration do
     before { ensure_test_queue(client, queue_name) }
 
     it 'archives a message' do
-      client.send(queue_name, { test: 'archive' })
+      client.send(queue_name, to_json_msg({ test: 'archive' }))
       msg = client.read(queue_name, vt: 30)
 
       result = client.archive(queue_name, msg.msg_id)
@@ -150,7 +152,7 @@ RSpec.describe PGMQ::Client, :integration do
     before { ensure_test_queue(client, queue_name) }
 
     it 'archives multiple messages' do
-      client.send_batch(queue_name, [{ a: 1 }, { b: 2 }])
+      client.send_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ b: 2 })])
       messages = client.read_batch(queue_name, vt: 30, qty: 2)
 
       archived_ids = client.archive_batch(queue_name, messages.map(&:msg_id))
@@ -162,11 +164,11 @@ RSpec.describe PGMQ::Client, :integration do
     before { ensure_test_queue(client, queue_name) }
 
     it 'pops a message (atomic read+delete)' do
-      client.send(queue_name, { test: 'pop' })
+      client.send(queue_name, to_json_msg({ test: 'pop' }))
 
       msg = client.pop(queue_name)
       expect(msg).to be_a(PGMQ::Message)
-      expect(msg.payload).to eq({ 'test' => 'pop' })
+      expect(JSON.parse(msg.message)).to eq({ 'test' => 'pop' })
 
       # Message should be deleted
       msg2 = client.read(queue_name, vt: 30)
@@ -183,7 +185,7 @@ RSpec.describe PGMQ::Client, :integration do
     before { ensure_test_queue(client, queue_name) }
 
     it 'updates visibility timeout' do
-      client.send(queue_name, { test: 'vt' })
+      client.send(queue_name, to_json_msg({ test: 'vt' }))
       msg = client.read(queue_name, vt: 5)
 
       updated_msg = client.set_vt(queue_name, msg.msg_id, vt_offset: 60)
@@ -196,10 +198,11 @@ RSpec.describe PGMQ::Client, :integration do
     before { ensure_test_queue(client, queue_name) }
 
     it 'purges all messages from queue' do
-      client.send_batch(queue_name, [{ a: 1 }, { b: 2 }, { c: 3 }])
+      batch = [to_json_msg({ a: 1 }), to_json_msg({ b: 2 }), to_json_msg({ c: 3 })]
+      client.send_batch(queue_name, batch)
 
       count = client.purge_queue(queue_name)
-      expect(count).to eq(3)
+      expect(count).to eq('3')
 
       msg = client.read(queue_name, vt: 30)
       expect(msg).to be_nil
@@ -211,13 +214,14 @@ RSpec.describe PGMQ::Client, :integration do
 
     it 'returns queue metrics' do
       # Send some messages
-      client.send_batch(queue_name, [{ a: 1 }, { b: 2 }, { c: 3 }])
+      batch = [to_json_msg({ a: 1 }), to_json_msg({ b: 2 }), to_json_msg({ c: 3 })]
+      client.send_batch(queue_name, batch)
 
       metrics = client.metrics(queue_name)
       expect(metrics).to be_a(PGMQ::Metrics)
       expect(metrics.queue_name).to eq(queue_name)
-      expect(metrics.queue_length).to eq(3)
-      expect(metrics.total_messages).to eq(3)
+      expect(metrics.queue_length).to eq('3')
+      expect(metrics.total_messages).to eq('3')
     end
   end
 
@@ -228,8 +232,8 @@ RSpec.describe PGMQ::Client, :integration do
 
       client.create(queue1)
       client.create(queue2)
-      client.send(queue1, { test: 1 })
-      client.send(queue2, { test: 2 })
+      client.send(queue1, to_json_msg({ test: 1 }))
+      client.send(queue2, to_json_msg({ test: 2 }))
 
       all_metrics = client.metrics_all
       expect(all_metrics).to be_an(Array)
@@ -282,7 +286,7 @@ RSpec.describe PGMQ::Client, :integration do
     before { ensure_test_queue(client, queue_name) }
 
     it 'makes message invisible during visibility timeout' do
-      client.send(queue_name, { test: 'vt' })
+      client.send(queue_name, to_json_msg({ test: 'vt' }))
 
       # Read with 3 second VT
       msg1 = client.read(queue_name, vt: 3)
@@ -299,7 +303,7 @@ RSpec.describe PGMQ::Client, :integration do
       msg3 = client.read(queue_name, vt: 3)
       expect(msg3).not_to be_nil
       expect(msg3.msg_id).to eq(msg1.msg_id)
-      expect(msg3.read_ct).to eq(2) # Read twice now
+      expect(msg3.read_ct).to eq('2') # Read twice now
     end
   end
 
@@ -310,7 +314,7 @@ RSpec.describe PGMQ::Client, :integration do
       # Start with empty queue
       Thread.new do
         sleep 1
-        client.send(queue_name, { delayed: 'message' })
+        client.send(queue_name, to_json_msg({ delayed: 'message' }))
       end
 
       start_time = Time.now
@@ -325,7 +329,7 @@ RSpec.describe PGMQ::Client, :integration do
 
       expect(messages).not_to be_empty
       expect(elapsed).to be >= 1 # Waited for message
-      expect(messages.first.payload).to eq({ 'delayed' => 'message' })
+      expect(JSON.parse(messages.first.message)).to eq({ 'delayed' => 'message' })
     end
 
     it 'returns empty array if no messages within timeout' do
@@ -349,40 +353,40 @@ RSpec.describe PGMQ::Client, :integration do
 
     describe '#read with conditional' do
       it 'filters by single key-value pair' do
-        client.send(queue_name, { status: 'pending', priority: 'high' })
-        client.send(queue_name, { status: 'completed', priority: 'low' })
+        client.send(queue_name, to_json_msg({ status: 'pending', priority: 'high' }))
+        client.send(queue_name, to_json_msg({ status: 'completed', priority: 'low' }))
 
         msg = client.read(queue_name, vt: 30, conditional: { status: 'pending' })
 
         expect(msg).not_to be_nil
-        expect(msg.payload['status']).to eq('pending')
+        expect(JSON.parse(msg.message)['status']).to eq('pending')
       end
 
       it 'filters by multiple conditions (AND logic)' do
-        client.send(queue_name, { status: 'pending', priority: 'high' })
-        client.send(queue_name, { status: 'pending', priority: 'low' })
-        client.send(queue_name, { status: 'completed', priority: 'high' })
+        client.send(queue_name, to_json_msg({ status: 'pending', priority: 'high' }))
+        client.send(queue_name, to_json_msg({ status: 'pending', priority: 'low' }))
+        client.send(queue_name, to_json_msg({ status: 'completed', priority: 'high' }))
 
         msg = client.read(queue_name, vt: 30, conditional: { status: 'pending', priority: 'high' })
 
         expect(msg).not_to be_nil
-        expect(msg.payload['status']).to eq('pending')
-        expect(msg.payload['priority']).to eq('high')
+        expect(JSON.parse(msg.message)['status']).to eq('pending')
+        expect(JSON.parse(msg.message)['priority']).to eq('high')
       end
 
       it 'filters by nested object properties' do
-        client.send(queue_name, { user: { role: 'admin', active: true } })
-        client.send(queue_name, { user: { role: 'user', active: true } })
+        client.send(queue_name, to_json_msg({ user: { role: 'admin', active: true } }))
+        client.send(queue_name, to_json_msg({ user: { role: 'user', active: true } }))
 
         msg = client.read(queue_name, vt: 30, conditional: { user: { role: 'admin' } })
 
         expect(msg).not_to be_nil
-        expect(msg.payload['user']['role']).to eq('admin')
+        expect(JSON.parse(msg.message)['user']['role']).to eq('admin')
       end
 
       it 'returns nil when no messages match condition' do
-        client.send(queue_name, { status: 'pending' })
-        client.send(queue_name, { status: 'processing' })
+        client.send(queue_name, to_json_msg({ status: 'pending' }))
+        client.send(queue_name, to_json_msg({ status: 'processing' }))
 
         msg = client.read(queue_name, vt: 30, conditional: { status: 'completed' })
 
@@ -390,7 +394,7 @@ RSpec.describe PGMQ::Client, :integration do
       end
 
       it 'preserves visibility timeout with filtering' do
-        client.send(queue_name, { status: 'pending' })
+        client.send(queue_name, to_json_msg({ status: 'pending' }))
 
         # Read with conditional
         msg1 = client.read(queue_name, vt: 2, conditional: { status: 'pending' })
@@ -407,27 +411,27 @@ RSpec.describe PGMQ::Client, :integration do
       end
 
       it 'handles numeric values correctly' do
-        client.send(queue_name, { price: 99, quantity: 10 })
-        client.send(queue_name, { price: 50, quantity: 5 })
+        client.send(queue_name, to_json_msg({ price: 99, quantity: 10 }))
+        client.send(queue_name, to_json_msg({ price: 50, quantity: 5 }))
 
         msg = client.read(queue_name, vt: 30, conditional: { price: 99 })
 
         expect(msg).not_to be_nil
-        expect(msg.payload['price']).to eq(99)
+        expect(JSON.parse(msg.message)['price']).to eq(99)
       end
 
       it 'handles boolean values correctly' do
-        client.send(queue_name, { active: true, verified: false })
-        client.send(queue_name, { active: false, verified: true })
+        client.send(queue_name, to_json_msg({ active: true, verified: false }))
+        client.send(queue_name, to_json_msg({ active: false, verified: true }))
 
         msg = client.read(queue_name, vt: 30, conditional: { active: true })
 
         expect(msg).not_to be_nil
-        expect(msg.payload['active']).to be(true)
+        expect(JSON.parse(msg.message)['active']).to be(true)
       end
 
       it 'handles empty conditional as no filter' do
-        client.send(queue_name, { status: 'pending' })
+        client.send(queue_name, to_json_msg({ status: 'pending' }))
 
         msg = client.read(queue_name, vt: 30, conditional: {})
 
@@ -437,22 +441,22 @@ RSpec.describe PGMQ::Client, :integration do
 
     describe '#read_batch with conditional' do
       it 'returns only matching messages up to qty limit' do
-        client.send(queue_name, { priority: 'high', id: 1 })
-        client.send(queue_name, { priority: 'low', id: 2 })
-        client.send(queue_name, { priority: 'high', id: 3 })
-        client.send(queue_name, { priority: 'high', id: 4 })
+        client.send(queue_name, to_json_msg({ priority: 'high', id: 1 }))
+        client.send(queue_name, to_json_msg({ priority: 'low', id: 2 }))
+        client.send(queue_name, to_json_msg({ priority: 'high', id: 3 }))
+        client.send(queue_name, to_json_msg({ priority: 'high', id: 4 }))
 
         messages = client.read_batch(queue_name, vt: 30, qty: 2, conditional: { priority: 'high' })
 
         expect(messages.length).to eq(2)
         messages.each do |msg|
-          expect(msg.payload['priority']).to eq('high')
+          expect(JSON.parse(msg.message)['priority']).to eq('high')
         end
       end
 
       it 'returns empty array when no matches' do
-        client.send(queue_name, { priority: 'low' })
-        client.send(queue_name, { priority: 'medium' })
+        client.send(queue_name, to_json_msg({ priority: 'low' }))
+        client.send(queue_name, to_json_msg({ priority: 'medium' }))
 
         messages = client.read_batch(queue_name, vt: 30, qty: 10, conditional: { priority: 'high' })
 
@@ -460,7 +464,7 @@ RSpec.describe PGMQ::Client, :integration do
       end
 
       it 'respects qty parameter after filtering' do
-        5.times { |i| client.send(queue_name, { type: 'matching', id: i }) }
+        5.times { |i| client.send(queue_name, to_json_msg({ type: 'matching', id: i })) }
 
         messages = client.read_batch(queue_name, vt: 30, qty: 3, conditional: { type: 'matching' })
 
@@ -468,15 +472,15 @@ RSpec.describe PGMQ::Client, :integration do
       end
 
       it 'handles mixed matching/non-matching messages' do
-        client.send(queue_name, { status: 'pending', id: 1 })
-        client.send(queue_name, { status: 'completed', id: 2 })
-        client.send(queue_name, { status: 'pending', id: 3 })
+        client.send(queue_name, to_json_msg({ status: 'pending', id: 1 }))
+        client.send(queue_name, to_json_msg({ status: 'completed', id: 2 }))
+        client.send(queue_name, to_json_msg({ status: 'pending', id: 3 }))
 
         messages = client.read_batch(queue_name, vt: 30, qty: 10, conditional: { status: 'pending' })
 
         expect(messages.length).to eq(2)
         messages.each do |msg|
-          expect(msg.payload['status']).to eq('pending')
+          expect(JSON.parse(msg.message)['status']).to eq('pending')
         end
       end
     end
@@ -486,7 +490,7 @@ RSpec.describe PGMQ::Client, :integration do
         # Send matching message after delay
         Thread.new do
           sleep 0.5
-          client.send(queue_name, { type: 'urgent', data: 'test' })
+          client.send(queue_name, to_json_msg({ type: 'urgent', data: 'test' }))
         end
 
         start_time = Time.now
@@ -501,12 +505,12 @@ RSpec.describe PGMQ::Client, :integration do
         elapsed = Time.now - start_time
 
         expect(messages).not_to be_empty
-        expect(messages.first.payload['type']).to eq('urgent')
+        expect(JSON.parse(messages.first.message)['type']).to eq('urgent')
         expect(elapsed).to be_between(0.5, 2.0)
       end
 
       it 'times out if no matching messages' do
-        client.send(queue_name, { type: 'normal' })
+        client.send(queue_name, to_json_msg({ type: 'normal' }))
 
         start_time = Time.now
         messages = client.read_with_poll(
@@ -524,7 +528,7 @@ RSpec.describe PGMQ::Client, :integration do
       end
 
       it 'returns immediately if matching message exists' do
-        client.send(queue_name, { status: 'ready', data: 'test' })
+        client.send(queue_name, to_json_msg({ status: 'ready', data: 'test' }))
 
         start_time = Time.now
         messages = client.read_with_poll(
@@ -571,8 +575,8 @@ RSpec.describe PGMQ::Client, :integration do
         q2 = queue2
 
         client.transaction do |txn|
-          txn.send(q1, { data: 'message1' })
-          txn.send(q2, { data: 'message2' })
+          txn.send(q1, to_json_msg({ data: 'message1' }))
+          txn.send(q2, to_json_msg({ data: 'message2' }))
         end
 
         # Both messages should be committed
@@ -580,15 +584,15 @@ RSpec.describe PGMQ::Client, :integration do
         msg2 = client.read(q2, vt: 30)
 
         expect(msg1).not_to be_nil
-        expect(msg1.payload['data']).to eq('message1')
+        expect(JSON.parse(msg1.message)['data']).to eq('message1')
         expect(msg2).not_to be_nil
-        expect(msg2.payload['data']).to eq('message2')
+        expect(JSON.parse(msg2.message)['data']).to eq('message2')
       end
 
       it 'allows read and delete within transaction' do
         q1 = queue1
 
-        client.send(q1, { order_id: 123 })
+        client.send(q1, to_json_msg({ order_id: 123 }))
 
         client.transaction do |txn|
           msg = txn.read(q1, vt: 30)
@@ -604,7 +608,7 @@ RSpec.describe PGMQ::Client, :integration do
       it 'supports archive operations in transaction' do
         q1 = queue1
 
-        msg_id = client.send(q1, { data: 'to_archive' })
+        msg_id = client.send(q1, to_json_msg({ data: 'to_archive' }))
 
         client.transaction do |txn|
           txn.archive(q1, msg_id)
@@ -667,7 +671,7 @@ RSpec.describe PGMQ::Client, :integration do
         q1 = queue1
 
         # Send message outside transaction first
-        client.send(q1, { data: 'before_txn' })
+        client.send(q1, to_json_msg({ data: 'before_txn' }))
 
         expect do
           client.transaction do |txn|
@@ -678,7 +682,7 @@ RSpec.describe PGMQ::Client, :integration do
 
         # Only the first message should exist
         msg1 = client.read(q1, vt: 30)
-        expect(msg1.payload['data']).to eq('before_txn')
+        expect(JSON.parse(msg1.message)['data']).to eq('before_txn')
 
         msg2 = client.read(q1, vt: 30)
         expect(msg2).to be_nil
@@ -760,12 +764,12 @@ RSpec.describe PGMQ::Client, :integration do
       client.create(long_name)
 
       # Send and read should work
-      msg_id = client.send(long_name, { data: 'test' })
-      expect(msg_id).to be_a(Integer)
+      msg_id = client.send(long_name, to_json_msg({ data: 'test' }))
+      expect(msg_id).to be_a(String)
 
       msg = client.read(long_name, vt: 30)
       expect(msg).not_to be_nil
-      expect(msg.payload['data']).to eq('test')
+      expect(JSON.parse(msg.message)['data']).to eq('test')
 
       client.drop_queue(long_name)
     end
@@ -795,7 +799,7 @@ RSpec.describe PGMQ::Client, :integration do
       client.create(long_name)
 
       # Verify tables exist by successfully using the queue
-      client.send(long_name, { test: 'data' })
+      client.send(long_name, to_json_msg({ test: 'data' }))
       msg = client.read(long_name, vt: 30)
       expect(msg).not_to be_nil
 
@@ -830,10 +834,10 @@ RSpec.describe PGMQ::Client, :integration do
       expect(queues.map(&:queue_name)).to include(queue_name)
 
       # Verify it works by sending/reading a message
-      msg_id = client.send(queue_name, { test: 'unlogged' })
+      msg_id = client.send(queue_name, to_json_msg({ test: 'unlogged' }))
       msg = client.read(queue_name, vt: 30)
       expect(msg.msg_id).to eq(msg_id)
-      expect(msg.payload['test']).to eq('unlogged')
+      expect(JSON.parse(msg.message)['test']).to eq('unlogged')
     end
 
     it 'raises error for invalid queue name' do
@@ -846,14 +850,14 @@ RSpec.describe PGMQ::Client, :integration do
       client.create(queue_name)
 
       # Send and archive a message first
-      msg_id = client.send(queue_name, { test: 'archive' })
+      msg_id = client.send(queue_name, to_json_msg({ test: 'archive' }))
       client.archive(queue_name, msg_id)
 
       # Detach the archive
       client.detach_archive(queue_name)
 
       # Queue should still exist and be usable
-      new_msg_id = client.send(queue_name, { test: 'after_detach' })
+      new_msg_id = client.send(queue_name, to_json_msg({ test: 'after_detach' }))
       msg = client.read(queue_name, vt: 30)
       expect(msg.msg_id).to eq(new_msg_id)
     end

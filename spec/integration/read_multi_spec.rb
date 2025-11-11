@@ -25,9 +25,9 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
   describe 'single connection, single query' do
     it 'reads from multiple queues in one query' do
       # Send to different queues
-      client.send(queue1, { from: 'q1' })
-      client.send(queue2, { from: 'q2' })
-      client.send(queue3, { from: 'q3' })
+      client.send(queue1, to_json_msg({ from: 'q1' }))
+      client.send(queue2, to_json_msg({ from: 'q2' }))
+      client.send(queue3, to_json_msg({ from: 'q3' }))
 
       messages = client.read_multi([queue1, queue2, queue3], vt: 30)
 
@@ -36,18 +36,18 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     end
 
     it 'returns messages with queue_name attribute' do
-      client.send(queue1, { data: 'test' })
+      client.send(queue1, to_json_msg({ data: 'test' }))
 
       messages = client.read_multi([queue1, queue2], vt: 30)
 
       expect(messages.size).to eq(1)
       expect(messages.first.queue_name).to eq(queue1)
-      expect(messages.first.payload['data']).to eq('test')
+      expect(JSON.parse(messages.first.message)['data']).to eq('test')
     end
 
     it 'respects limit parameter' do
-      5.times { client.send(queue1, { n: 1 }) }
-      5.times { client.send(queue2, { n: 2 }) }
+      5.times { client.send(queue1, to_json_msg({ n: 1 })) }
+      5.times { client.send(queue2, to_json_msg({ n: 2 })) }
 
       messages = client.read_multi([queue1, queue2], vt: 30, qty: 5, limit: 3)
 
@@ -55,8 +55,8 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     end
 
     it 'respects qty per queue' do
-      10.times { client.send(queue1, { n: 1 }) }
-      10.times { client.send(queue2, { n: 2 }) }
+      10.times { client.send(queue1, to_json_msg({ n: 1 })) }
+      10.times { client.send(queue2, to_json_msg({ n: 2 })) }
 
       messages = client.read_multi([queue1, queue2], vt: 30, qty: 2)
 
@@ -76,7 +76,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
 
     it 'gets first available message from any queue with limit 1' do
       # Only send to queue2
-      client.send(queue2, { from: 'q2' })
+      client.send(queue2, to_json_msg({ from: 'q2' }))
 
       messages = client.read_multi([queue1, queue2, queue3], vt: 30, limit: 1)
 
@@ -116,9 +116,9 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
   describe 'practical use cases' do
     it 'supports round-robin processing' do
       # Simulate worker pattern: process first available from multiple queues
-      client.send(queue1, { job: 'email' })
-      client.send(queue2, { job: 'notification' })
-      client.send(queue3, { job: 'webhook' })
+      client.send(queue1, to_json_msg({ job: 'email' }))
+      client.send(queue2, to_json_msg({ job: 'notification' }))
+      client.send(queue3, to_json_msg({ job: 'webhook' }))
 
       processed = []
       3.times do
@@ -136,9 +136,9 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
 
     it 'supports batch processing across queues' do
       # Send multiple to each queue
-      5.times { client.send(queue1, { type: 'order' }) }
-      5.times { client.send(queue2, { type: 'email' }) }
-      5.times { client.send(queue3, { type: 'sms' }) }
+      5.times { client.send(queue1, to_json_msg({ type: 'order' })) }
+      5.times { client.send(queue2, to_json_msg({ type: 'email' })) }
+      5.times { client.send(queue3, to_json_msg({ type: 'sms' })) }
 
       # Get messages from all queues
       messages = client.read_multi([queue1, queue2, queue3], vt: 1, qty: 2, limit: 5)
@@ -181,7 +181,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
 
       # Send message after short delay
       sleep 0.5
-      client.send(queue2, { delayed: true })
+      client.send(queue2, to_json_msg({ delayed: true }))
 
       thread.join
       expect(result.size).to eq(1)
@@ -189,7 +189,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     end
 
     it 'returns immediately if messages exist' do
-      client.send(queue1, { immediate: true })
+      client.send(queue1, to_json_msg({ immediate: true }))
 
       start = Time.now
       messages = client.read_multi_with_poll(
@@ -219,8 +219,8 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     end
 
     it 'respects qty and limit parameters' do
-      5.times { client.send(queue1, { n: 1 }) }
-      5.times { client.send(queue2, { n: 2 }) }
+      5.times { client.send(queue1, to_json_msg({ n: 1 })) }
+      5.times { client.send(queue2, to_json_msg({ n: 2 })) }
 
       messages = client.read_multi_with_poll(
         [queue1, queue2, queue3],
@@ -247,7 +247,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
 
     it 'gets first available from any queue' do
       # Only queue3 has messages
-      client.send(queue3, { only_in_q3: true })
+      client.send(queue3, to_json_msg({ only_in_q3: true }))
 
       messages = client.read_multi_with_poll(
         [queue1, queue2, queue3],
@@ -263,13 +263,13 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
 
   describe '#pop_multi' do
     it 'pops and deletes from first available queue' do
-      client.send(queue2, { data: 'test' })
+      client.send(queue2, to_json_msg({ data: 'test' }))
 
       msg = client.pop_multi([queue1, queue2, queue3])
 
       expect(msg).not_to be_nil
       expect(msg.queue_name).to eq(queue2)
-      expect(msg.payload['data']).to eq('test')
+      expect(JSON.parse(msg.message)['data']).to eq('test')
 
       # Verify deleted
       remaining = client.read(queue2, vt: 30)
@@ -283,7 +283,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
 
     it 'pops from first non-empty queue' do
       # Send to queue3 only
-      client.send(queue3, { from: 'q3' })
+      client.send(queue3, to_json_msg({ from: 'q3' }))
 
       msg = client.pop_multi([queue1, queue2, queue3])
 
@@ -316,7 +316,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     end
 
     it 'has queue_name attribute on returned message' do
-      client.send(queue1, { test: 'data' })
+      client.send(queue1, to_json_msg({ test: 'data' }))
       msg = client.pop_multi([queue1, queue2])
 
       expect(msg).to respond_to(:queue_name)
@@ -327,9 +327,9 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
   describe '#delete_multi' do
     it 'deletes messages from multiple queues' do
       # Send messages
-      id1 = client.send(queue1, { n: 1 })
-      id2 = client.send(queue1, { n: 2 })
-      id3 = client.send(queue2, { n: 3 })
+      id1 = client.send(queue1, to_json_msg({ n: 1 }))
+      id2 = client.send(queue1, to_json_msg({ n: 2 }))
+      id3 = client.send(queue2, to_json_msg({ n: 3 }))
 
       result = client.delete_multi({
         queue1 => [id1, id2],
@@ -350,7 +350,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     end
 
     it 'skips empty message ID arrays' do
-      id1 = client.send(queue1, { n: 1 })
+      id1 = client.send(queue1, to_json_msg({ n: 1 }))
 
       result = client.delete_multi({
         queue1 => [id1],
@@ -374,8 +374,8 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     end
 
     it 'is transactional (all or nothing)' do
-      id1 = client.send(queue1, { n: 1 })
-      id2 = client.send(queue2, { n: 2 })
+      id1 = client.send(queue1, to_json_msg({ n: 1 }))
+      id2 = client.send(queue2, to_json_msg({ n: 2 }))
 
       # This should work atomically
       result = client.delete_multi({
@@ -387,8 +387,8 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     end
 
     it 'works with batch processing pattern' do
-      5.times { client.send(queue1, { q: 1 }) }
-      5.times { client.send(queue2, { q: 2 }) }
+      5.times { client.send(queue1, to_json_msg({ q: 1 })) }
+      5.times { client.send(queue2, to_json_msg({ q: 2 })) }
 
       messages = client.read_multi([queue1, queue2], vt: 30, qty: 10)
       deletions = messages.group_by(&:queue_name).transform_values { |msgs| msgs.map(&:msg_id) }
@@ -401,8 +401,8 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
 
   describe '#archive_multi' do
     it 'archives messages from multiple queues' do
-      id1 = client.send(queue1, { n: 1 })
-      id2 = client.send(queue2, { n: 2 })
+      id1 = client.send(queue1, to_json_msg({ n: 1 }))
+      id2 = client.send(queue2, to_json_msg({ n: 2 }))
 
       result = client.archive_multi({
         queue1 => [id1],
@@ -423,7 +423,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     end
 
     it 'skips empty message ID arrays' do
-      id1 = client.send(queue1, { n: 1 })
+      id1 = client.send(queue1, to_json_msg({ n: 1 }))
 
       result = client.archive_multi({
         queue1 => [id1],
@@ -447,8 +447,8 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     end
 
     it 'is transactional' do
-      id1 = client.send(queue1, { n: 1 })
-      id2 = client.send(queue2, { n: 2 })
+      id1 = client.send(queue1, to_json_msg({ n: 1 }))
+      id2 = client.send(queue2, to_json_msg({ n: 2 }))
 
       result = client.archive_multi({
         queue1 => [id1],
@@ -459,7 +459,7 @@ RSpec.describe 'PGMQ::Client#read_multi', :integration do
     end
 
     it 'archives multiple messages from same queue' do
-      ids = Array.new(3) { client.send(queue1, { n: 1 }) }
+      ids = Array.new(3) { client.send(queue1, to_json_msg({ n: 1 })) }
 
       result = client.archive_multi({
         queue1 => ids

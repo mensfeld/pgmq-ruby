@@ -12,6 +12,7 @@ SimpleCov.start do
 end
 
 require 'pgmq'
+require 'json' # Tests need JSON for serialization (user responsibility)
 
 # Database connection parameters for testing
 # Uses port 5433 by default to avoid conflicts with existing PostgreSQL installations
@@ -23,11 +24,21 @@ TEST_DB_PARAMS = {
   password: ENV.fetch('PG_PASSWORD', 'postgres')
 }.freeze
 
+# Helper to convert Ruby objects to JSON strings (user responsibility in real apps)
+module JSONHelpers
+  def to_json_msg(obj)
+    obj.is_a?(String) ? obj : JSON.generate(obj)
+  end
+end
+
 # Support files
 Dir[File.join(__dir__, 'support', '**', '*.rb')].each { |f| require f }
 
 RSpec.configure do |config|
   config.disable_monkey_patching!
+
+  # Include JSON helper in all tests
+  config.include JSONHelpers
 
   config.expect_with :rspec do |c|
     c.syntax = :expect
