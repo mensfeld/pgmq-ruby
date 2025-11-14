@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (Unreleased)
+## 0.3.0 (2025-11-14)
 
 Initial release of pgmq-ruby - a low-level Ruby client for PGMQ (PostgreSQL Message Queue).
 
