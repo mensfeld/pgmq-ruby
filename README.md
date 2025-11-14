@@ -1,7 +1,7 @@
 # PGMQ-Ruby
 
 [![Gem Version](https://badge.fury.io/rb/pgmq-ruby.svg)](https://badge.fury.io/rb/pgmq-ruby)
-[![Build Status](https://github.com/mensfeld/pgmq-ruby/workflows/ci/badge.svg)](https://github.com/mensfeld/pgmq-ruby/actions)
+[![Build Status](https://github.com/mensfeld/pgmq-ruby/workflows/CI/badge.svg)](https://github.com/mensfeld/pgmq-ruby/actions)
 
 **Ruby client for [PGMQ](https://github.com/pgmq/pgmq) - PostgreSQL Message Queue**
 
