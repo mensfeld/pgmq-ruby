@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - '3.5.0-preview1'
+          - '4.0.0-preview2'
           - '3.4'
           - '3.3'
           - '3.2'
@@ -60,7 +60,7 @@ jobs:
         run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends postgresql-client"
 
       - name: Remove Gemfile.lock for Ruby previews
-        if: contains(matrix.ruby, '3.5')
+        if: contains(matrix.ruby, '4.0')
         run: rm -f Gemfile.lock
 
       - name: Set up Ruby
