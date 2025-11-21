@@ -60,7 +60,7 @@ jobs:
         run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends postgresql-client"
 
       - name: Remove Gemfile.lock for Ruby previews
-        if: contains(matrix.ruby, '3.5')
+        if: contains(matrix.ruby, '4.0')
         run: rm -f Gemfile.lock
 
       - name: Set up Ruby
