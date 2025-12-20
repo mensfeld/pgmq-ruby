@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: ghcr.io/pgmq/pg18-pgmq:v1.7.0
+    image: ghcr.io/pgmq/pg18-pgmq:v1.8.0
     container_name: pgmq_postgres_test
     environment:
       POSTGRES_USER: postgres
