@@ -44,6 +44,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | `read_batch` | Read multiple messages with visibility timeout | ✅ |
 | | `read_with_poll` | Long-polling for efficient message consumption | ✅ |
 | | `pop` | Atomic read + delete operation | ✅ |
+| | `pop_batch` | Atomic batch read + delete operation | ✅ |
 | **Deleting/Archiving** | `delete` | Delete single message | ✅ |
 | | `delete_batch` | Delete multiple messages | ✅ |
 | | `archive` | Archive single message for long-term storage | ✅ |
@@ -313,6 +314,9 @@ msg = client.read_with_poll("queue_name",
 
 # Pop (atomic read + delete)
 msg = client.pop("queue_name")
+
+# Pop batch (atomic read + delete for multiple messages)
+messages = client.pop_batch("queue_name", 10)
 ```
 
 #### Conditional Message Filtering

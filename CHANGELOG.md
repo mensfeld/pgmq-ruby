@@ -3,6 +3,7 @@
 ## 0.4.0 (Unreleased)
 
 ### Message Operations
+- **[Feature]** Introduce `pop_batch(queue_name, qty)` for atomic batch pop (read + delete) operations.
 - **[Feature]** Introduce `set_vt_batch(queue_name, msg_ids, vt_offset:)` for batch visibility timeout updates.
 - **[Feature]** Introduce `set_vt_multi(updates_hash, vt_offset:)` for updating visibility timeouts across multiple queues atomically.
 
