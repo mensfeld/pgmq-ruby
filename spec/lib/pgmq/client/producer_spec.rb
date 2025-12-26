@@ -45,6 +45,79 @@ RSpec.describe PGMQ::Client::Producer, :integration do
       expect(msg).not_to be_nil
       expect(JSON.parse(msg.message)).to eq({ 'test' => 'data' })
     end
+
+    context 'with headers' do
+      it 'sends a message with headers' do
+        message = to_json_msg({ order_id: 456 })
+        headers = to_json_msg({ trace_id: 'abc123', priority: 'high' })
+
+        msg_id = client.send(queue_name, message, headers: headers)
+        expect(msg_id).to be_a(String)
+
+        msg = client.read(queue_name, vt: 30)
+        expect(msg).to be_a(PGMQ::Message)
+        expect(msg.msg_id).to eq(msg_id)
+        expect(JSON.parse(msg.message)).to eq({ 'order_id' => 456 })
+        expect(JSON.parse(msg.headers)).to eq({ 'trace_id' => 'abc123', 'priority' => 'high' })
+      end
+
+      it 'sends a message with headers and delay' do
+        message = to_json_msg({ order_id: 789 })
+        headers = to_json_msg({ correlation_id: 'req-001' })
+
+        msg_id = client.send(queue_name, message, headers: headers, delay: 2)
+        expect(msg_id).to be_a(String)
+
+        # Message should not be visible immediately
+        msg = client.read(queue_name, vt: 30)
+        expect(msg).to be_nil
+
+        # Wait for delay
+        sleep 2.5
+
+        # Now message should be visible with headers
+        msg = client.read(queue_name, vt: 30)
+        expect(msg).not_to be_nil
+        expect(JSON.parse(msg.message)).to eq({ 'order_id' => 789 })
+        expect(JSON.parse(msg.headers)).to eq({ 'correlation_id' => 'req-001' })
+      end
+
+      it 'sends a message with complex nested headers' do
+        message = to_json_msg({ data: 'test' })
+        headers = to_json_msg({
+                                trace: { id: 'trace-123', span_id: 'span-456' },
+                                routing: { region: 'us-east', priority: 1 },
+                                content_type: 'application/json'
+                              })
+
+        msg_id = client.send(queue_name, message, headers: headers)
+        msg = client.read(queue_name, vt: 30)
+
+        parsed_headers = JSON.parse(msg.headers)
+        expect(parsed_headers['trace']['id']).to eq('trace-123')
+        expect(parsed_headers['routing']['region']).to eq('us-east')
+        expect(parsed_headers['content_type']).to eq('application/json')
+      end
+
+      it 'sends a message with empty headers object' do
+        message = to_json_msg({ data: 'test' })
+        headers = '{}'
+
+        msg_id = client.send(queue_name, message, headers: headers)
+        msg = client.read(queue_name, vt: 30)
+
+        expect(msg.headers).to eq('{}')
+      end
+
+      it 'returns nil headers when sent without headers' do
+        message = to_json_msg({ data: 'no headers' })
+
+        client.send(queue_name, message)
+        msg = client.read(queue_name, vt: 30)
+
+        expect(msg.headers).to be_nil
+      end
+    end
   end
 
   describe '#send_batch' do
@@ -85,6 +158,155 @@ RSpec.describe PGMQ::Client::Producer, :integration do
       # Now messages should be visible
       read_messages = client.read_batch(queue_name, vt: 30, qty: 2)
       expect(read_messages.size).to eq(2)
+    end
+
+    context 'with headers' do
+      it 'sends batch with headers' do
+        messages = [
+          to_json_msg({ order_id: 1 }),
+          to_json_msg({ order_id: 2 }),
+          to_json_msg({ order_id: 3 })
+        ]
+        headers = [
+          to_json_msg({ priority: 'high', trace_id: 'trace-1' }),
+          to_json_msg({ priority: 'medium', trace_id: 'trace-2' }),
+          to_json_msg({ priority: 'low', trace_id: 'trace-3' })
+        ]
+
+        msg_ids = client.send_batch(queue_name, messages, headers: headers)
+        expect(msg_ids.size).to eq(3)
+
+        read_messages = client.read_batch(queue_name, vt: 30, qty: 3)
+        expect(read_messages.size).to eq(3)
+
+        # Verify each message has its corresponding headers
+        read_messages.each do |msg|
+          parsed_msg = JSON.parse(msg.message)
+          parsed_headers = JSON.parse(msg.headers)
+
+          case parsed_msg['order_id']
+          when 1
+            expect(parsed_headers['priority']).to eq('high')
+            expect(parsed_headers['trace_id']).to eq('trace-1')
+          when 2
+            expect(parsed_headers['priority']).to eq('medium')
+            expect(parsed_headers['trace_id']).to eq('trace-2')
+          when 3
+            expect(parsed_headers['priority']).to eq('low')
+            expect(parsed_headers['trace_id']).to eq('trace-3')
+          end
+        end
+      end
+
+      it 'sends batch with headers and delay' do
+        messages = [
+          to_json_msg({ id: 1 }),
+          to_json_msg({ id: 2 })
+        ]
+        headers = [
+          to_json_msg({ correlation_id: 'corr-1' }),
+          to_json_msg({ correlation_id: 'corr-2' })
+        ]
+
+        client.send_batch(queue_name, messages, headers: headers, delay: 2)
+
+        # Messages should not be visible immediately
+        msg = client.read(queue_name, vt: 30)
+        expect(msg).to be_nil
+
+        # Wait for delay
+        sleep 2.5
+
+        # Now messages should be visible with headers
+        read_messages = client.read_batch(queue_name, vt: 30, qty: 2)
+        expect(read_messages.size).to eq(2)
+        read_messages.each do |msg|
+          expect(msg.headers).not_to be_nil
+          parsed_headers = JSON.parse(msg.headers)
+          expect(parsed_headers['correlation_id']).to match(/corr-\d/)
+        end
+      end
+
+      it 'raises ArgumentError when headers length does not match messages length' do
+        messages = [
+          to_json_msg({ id: 1 }),
+          to_json_msg({ id: 2 }),
+          to_json_msg({ id: 3 })
+        ]
+        headers = [
+          to_json_msg({ priority: 'high' }),
+          to_json_msg({ priority: 'low' })
+        ]
+
+        expect do
+          client.send_batch(queue_name, messages, headers: headers)
+        end.to raise_error(ArgumentError, /headers array length \(2\) must match messages array length \(3\)/)
+      end
+
+      it 'raises ArgumentError when headers is shorter than messages' do
+        messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
+        headers = [to_json_msg({ h: 1 })]
+
+        expect do
+          client.send_batch(queue_name, messages, headers: headers)
+        end.to raise_error(ArgumentError, /headers array length \(1\) must match messages array length \(2\)/)
+      end
+
+      it 'raises ArgumentError when headers is longer than messages' do
+        messages = [to_json_msg({ id: 1 })]
+        headers = [to_json_msg({ h: 1 }), to_json_msg({ h: 2 }), to_json_msg({ h: 3 })]
+
+        expect do
+          client.send_batch(queue_name, messages, headers: headers)
+        end.to raise_error(ArgumentError, /headers array length \(3\) must match messages array length \(1\)/)
+      end
+
+      it 'sends batch without headers (backward compatibility)' do
+        messages = [
+          to_json_msg({ id: 1 }),
+          to_json_msg({ id: 2 })
+        ]
+
+        msg_ids = client.send_batch(queue_name, messages)
+        expect(msg_ids.size).to eq(2)
+
+        read_messages = client.read_batch(queue_name, vt: 30, qty: 2)
+        expect(read_messages.size).to eq(2)
+        read_messages.each do |msg|
+          expect(msg.headers).to be_nil
+        end
+      end
+
+      it 'handles empty headers array with empty messages array' do
+        msg_ids = client.send_batch(queue_name, [], headers: [])
+        expect(msg_ids).to eq([])
+      end
+
+      it 'sends batch with complex nested headers' do
+        messages = [
+          to_json_msg({ event: 'user.created' }),
+          to_json_msg({ event: 'order.placed' })
+        ]
+        headers = [
+          to_json_msg({
+                        metadata: { version: '1.0', source: 'api' },
+                        tracing: { trace_id: 't1', span_id: 's1' }
+                      }),
+          to_json_msg({
+                        metadata: { version: '1.0', source: 'web' },
+                        tracing: { trace_id: 't2', span_id: 's2' }
+                      })
+        ]
+
+        client.send_batch(queue_name, messages, headers: headers)
+        read_messages = client.read_batch(queue_name, vt: 30, qty: 2)
+
+        read_messages.each do |msg|
+          parsed_headers = JSON.parse(msg.headers)
+          expect(parsed_headers['metadata']['version']).to eq('1.0')
+          expect(parsed_headers['tracing']).to be_a(Hash)
+        end
+      end
     end
   end
 end
