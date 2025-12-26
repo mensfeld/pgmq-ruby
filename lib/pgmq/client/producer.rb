@@ -64,6 +64,7 @@ module PGMQ
       # @param headers [Array<String>, nil] optional array of headers as JSON strings (must match messages length)
       # @param delay [Integer] delay in seconds before messages become visible
       # @return [Array<String>] array of message IDs
+      # @raise [ArgumentError] if headers array length doesn't match messages length
       #
       # @example Basic batch send
       #   ids = client.send_batch("orders", [
@@ -82,8 +83,6 @@ module PGMQ
       #     ['{"order_id":1}', '{"order_id":2}'],
       #     headers: ['{"trace_id":"a"}', '{"trace_id":"b"}'],
       #     delay: 60)
-      #
-      # @raise [ArgumentError] if headers array length doesn't match messages length
       def send_batch(
         queue_name,
         messages,
