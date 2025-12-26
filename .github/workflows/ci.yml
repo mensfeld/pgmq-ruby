@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - '4.0.0-preview2'
+          - '4.0.0'
           - '3.4'
           - '3.3'
           - '3.2'
@@ -111,6 +111,8 @@ jobs:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
+      - name: Remove Gemfile.lock for Ruby 4.0
+        run: rm -f Gemfile.lock
       - name: Set up Ruby
         uses: ruby/setup-ruby@ae195bbe749a7cef685ac729197124a48305c1cb # v1.276.0
         with:
