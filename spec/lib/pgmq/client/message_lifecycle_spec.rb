@@ -34,6 +34,52 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
     end
   end
 
+  describe '#pop_batch' do
+    it 'pops multiple messages atomically' do
+      client.send_batch(queue_name, [
+                          to_json_msg({ n: 1 }),
+                          to_json_msg({ n: 2 }),
+                          to_json_msg({ n: 3 })
+                        ])
+
+      messages = client.pop_batch(queue_name, 3)
+
+      expect(messages.size).to eq(3)
+      expect(messages).to all(be_a(PGMQ::Message))
+
+      # All messages should be deleted
+      remaining = client.read(queue_name, vt: 30)
+      expect(remaining).to be_nil
+    end
+
+    it 'returns only available messages when qty exceeds queue size' do
+      client.send_batch(queue_name, [to_json_msg({ n: 1 }), to_json_msg({ n: 2 })])
+
+      messages = client.pop_batch(queue_name, 10)
+
+      expect(messages.size).to eq(2)
+    end
+
+    it 'returns empty array for empty queue' do
+      messages = client.pop_batch(queue_name, 5)
+      expect(messages).to eq([])
+    end
+
+    it 'returns empty array when qty is zero' do
+      client.send(queue_name, to_json_msg({ test: 'data' }))
+      messages = client.pop_batch(queue_name, 0)
+      expect(messages).to eq([])
+
+      # Message should still be there
+      msg = client.pop(queue_name)
+      expect(msg).not_to be_nil
+    end
+
+    it 'raises error for invalid queue name' do
+      expect { client.pop_batch('123invalid', 5) }.to raise_error(PGMQ::Errors::InvalidQueueNameError)
+    end
+  end
+
   describe '#delete' do
     it 'deletes a message' do
       client.send(queue_name, to_json_msg({ test: 'data' }))
