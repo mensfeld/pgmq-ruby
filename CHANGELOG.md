@@ -2,6 +2,9 @@
 
 ## 0.4.0 (Unreleased)
 
+### Queue Management
+- [Enhancement] `create`, `create_partitioned`, and `create_unlogged` now return `true` if the queue was newly created, `false` if it already existed. This provides clearer feedback and aligns with the Rust PGMQ client behavior.
+
 ### Message Operations
 - **[Feature]** Introduce `pop_batch(queue_name, qty)` for atomic batch pop (read + delete) operations.
 - **[Feature]** Introduce `set_vt_batch(queue_name, msg_ids, vt_offset:)` for batch visibility timeout updates.
