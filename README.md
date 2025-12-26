@@ -61,6 +61,8 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | `list_queues` | List all queues with metadata | ✅ |
 | | `metrics` | Get queue metrics (length, age, total messages) | ✅ |
 | | `metrics_all` | Get metrics for all queues | ✅ |
+| | `enable_notify_insert` | Enable PostgreSQL NOTIFY on insert | ✅ |
+| | `disable_notify_insert` | Disable notifications | ✅ |
 | **Ruby Enhancements** | Transaction Support | Atomic operations via `client.transaction do \|txn\|` | ✅ |
 | | Conditional Filtering | Server-side JSONB filtering with `conditional:` | ✅ |
 | | Multi-Queue Ops | Read/pop/delete/archive from multiple queues | ✅ |
@@ -395,6 +397,12 @@ client.set_vt_multi({
 
 # Purge all messages
 count = client.purge_queue("queue_name")
+
+# Enable PostgreSQL NOTIFY for a queue (for LISTEN-based consumers)
+client.enable_notify_insert("queue_name", throttle_interval_ms: 250)
+
+# Disable notifications
+client.disable_notify_insert("queue_name")
 ```
 
 ### Monitoring

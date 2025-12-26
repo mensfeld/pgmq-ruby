@@ -41,6 +41,54 @@ module PGMQ
 
         nil
       end
+
+      # Enables PostgreSQL NOTIFY when messages are inserted into a queue
+      #
+      # When enabled, PostgreSQL will send a NOTIFY event on message insert,
+      # allowing clients to use LISTEN instead of polling. The throttle interval
+      # prevents notification storms during high-volume inserts.
+      #
+      # @param queue_name [String] name of the queue
+      # @param throttle_interval_ms [Integer] minimum ms between notifications (default: 250)
+      # @return [void]
+      #
+      # @example Enable with default throttle (250ms)
+      #   client.enable_notify_insert("orders")
+      #
+      # @example Enable with custom throttle (1 second)
+      #   client.enable_notify_insert("orders", throttle_interval_ms: 1000)
+      #
+      # @example Disable throttling (notify on every insert)
+      #   client.enable_notify_insert("orders", throttle_interval_ms: 0)
+      def enable_notify_insert(queue_name, throttle_interval_ms: 250)
+        validate_queue_name!(queue_name)
+
+        with_connection do |conn|
+          conn.exec_params(
+            'SELECT pgmq.enable_notify_insert($1::text, $2::integer)',
+            [queue_name, throttle_interval_ms]
+          )
+        end
+
+        nil
+      end
+
+      # Disables PostgreSQL NOTIFY for a queue
+      #
+      # @param queue_name [String] name of the queue
+      # @return [void]
+      #
+      # @example
+      #   client.disable_notify_insert("orders")
+      def disable_notify_insert(queue_name)
+        validate_queue_name!(queue_name)
+
+        with_connection do |conn|
+          conn.exec_params('SELECT pgmq.disable_notify_insert($1::text)', [queue_name])
+        end
+
+        nil
+      end
     end
   end
 end

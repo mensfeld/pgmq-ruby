@@ -52,4 +52,33 @@ RSpec.describe PGMQ::Client::Maintenance, :integration do
       expect { client.detach_archive('123invalid') }.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
   end
+
+  describe '#enable_notify_insert' do
+    it 'enables notifications on the queue' do
+      expect { client.enable_notify_insert(queue_name) }.not_to raise_error
+    end
+
+    it 'accepts custom throttle interval' do
+      expect { client.enable_notify_insert(queue_name, throttle_interval_ms: 1000) }.not_to raise_error
+    end
+
+    it 'accepts zero throttle interval for immediate notifications' do
+      expect { client.enable_notify_insert(queue_name, throttle_interval_ms: 0) }.not_to raise_error
+    end
+
+    it 'raises error for invalid queue name' do
+      expect { client.enable_notify_insert('123invalid') }.to raise_error(PGMQ::Errors::InvalidQueueNameError)
+    end
+  end
+
+  describe '#disable_notify_insert' do
+    it 'disables notifications on the queue' do
+      client.enable_notify_insert(queue_name)
+      expect { client.disable_notify_insert(queue_name) }.not_to raise_error
+    end
+
+    it 'raises error for invalid queue name' do
+      expect { client.disable_notify_insert('123invalid') }.to raise_error(PGMQ::Errors::InvalidQueueNameError)
+    end
+  end
 end
