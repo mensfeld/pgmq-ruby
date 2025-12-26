@@ -212,7 +212,7 @@ module PGMQ
       # @param queue_name [String] name of the queue
       # @param msg_id [Integer] message ID
       # @param vt_offset [Integer] visibility timeout offset in seconds
-      # @return [PGMQ::Message] updated message
+      # @return [PGMQ::Message, nil] updated message or nil if not found
       #
       # @example
       #   # Extend processing time by 60 more seconds
@@ -234,6 +234,78 @@ module PGMQ
         return nil if result.ntuples.zero?
 
         Message.new(result[0])
+      end
+
+      # Updates visibility timeout for multiple messages
+      #
+      # @param queue_name [String] name of the queue
+      # @param msg_ids [Array<Integer>] array of message IDs
+      # @param vt_offset [Integer] visibility timeout offset in seconds
+      # @return [Array<PGMQ::Message>] array of updated messages
+      #
+      # @example
+      #   # Extend processing time for multiple messages
+      #   messages = client.set_vt_batch("orders", [101, 102, 103], vt_offset: 60)
+      def set_vt_batch(
+        queue_name,
+        msg_ids,
+        vt_offset:
+      )
+        validate_queue_name!(queue_name)
+        return [] if msg_ids.empty?
+
+        result = with_connection do |conn|
+          encoder = PG::TextEncoder::Array.new
+          encoded_array = encoder.encode(msg_ids)
+
+          conn.exec_params(
+            'SELECT * FROM pgmq.set_vt($1::text, $2::bigint[], $3::integer)',
+            [queue_name, encoded_array, vt_offset]
+          )
+        end
+
+        result.map { |row| Message.new(row) }
+      end
+
+      # Updates visibility timeout for messages across multiple queues in a single transaction
+      #
+      # Efficiently updates visibility timeouts across different queues atomically.
+      # Useful when processing related messages from different queues and needing
+      # to extend their visibility timeouts together.
+      #
+      # @param updates [Hash] hash of queue_name => array of msg_ids
+      # @param vt_offset [Integer] visibility timeout offset in seconds (applied to all)
+      # @return [Hash] hash of queue_name => array of updated PGMQ::Message objects
+      #
+      # @example Extend visibility timeout for messages from multiple queues
+      #   client.set_vt_multi({
+      #     'orders' => [1, 2, 3],
+      #     'notifications' => [5, 6],
+      #     'emails' => [10]
+      #   }, vt_offset: 60)
+      #   # => { 'orders' => [<Message>, ...], 'notifications' => [...], 'emails' => [...] }
+      #
+      # @example Extend timeout after batch reading from multiple queues
+      #   messages = client.read_multi(['q1', 'q2', 'q3'], qty: 10)
+      #   updates = messages.group_by(&:queue_name).transform_values { |msgs| msgs.map(&:msg_id) }
+      #   client.set_vt_multi(updates, vt_offset: 120)
+      def set_vt_multi(updates, vt_offset:)
+        raise ArgumentError, 'updates must be a hash' unless updates.is_a?(Hash)
+        return {} if updates.empty?
+
+        # Validate all queue names
+        updates.each_key { |qn| validate_queue_name!(qn) }
+
+        transaction do |txn|
+          result = {}
+          updates.each do |queue_name, msg_ids|
+            next if msg_ids.empty?
+
+            updated_messages = txn.set_vt_batch(queue_name, msg_ids, vt_offset: vt_offset)
+            result[queue_name] = updated_messages
+          end
+          result
+        end
       end
     end
   end

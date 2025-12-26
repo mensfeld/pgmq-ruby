@@ -55,6 +55,8 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | `drop_queue` | Delete queue and all messages | ✅ |
 | | `detach_archive` | Detach archive table from queue | ✅ |
 | **Utilities** | `set_vt` | Update message visibility timeout | ✅ |
+| | `set_vt_batch` | Batch update visibility timeouts | ✅ |
+| | `set_vt_multi` | Update visibility timeouts across multiple queues | ✅ |
 | | `list_queues` | List all queues with metadata | ✅ |
 | | `metrics` | Get queue metrics (length, age, total messages) | ✅ |
 | | `metrics_all` | Get metrics for all queues | ✅ |
@@ -377,6 +379,15 @@ archived_ids = client.archive_batch("queue_name", [101, 102, 103])
 
 # Update visibility timeout
 msg = client.set_vt("queue_name", msg_id, vt_offset: 60)
+
+# Batch update visibility timeout
+updated_msgs = client.set_vt_batch("queue_name", [101, 102, 103], vt_offset: 60)
+
+# Update visibility timeout across multiple queues
+client.set_vt_multi({
+  "orders" => [1, 2, 3],
+  "notifications" => [5, 6]
+}, vt_offset: 120)
 
 # Purge all messages
 count = client.purge_queue("queue_name")
