@@ -14,10 +14,19 @@ RSpec.describe PGMQ::Client::QueueManagement, :integration do
   end
 
   describe '#create' do
-    it 'creates a new queue' do
-      client.create(queue_name)
+    it 'creates a new queue and returns true' do
+      result = client.create(queue_name)
+
+      expect(result).to be true
       queues = client.list_queues
       expect(queues.map(&:queue_name)).to include(queue_name)
+    end
+
+    it 'returns false when queue already exists' do
+      client.create(queue_name)
+      result = client.create(queue_name)
+
+      expect(result).to be false
     end
 
     it 'raises error for invalid queue name' do
@@ -76,8 +85,10 @@ RSpec.describe PGMQ::Client::QueueManagement, :integration do
   end
 
   describe '#create_unlogged' do
-    it 'creates an unlogged queue' do
-      client.create_unlogged(queue_name)
+    it 'creates an unlogged queue and returns true' do
+      result = client.create_unlogged(queue_name)
+
+      expect(result).to be true
       queues = client.list_queues
       expect(queues.map(&:queue_name)).to include(queue_name)
 
@@ -86,6 +97,13 @@ RSpec.describe PGMQ::Client::QueueManagement, :integration do
       msg = client.read(queue_name, vt: 30)
       expect(msg.msg_id).to eq(msg_id)
       expect(JSON.parse(msg.message)['test']).to eq('unlogged')
+    end
+
+    it 'returns false when queue already exists' do
+      client.create_unlogged(queue_name)
+      result = client.create_unlogged(queue_name)
+
+      expect(result).to be false
     end
 
     it 'raises error for invalid queue name' do

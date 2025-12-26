@@ -229,20 +229,21 @@ client = PGMQ::Client.new(
 ### Queue Management
 
 ```ruby
-# Create a queue
-client.create("queue_name")
+# Create a queue (returns true if created, false if already exists)
+client.create("queue_name")      # => true
+client.create("queue_name")      # => false (idempotent)
 
 # Create partitioned queue (requires pg_partman)
 client.create_partitioned("queue_name",
   partition_interval: "daily",
   retention_interval: "7 days"
-)
+)  # => true/false
 
 # Create unlogged queue (faster, no crash recovery)
-client.create_unlogged("queue_name")
+client.create_unlogged("queue_name")  # => true/false
 
-# Drop queue
-client.drop_queue("queue_name")
+# Drop queue (returns true if dropped, false if didn't exist)
+client.drop_queue("queue_name")  # => true/false
 
 # List all queues
 queues = client.list_queues
