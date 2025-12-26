@@ -44,6 +44,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | `read_batch` | Read multiple messages with visibility timeout | ✅ |
 | | `read_with_poll` | Long-polling for efficient message consumption | ✅ |
 | | `pop` | Atomic read + delete operation | ✅ |
+| | `pop_batch` | Atomic batch read + delete operation | ✅ |
 | **Deleting/Archiving** | `delete` | Delete single message | ✅ |
 | | `delete_batch` | Delete multiple messages | ✅ |
 | | `archive` | Archive single message for long-term storage | ✅ |
@@ -60,6 +61,8 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | `list_queues` | List all queues with metadata | ✅ |
 | | `metrics` | Get queue metrics (length, age, total messages) | ✅ |
 | | `metrics_all` | Get metrics for all queues | ✅ |
+| | `enable_notify_insert` | Enable PostgreSQL NOTIFY on insert | ✅ |
+| | `disable_notify_insert` | Disable notifications | ✅ |
 | **Ruby Enhancements** | Transaction Support | Atomic operations via `client.transaction do \|txn\|` | ✅ |
 | | Conditional Filtering | Server-side JSONB filtering with `conditional:` | ✅ |
 | | Multi-Queue Ops | Read/pop/delete/archive from multiple queues | ✅ |
@@ -226,20 +229,21 @@ client = PGMQ::Client.new(
 ### Queue Management
 
 ```ruby
-# Create a queue
-client.create("queue_name")
+# Create a queue (returns true if created, false if already exists)
+client.create("queue_name")      # => true
+client.create("queue_name")      # => false (idempotent)
 
 # Create partitioned queue (requires pg_partman)
 client.create_partitioned("queue_name",
   partition_interval: "daily",
   retention_interval: "7 days"
-)
+)  # => true/false
 
 # Create unlogged queue (faster, no crash recovery)
-client.create_unlogged("queue_name")
+client.create_unlogged("queue_name")  # => true/false
 
-# Drop queue
-client.drop_queue("queue_name")
+# Drop queue (returns true if dropped, false if didn't exist)
+client.drop_queue("queue_name")  # => true/false
 
 # List all queues
 queues = client.list_queues
@@ -313,6 +317,9 @@ msg = client.read_with_poll("queue_name",
 
 # Pop (atomic read + delete)
 msg = client.pop("queue_name")
+
+# Pop batch (atomic read + delete for multiple messages)
+messages = client.pop_batch("queue_name", 10)
 ```
 
 #### Conditional Message Filtering
@@ -391,6 +398,12 @@ client.set_vt_multi({
 
 # Purge all messages
 count = client.purge_queue("queue_name")
+
+# Enable PostgreSQL NOTIFY for a queue (for LISTEN-based consumers)
+client.enable_notify_insert("queue_name", throttle_interval_ms: 250)
+
+# Disable notifications
+client.disable_notify_insert("queue_name")
 ```
 
 ### Monitoring

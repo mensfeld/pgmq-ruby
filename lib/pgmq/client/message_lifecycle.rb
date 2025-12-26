@@ -27,6 +27,26 @@ module PGMQ
         Message.new(result[0])
       end
 
+      # Pops multiple messages atomically (atomic read + delete for batch)
+      #
+      # @param queue_name [String] name of the queue
+      # @param qty [Integer] maximum number of messages to pop
+      # @return [Array<PGMQ::Message>] array of message objects (empty if queue is empty)
+      #
+      # @example Pop up to 10 messages
+      #   messages = client.pop_batch("orders", 10)
+      #   messages.each { |msg| process(msg.payload) }
+      def pop_batch(queue_name, qty)
+        validate_queue_name!(queue_name)
+        return [] if qty <= 0
+
+        result = with_connection do |conn|
+          conn.exec_params('SELECT * FROM pgmq.pop($1::text, $2::integer)', [queue_name, qty])
+        end
+
+        result.map { |row| Message.new(row) }
+      end
+
       # Deletes a message from the queue
       #
       # @param queue_name [String] name of the queue

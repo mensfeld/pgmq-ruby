@@ -14,10 +14,19 @@ RSpec.describe PGMQ::Client::QueueManagement, :integration do
   end
 
   describe '#create' do
-    it 'creates a new queue' do
-      client.create(queue_name)
+    it 'creates a new queue and returns true' do
+      result = client.create(queue_name)
+
+      expect(result).to be true
       queues = client.list_queues
       expect(queues.map(&:queue_name)).to include(queue_name)
+    end
+
+    it 'returns false when queue already exists' do
+      client.create(queue_name)
+      result = client.create(queue_name)
+
+      expect(result).to be false
     end
 
     it 'raises error for invalid queue name' do
@@ -75,9 +84,58 @@ RSpec.describe PGMQ::Client::QueueManagement, :integration do
     end
   end
 
+  describe '#create_partitioned' do
+    # pg_partman may not be installed in test environment
+    def pg_partman_available?(client)
+      result = client.instance_eval do
+        with_connection do |conn|
+          conn.exec("SELECT 1 FROM pg_extension WHERE extname = 'pg_partman' LIMIT 1")
+        end
+      end
+      result.ntuples.positive?
+    rescue StandardError
+      false
+    end
+
+    it 'creates a partitioned queue and returns true' do
+      skip 'pg_partman not installed' unless pg_partman_available?(client)
+
+      result = client.create_partitioned(queue_name,
+                                         partition_interval: '10000',
+                                         retention_interval: '100000')
+
+      expect(result).to be true
+      queues = client.list_queues
+      expect(queues.map(&:queue_name)).to include(queue_name)
+    end
+
+    it 'returns false when queue already exists' do
+      skip 'pg_partman not installed' unless pg_partman_available?(client)
+
+      client.create_partitioned(queue_name,
+                                partition_interval: '10000',
+                                retention_interval: '100000')
+      result = client.create_partitioned(queue_name,
+                                         partition_interval: '10000',
+                                         retention_interval: '100000')
+
+      expect(result).to be false
+    end
+
+    it 'raises error for invalid queue name' do
+      expect do
+        client.create_partitioned('123invalid',
+                                  partition_interval: '10000',
+                                  retention_interval: '100000')
+      end.to raise_error(PGMQ::Errors::InvalidQueueNameError)
+    end
+  end
+
   describe '#create_unlogged' do
-    it 'creates an unlogged queue' do
-      client.create_unlogged(queue_name)
+    it 'creates an unlogged queue and returns true' do
+      result = client.create_unlogged(queue_name)
+
+      expect(result).to be true
       queues = client.list_queues
       expect(queues.map(&:queue_name)).to include(queue_name)
 
@@ -86,6 +144,13 @@ RSpec.describe PGMQ::Client::QueueManagement, :integration do
       msg = client.read(queue_name, vt: 30)
       expect(msg.msg_id).to eq(msg_id)
       expect(JSON.parse(msg.message)['test']).to eq('unlogged')
+    end
+
+    it 'returns false when queue already exists' do
+      client.create_unlogged(queue_name)
+      result = client.create_unlogged(queue_name)
+
+      expect(result).to be false
     end
 
     it 'raises error for invalid queue name' do
