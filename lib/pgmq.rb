@@ -33,7 +33,7 @@ loader.eager_load
 #
 #   # Basic queue operations
 #   client.create('orders')
-#   msg_id = client.send('orders', { order_id: 123 })
+#   msg_id = client.produce('orders', '{"order_id":123}')
 #   msg = client.read('orders', vt: 30)
 #   client.delete('orders', msg.msg_id)
 #   client.drop_queue('orders')

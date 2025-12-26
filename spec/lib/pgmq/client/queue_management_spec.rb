@@ -140,7 +140,7 @@ RSpec.describe PGMQ::Client::QueueManagement, :integration do
       expect(queues.map(&:queue_name)).to include(queue_name)
 
       # Verify it works by sending/reading a message
-      msg_id = client.send(queue_name, to_json_msg({ test: 'unlogged' }))
+      msg_id = client.produce(queue_name, to_json_msg({ test: 'unlogged' }))
       msg = client.read(queue_name, vt: 30)
       expect(msg.msg_id).to eq(msg_id)
       expect(JSON.parse(msg.message)['test']).to eq('unlogged')

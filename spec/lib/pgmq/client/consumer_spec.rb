@@ -18,7 +18,7 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
   describe '#read' do
     it 'reads a message from the queue' do
       message_data = { order_id: 123, status: 'pending' }
-      msg_id = client.send(queue_name, to_json_msg(message_data))
+      msg_id = client.produce(queue_name, to_json_msg(message_data))
 
       msg = client.read(queue_name, vt: 30)
       expect(msg).to be_a(PGMQ::Message)
@@ -32,8 +32,8 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
     end
 
     it 'handles conditional JSONB filtering by single key-value' do
-      client.send(queue_name, to_json_msg({ status: 'pending', priority: 'high' }))
-      client.send(queue_name, to_json_msg({ status: 'completed', priority: 'low' }))
+      client.produce(queue_name, to_json_msg({ status: 'pending', priority: 'high' }))
+      client.produce(queue_name, to_json_msg({ status: 'completed', priority: 'low' }))
 
       msg = client.read(queue_name, vt: 30, conditional: { status: 'pending' })
 
@@ -42,9 +42,9 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
     end
 
     it 'handles conditional filtering with multiple conditions (AND logic)' do
-      client.send(queue_name, to_json_msg({ status: 'pending', priority: 'high' }))
-      client.send(queue_name, to_json_msg({ status: 'pending', priority: 'low' }))
-      client.send(queue_name, to_json_msg({ status: 'completed', priority: 'high' }))
+      client.produce(queue_name, to_json_msg({ status: 'pending', priority: 'high' }))
+      client.produce(queue_name, to_json_msg({ status: 'pending', priority: 'low' }))
+      client.produce(queue_name, to_json_msg({ status: 'completed', priority: 'high' }))
 
       msg = client.read(queue_name, vt: 30, conditional: { status: 'pending', priority: 'high' })
 
@@ -54,8 +54,8 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
     end
 
     it 'handles conditional filtering with nested objects' do
-      client.send(queue_name, to_json_msg({ user: { role: 'admin', active: true } }))
-      client.send(queue_name, to_json_msg({ user: { role: 'user', active: true } }))
+      client.produce(queue_name, to_json_msg({ user: { role: 'admin', active: true } }))
+      client.produce(queue_name, to_json_msg({ user: { role: 'user', active: true } }))
 
       msg = client.read(queue_name, vt: 30, conditional: { user: { role: 'admin' } })
 
@@ -64,7 +64,7 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
     end
 
     it 'returns nil when no messages match condition' do
-      client.send(queue_name, to_json_msg({ status: 'pending' }))
+      client.produce(queue_name, to_json_msg({ status: 'pending' }))
 
       msg = client.read(queue_name, vt: 30, conditional: { status: 'completed' })
 
@@ -72,7 +72,7 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
     end
 
     it 'preserves visibility timeout with filtering' do
-      client.send(queue_name, to_json_msg({ status: 'pending' }))
+      client.produce(queue_name, to_json_msg({ status: 'pending' }))
 
       msg1 = client.read(queue_name, vt: 2, conditional: { status: 'pending' })
       expect(msg1).not_to be_nil
@@ -94,7 +94,7 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
         to_json_msg({ id: 3, data: 'third' })
       ]
 
-      client.send_batch(queue_name, messages)
+      client.produce_batch(queue_name, messages)
 
       read_messages = client.read_batch(queue_name, vt: 30, qty: 3)
       expect(read_messages.size).to eq(3)
@@ -103,10 +103,10 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
     end
 
     it 'returns only matching messages up to qty limit with conditional' do
-      client.send(queue_name, to_json_msg({ priority: 'high', id: 1 }))
-      client.send(queue_name, to_json_msg({ priority: 'low', id: 2 }))
-      client.send(queue_name, to_json_msg({ priority: 'high', id: 3 }))
-      client.send(queue_name, to_json_msg({ priority: 'high', id: 4 }))
+      client.produce(queue_name, to_json_msg({ priority: 'high', id: 1 }))
+      client.produce(queue_name, to_json_msg({ priority: 'low', id: 2 }))
+      client.produce(queue_name, to_json_msg({ priority: 'high', id: 3 }))
+      client.produce(queue_name, to_json_msg({ priority: 'high', id: 4 }))
 
       messages = client.read_batch(queue_name, vt: 30, qty: 2, conditional: { priority: 'high' })
 
@@ -117,7 +117,7 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
     end
 
     it 'returns empty array when no matches with conditional' do
-      client.send(queue_name, to_json_msg({ priority: 'low' }))
+      client.produce(queue_name, to_json_msg({ priority: 'low' }))
 
       messages = client.read_batch(queue_name, vt: 30, qty: 10, conditional: { priority: 'high' })
 
@@ -129,7 +129,7 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
     it 'waits for messages with long-polling' do
       Thread.new do
         sleep 1
-        client.send(queue_name, to_json_msg({ delayed: 'message' }))
+        client.produce(queue_name, to_json_msg({ delayed: 'message' }))
       end
 
       start_time = Time.now
@@ -165,7 +165,7 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
     it 'polls until matching message arrives with conditional' do
       Thread.new do
         sleep 0.5
-        client.send(queue_name, to_json_msg({ type: 'urgent', data: 'test' }))
+        client.produce(queue_name, to_json_msg({ type: 'urgent', data: 'test' }))
       end
 
       start_time = Time.now
@@ -185,7 +185,7 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
     end
 
     it 'times out if no matching messages with conditional' do
-      client.send(queue_name, to_json_msg({ type: 'normal' }))
+      client.produce(queue_name, to_json_msg({ type: 'normal' }))
 
       start_time = Time.now
       messages = client.read_with_poll(
@@ -205,7 +205,7 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
 
   describe 'visibility timeout behavior' do
     it 'makes message invisible during visibility timeout' do
-      client.send(queue_name, to_json_msg({ test: 'vt' }))
+      client.produce(queue_name, to_json_msg({ test: 'vt' }))
 
       msg1 = client.read(queue_name, vt: 3)
       expect(msg1).not_to be_nil

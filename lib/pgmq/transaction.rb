@@ -12,13 +12,13 @@ module PGMQ
   #
   # @example Atomic multi-queue operations
   #   client.transaction do |txn|
-  #     txn.send("orders", { order_id: 123 })
-  #     txn.send("notifications", { type: "order_created" })
+  #     txn.produce("orders", '{"order_id":123}')
+  #     txn.produce("notifications", '{"type":"order_created"}')
   #   end
   #
   # @example Automatic rollback on error
   #   client.transaction do |txn|
-  #     txn.send("orders", { order_id: 123 })
+  #     txn.produce("orders", '{"order_id":123}')
   #     raise "Error"  # Both operations rolled back
   #   end
   module Transaction
@@ -33,7 +33,7 @@ module PGMQ
     #
     # @example
     #   client.transaction do |txn|
-    #     msg_id = txn.send("queue", { data: "test" })
+    #     msg_id = txn.produce("queue", '{"data":"test"}')
     #     txn.delete("queue", msg_id)
     #   end
     def transaction
@@ -65,19 +65,6 @@ module PGMQ
       # @return [Object] result of method call
       def method_missing(method, ...)
         @parent.respond_to?(method, true) ? @parent.__send__(method, ...) : super
-      end
-
-      # Override Object#send to call parent's send method
-      # @param queue_name [String] queue name
-      # @param message [String] message as JSON string
-      # @param delay [Integer] delay in seconds
-      # @return [String] message ID
-      def send(
-        queue_name,
-        message,
-        delay: 0
-      )
-        @parent.send(queue_name, message, delay: delay)
       end
 
       # Check if method exists on parent
