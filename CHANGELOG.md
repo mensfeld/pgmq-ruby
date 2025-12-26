@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 (Unreleased)
+## 0.4.0 (2025-12-26)
 
 ### Breaking Changes
 - **[Breaking]** Rename `send` to `produce` and `send_batch` to `produce_batch`. This avoids shadowing Ruby's built-in `Object#send` method which caused confusion and required workarounds (e.g., using `__send__`). The new names also align better with the producer/consumer terminology used in message queue systems.
@@ -18,6 +18,9 @@
 ### Notifications
 - **[Feature]** Introduce `enable_notify_insert(queue_name, throttle_interval_ms:)` for PostgreSQL LISTEN/NOTIFY support.
 - **[Feature]** Introduce `disable_notify_insert(queue_name)` to disable notifications.
+
+### Compatibility
+- [Enhancement] Add Ruby 4.0.0 support with full CI testing.
 
 ## 0.3.0 (2025-11-14)
 
