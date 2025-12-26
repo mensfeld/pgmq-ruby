@@ -38,8 +38,8 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 
 | Category | Method | Description | Status |
 |----------|--------|-------------|--------|
-| **Sending** | `send` | Send single message with optional delay | ✅ |
-| | `send_batch` | Send multiple messages atomically | ✅ |
+| **Sending** | `send` | Send single message with optional delay and headers | ✅ |
+| | `send_batch` | Send multiple messages atomically with headers | ✅ |
 | **Reading** | `read` | Read single message with visibility timeout | ✅ |
 | | `read_batch` | Read multiple messages with visibility timeout | ✅ |
 | | `read_with_poll` | Long-polling for efficient message consumption | ✅ |
@@ -288,6 +288,15 @@ msg_id = client.send("queue_name", '{"data":"value"}')
 # Send with delay (seconds)
 msg_id = client.send("queue_name", '{"data":"value"}', delay: 60)
 
+# Send with headers (for routing, tracing, correlation)
+msg_id = client.send("queue_name", '{"data":"value"}',
+  headers: '{"trace_id":"abc123","priority":"high"}')
+
+# Send with headers and delay
+msg_id = client.send("queue_name", '{"data":"value"}',
+  headers: '{"correlation_id":"req-456"}',
+  delay: 60)
+
 # Send batch (array of JSON strings)
 msg_ids = client.send_batch("queue_name", [
   '{"order":1}',
@@ -295,6 +304,11 @@ msg_ids = client.send_batch("queue_name", [
   '{"order":3}'
 ])
 # => ["101", "102", "103"]
+
+# Send batch with headers (one per message)
+msg_ids = client.send_batch("queue_name",
+  ['{"order":1}', '{"order":2}'],
+  headers: ['{"priority":"high"}', '{"priority":"low"}'])
 ```
 
 ### Reading Messages
@@ -527,20 +541,42 @@ enqueued = Time.parse(msg.enqueued_at)  # => 2025-01-15 10:30:00 UTC
 
 ### Message Headers
 
-PGMQ supports optional message headers via the `headers` JSONB column:
+PGMQ supports optional message headers via the `headers` JSONB column. Headers are useful for metadata like routing information, correlation IDs, and distributed tracing:
 
 ```ruby
-# Sending with headers requires direct SQL or a custom wrapper
-# (pgmq-ruby focuses on the core PGMQ API which doesn't have a send_with_headers function)
+# Sending a message with headers
+message = '{"order_id":123}'
+headers = '{"trace_id":"abc123","priority":"high","correlation_id":"req-456"}'
+
+msg_id = client.send("orders", message, headers: headers)
+
+# Sending with headers and delay
+msg_id = client.send("orders", message, headers: headers, delay: 60)
+
+# Batch send with headers (one header object per message)
+messages = ['{"id":1}', '{"id":2}', '{"id":3}']
+headers = [
+  '{"priority":"high"}',
+  '{"priority":"medium"}',
+  '{"priority":"low"}'
+]
+msg_ids = client.send_batch("orders", messages, headers: headers)
 
 # Reading messages with headers
-msg = client.read("queue", vt: 30)
+msg = client.read("orders", vt: 30)
 if msg.headers
   metadata = JSON.parse(msg.headers)
   trace_id = metadata["trace_id"]
+  priority = metadata["priority"]
   correlation_id = metadata["correlation_id"]
 end
 ```
+
+Common header use cases:
+- **Distributed tracing**: `trace_id`, `span_id`, `parent_span_id`
+- **Request correlation**: `correlation_id`, `causation_id`
+- **Routing**: `priority`, `region`, `tenant_id`
+- **Content metadata**: `content_type`, `encoding`, `version`
 
 ### Why Raw Values?
 
