@@ -38,8 +38,8 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 
 | Category | Method | Description | Status |
 |----------|--------|-------------|--------|
-| **Sending** | `send` | Send single message with optional delay and headers | ✅ |
-| | `send_batch` | Send multiple messages atomically with headers | ✅ |
+| **Producing** | `produce` | Send single message with optional delay and headers | ✅ |
+| | `produce_batch` | Send multiple messages atomically with headers | ✅ |
 | **Reading** | `read` | Read single message with visibility timeout | ✅ |
 | | `read_batch` | Read multiple messages with visibility timeout | ✅ |
 | | `read_with_poll` | Long-polling for efficient message consumption | ✅ |
@@ -109,7 +109,7 @@ client = PGMQ::Client.new(
 client.create('orders')
 
 # Send a message (must be JSON string)
-msg_id = client.send('orders', '{"order_id":123,"total":99.99}')
+msg_id = client.produce('orders', '{"order_id":123,"total":99.99}')
 
 # Read a message (30 second visibility timeout)
 msg = client.read('orders', vt: 30)
@@ -283,22 +283,22 @@ client.create("a" * 48)          # ✗ Too long (48+ chars)
 
 ```ruby
 # Send single message (must be JSON string)
-msg_id = client.send("queue_name", '{"data":"value"}')
+msg_id = client.produce("queue_name", '{"data":"value"}')
 
 # Send with delay (seconds)
-msg_id = client.send("queue_name", '{"data":"value"}', delay: 60)
+msg_id = client.produce("queue_name", '{"data":"value"}', delay: 60)
 
 # Send with headers (for routing, tracing, correlation)
-msg_id = client.send("queue_name", '{"data":"value"}',
+msg_id = client.produce("queue_name", '{"data":"value"}',
   headers: '{"trace_id":"abc123","priority":"high"}')
 
 # Send with headers and delay
-msg_id = client.send("queue_name", '{"data":"value"}',
+msg_id = client.produce("queue_name", '{"data":"value"}',
   headers: '{"correlation_id":"req-456"}',
   delay: 60)
 
 # Send batch (array of JSON strings)
-msg_ids = client.send_batch("queue_name", [
+msg_ids = client.produce_batch("queue_name", [
   '{"order":1}',
   '{"order":2}',
   '{"order":3}'
@@ -306,7 +306,7 @@ msg_ids = client.send_batch("queue_name", [
 # => ["101", "102", "103"]
 
 # Send batch with headers (one per message)
-msg_ids = client.send_batch("queue_name",
+msg_ids = client.produce_batch("queue_name",
   ['{"order":1}', '{"order":2}'],
   headers: ['{"priority":"high"}', '{"priority":"low"}'])
 ```
@@ -447,9 +447,9 @@ Execute atomic operations across multiple queues or combine queue operations wit
 # Atomic operations across multiple queues
 client.transaction do |txn|
   # Send to multiple queues atomically
-  txn.send("orders", '{"order_id":123}')
-  txn.send("notifications", '{"user_id":456,"type":"order_created"}')
-  txn.send("analytics", '{"event":"order_placed"}')
+  txn.produce("orders", '{"order_id":123}')
+  txn.produce("notifications", '{"user_id":456,"type":"order_created"}')
+  txn.produce("analytics", '{"event":"order_placed"}')
 end
 
 # Process message and update application state atomically
@@ -469,8 +469,8 @@ end
 
 # Automatic rollback on errors
 client.transaction do |txn|
-  txn.send("queue1", '{"data":"message1"}')
-  txn.send("queue2", '{"data":"message2"}')
+  txn.produce("queue1", '{"data":"message1"}')
+  txn.produce("queue2", '{"data":"message2"}')
 
   raise "Something went wrong!"
   # Both messages are rolled back - neither queue receives anything
@@ -484,7 +484,7 @@ client.transaction do |txn|
     data = JSON.parse(msg.message)
     if data["priority"] == "high"
       # Move to high-priority queue
-      txn.send("priority_orders", msg.message)
+      txn.produce("priority_orders", msg.message)
       txn.delete("pending_orders", msg.msg_id)
     end
   end
@@ -548,19 +548,19 @@ PGMQ supports optional message headers via the `headers` JSONB column. Headers a
 message = '{"order_id":123}'
 headers = '{"trace_id":"abc123","priority":"high","correlation_id":"req-456"}'
 
-msg_id = client.send("orders", message, headers: headers)
+msg_id = client.produce("orders", message, headers: headers)
 
 # Sending with headers and delay
-msg_id = client.send("orders", message, headers: headers, delay: 60)
+msg_id = client.produce("orders", message, headers: headers, delay: 60)
 
-# Batch send with headers (one header object per message)
+# Batch produce with headers (one header object per message)
 messages = ['{"id":1}', '{"id":2}', '{"id":3}']
 headers = [
   '{"priority":"high"}',
   '{"priority":"medium"}',
   '{"priority":"low"}'
 ]
-msg_ids = client.send_batch("orders", messages, headers: headers)
+msg_ids = client.produce_batch("orders", messages, headers: headers)
 
 # Reading messages with headers
 msg = client.read("orders", vt: 30)
@@ -598,14 +598,14 @@ PGMQ stores messages as JSONB in PostgreSQL. You must handle JSON serialization 
 ```ruby
 # Simple hash
 msg = { order_id: 123, status: "pending" }
-client.send("orders", msg.to_json)
+client.produce("orders", msg.to_json)
 
 # Using JSON.generate for explicit control
-client.send("orders", JSON.generate(order_id: 123, status: "pending"))
+client.produce("orders", JSON.generate(order_id: 123, status: "pending"))
 
 # Pre-serialized JSON string
 json_str = '{"order_id":123,"status":"pending"}'
-client.send("orders", json_str)
+client.produce("orders", json_str)
 ```
 
 ### Reading Messages
@@ -637,8 +637,8 @@ class QueueHelper
     @client = client
   end
 
-  def send(queue, data)
-    @client.send(queue, data.to_json)
+  def produce(queue, data)
+    @client.produce(queue, data.to_json)
   end
 
   def read(queue, vt:)
@@ -655,7 +655,7 @@ class QueueHelper
 end
 
 helper = QueueHelper.new(client)
-helper.send("orders", { order_id: 123 })
+helper.produce("orders", { order_id: 123 })
 msg = helper.read("orders", vt: 30)
 puts msg.data["order_id"]  # => 123
 ```

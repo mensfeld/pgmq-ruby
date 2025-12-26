@@ -2,12 +2,15 @@
 
 ## 0.4.0 (Unreleased)
 
+### Breaking Changes
+- **[Breaking]** Rename `send` to `produce` and `send_batch` to `produce_batch`. This avoids shadowing Ruby's built-in `Object#send` method which caused confusion and required workarounds (e.g., using `__send__`). The new names also align better with the producer/consumer terminology used in message queue systems.
+
 ### Queue Management
 - [Enhancement] `create`, `create_partitioned`, and `create_unlogged` now return `true` if the queue was newly created, `false` if it already existed. This provides clearer feedback and aligns with the Rust PGMQ client behavior.
 
 ### Message Operations
-- **[Feature]** Add `headers:` parameter to `send(queue_name, message, headers:, delay:)` for message metadata (routing, tracing, correlation IDs).
-- **[Feature]** Add `headers:` parameter to `send_batch(queue_name, messages, headers:, delay:)` for batch message metadata.
+- **[Feature]** Add `headers:` parameter to `produce(queue_name, message, headers:, delay:)` for message metadata (routing, tracing, correlation IDs).
+- **[Feature]** Add `headers:` parameter to `produce_batch(queue_name, messages, headers:, delay:)` for batch message metadata.
 - **[Feature]** Introduce `pop_batch(queue_name, qty)` for atomic batch pop (read + delete) operations.
 - **[Feature]** Introduce `set_vt_batch(queue_name, msg_ids, vt_offset:)` for batch visibility timeout updates.
 - **[Feature]** Introduce `set_vt_multi(updates_hash, vt_offset:)` for updating visibility timeouts across multiple queues atomically.

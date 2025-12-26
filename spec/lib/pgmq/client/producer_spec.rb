@@ -18,7 +18,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
   describe '#send' do
     it 'sends a message to the queue' do
       message_data = { order_id: 123, status: 'pending' }
-      msg_id = client.send(queue_name, to_json_msg(message_data))
+      msg_id = client.produce(queue_name, to_json_msg(message_data))
 
       expect(msg_id).to be_a(String)
       expect(msg_id.to_i).to be > 0
@@ -30,7 +30,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
     end
 
     it 'sends message with delay' do
-      msg_id = client.send(queue_name, to_json_msg({ test: 'data' }), delay: 2)
+      msg_id = client.produce(queue_name, to_json_msg({ test: 'data' }), delay: 2)
       expect(msg_id).to be_a(String)
 
       # Message should not be visible immediately
@@ -51,7 +51,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
         message = to_json_msg({ order_id: 456 })
         headers = to_json_msg({ trace_id: 'abc123', priority: 'high' })
 
-        msg_id = client.send(queue_name, message, headers: headers)
+        msg_id = client.produce(queue_name, message, headers: headers)
         expect(msg_id).to be_a(String)
 
         msg = client.read(queue_name, vt: 30)
@@ -65,7 +65,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
         message = to_json_msg({ order_id: 789 })
         headers = to_json_msg({ correlation_id: 'req-001' })
 
-        msg_id = client.send(queue_name, message, headers: headers, delay: 2)
+        msg_id = client.produce(queue_name, message, headers: headers, delay: 2)
         expect(msg_id).to be_a(String)
 
         # Message should not be visible immediately
@@ -90,7 +90,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
                                 content_type: 'application/json'
                               })
 
-        msg_id = client.send(queue_name, message, headers: headers)
+        msg_id = client.produce(queue_name, message, headers: headers)
         msg = client.read(queue_name, vt: 30)
 
         parsed_headers = JSON.parse(msg.headers)
@@ -103,7 +103,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
         message = to_json_msg({ data: 'test' })
         headers = '{}'
 
-        msg_id = client.send(queue_name, message, headers: headers)
+        msg_id = client.produce(queue_name, message, headers: headers)
         msg = client.read(queue_name, vt: 30)
 
         expect(msg.headers).to eq('{}')
@@ -112,7 +112,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
       it 'returns nil headers when sent without headers' do
         message = to_json_msg({ data: 'no headers' })
 
-        client.send(queue_name, message)
+        client.produce(queue_name, message)
         msg = client.read(queue_name, vt: 30)
 
         expect(msg.headers).to be_nil
@@ -128,7 +128,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
         to_json_msg({ id: 3, data: 'third' })
       ]
 
-      msg_ids = client.send_batch(queue_name, messages)
+      msg_ids = client.produce_batch(queue_name, messages)
       expect(msg_ids).to be_an(Array)
       expect(msg_ids.size).to eq(3)
 
@@ -139,14 +139,14 @@ RSpec.describe PGMQ::Client::Producer, :integration do
     end
 
     it 'handles empty batch' do
-      msg_ids = client.send_batch(queue_name, [])
+      msg_ids = client.produce_batch(queue_name, [])
       expect(msg_ids).to eq([])
     end
 
     it 'sends batch with delay' do
       messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
 
-      client.send_batch(queue_name, messages, delay: 2)
+      client.produce_batch(queue_name, messages, delay: 2)
 
       # Messages should not be visible immediately
       msg = client.read(queue_name, vt: 30)
@@ -173,7 +173,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
           to_json_msg({ priority: 'low', trace_id: 'trace-3' })
         ]
 
-        msg_ids = client.send_batch(queue_name, messages, headers: headers)
+        msg_ids = client.produce_batch(queue_name, messages, headers: headers)
         expect(msg_ids.size).to eq(3)
 
         read_messages = client.read_batch(queue_name, vt: 30, qty: 3)
@@ -208,7 +208,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
           to_json_msg({ correlation_id: 'corr-2' })
         ]
 
-        client.send_batch(queue_name, messages, headers: headers, delay: 2)
+        client.produce_batch(queue_name, messages, headers: headers, delay: 2)
 
         # Messages should not be visible immediately
         msg = client.read(queue_name, vt: 30)
@@ -239,7 +239,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
         ]
 
         expect do
-          client.send_batch(queue_name, messages, headers: headers)
+          client.produce_batch(queue_name, messages, headers: headers)
         end.to raise_error(ArgumentError, /headers array length \(2\) must match messages array length \(3\)/)
       end
 
@@ -248,7 +248,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
         headers = [to_json_msg({ h: 1 })]
 
         expect do
-          client.send_batch(queue_name, messages, headers: headers)
+          client.produce_batch(queue_name, messages, headers: headers)
         end.to raise_error(ArgumentError, /headers array length \(1\) must match messages array length \(2\)/)
       end
 
@@ -257,7 +257,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
         headers = [to_json_msg({ h: 1 }), to_json_msg({ h: 2 }), to_json_msg({ h: 3 })]
 
         expect do
-          client.send_batch(queue_name, messages, headers: headers)
+          client.produce_batch(queue_name, messages, headers: headers)
         end.to raise_error(ArgumentError, /headers array length \(3\) must match messages array length \(1\)/)
       end
 
@@ -267,7 +267,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
           to_json_msg({ id: 2 })
         ]
 
-        msg_ids = client.send_batch(queue_name, messages)
+        msg_ids = client.produce_batch(queue_name, messages)
         expect(msg_ids.size).to eq(2)
 
         read_messages = client.read_batch(queue_name, vt: 30, qty: 2)
@@ -278,7 +278,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
       end
 
       it 'handles empty headers array with empty messages array' do
-        msg_ids = client.send_batch(queue_name, [], headers: [])
+        msg_ids = client.produce_batch(queue_name, [], headers: [])
         expect(msg_ids).to eq([])
       end
 
@@ -298,7 +298,7 @@ RSpec.describe PGMQ::Client::Producer, :integration do
                       })
         ]
 
-        client.send_batch(queue_name, messages, headers: headers)
+        client.produce_batch(queue_name, messages, headers: headers)
         read_messages = client.read_batch(queue_name, vt: 30, qty: 2)
 
         read_messages.each do |msg|

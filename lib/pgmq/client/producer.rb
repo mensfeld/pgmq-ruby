@@ -2,12 +2,12 @@
 
 module PGMQ
   class Client
-    # Message sending operations
+    # Message producing operations
     #
-    # This module handles sending messages to queues, both individual messages
+    # This module handles producing messages to queues, both individual messages
     # and batches. Users must serialize messages to JSON strings themselves.
     module Producer
-      # Sends a message to a queue
+      # Produces a message to a queue
       #
       # @param queue_name [String] name of the queue
       # @param message [String] message as JSON string (for PostgreSQL JSONB)
@@ -15,24 +15,24 @@ module PGMQ
       # @param delay [Integer] delay in seconds before message becomes visible
       # @return [String] message ID as string
       #
-      # @example Basic send
-      #   msg_id = client.send("orders", '{"order_id":123,"total":99.99}')
+      # @example Basic produce
+      #   msg_id = client.produce("orders", '{"order_id":123,"total":99.99}')
       #
       # @example With delay
-      #   msg_id = client.send("orders", '{"data":"value"}', delay: 60)
+      #   msg_id = client.produce("orders", '{"data":"value"}', delay: 60)
       #
       # @example With headers for routing/tracing
-      #   msg_id = client.send("orders", '{"order_id":123}',
+      #   msg_id = client.produce("orders", '{"order_id":123}',
       #     headers: '{"trace_id":"abc123","priority":"high"}')
       #
       # @example With headers and delay
-      #   msg_id = client.send("orders", '{"order_id":123}',
+      #   msg_id = client.produce("orders", '{"order_id":123}',
       #     headers: '{"correlation_id":"req-456"}',
       #     delay: 30)
       #
       # @note Users must serialize to JSON themselves. Higher-level frameworks
       #       should handle serialization.
-      def send(
+      def produce(
         queue_name,
         message,
         headers: nil,
@@ -57,7 +57,7 @@ module PGMQ
         result[0]['send']
       end
 
-      # Sends multiple messages to a queue in a batch
+      # Produces multiple messages to a queue in a batch
       #
       # @param queue_name [String] name of the queue
       # @param messages [Array<String>] array of message payloads as JSON strings
@@ -66,24 +66,24 @@ module PGMQ
       # @return [Array<String>] array of message IDs
       # @raise [ArgumentError] if headers array length doesn't match messages length
       #
-      # @example Basic batch send
-      #   ids = client.send_batch("orders", [
+      # @example Basic batch produce
+      #   ids = client.produce_batch("orders", [
       #     '{"order_id":1}',
       #     '{"order_id":2}',
       #     '{"order_id":3}'
       #   ])
       #
       # @example With headers (one per message)
-      #   ids = client.send_batch("orders",
+      #   ids = client.produce_batch("orders",
       #     ['{"order_id":1}', '{"order_id":2}'],
       #     headers: ['{"priority":"high"}', '{"priority":"low"}'])
       #
       # @example With headers and delay
-      #   ids = client.send_batch("orders",
+      #   ids = client.produce_batch("orders",
       #     ['{"order_id":1}', '{"order_id":2}'],
       #     headers: ['{"trace_id":"a"}', '{"trace_id":"b"}'],
       #     delay: 60)
-      def send_batch(
+      def produce_batch(
         queue_name,
         messages,
         headers: nil,

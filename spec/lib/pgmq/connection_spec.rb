@@ -123,7 +123,7 @@ RSpec.describe PGMQ::Connection do
 
       threads = Array.new(10) do |i|
         Thread.new do
-          client.send(queue, to_json_msg({ thread: i }))
+          client.produce(queue, to_json_msg({ thread: i }))
         end
       end
 
@@ -176,7 +176,7 @@ RSpec.describe PGMQ::Connection do
 
       5.times do |i|
         fibers << Fiber.new do
-          client.send(queue, to_json_msg({ fiber: i }))
+          client.produce(queue, to_json_msg({ fiber: i }))
           results << i
           Fiber.yield
         end

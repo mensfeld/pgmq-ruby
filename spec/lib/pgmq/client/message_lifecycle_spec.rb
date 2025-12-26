@@ -17,7 +17,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
 
   describe '#pop' do
     it 'pops a message (atomic read+delete)' do
-      client.send(queue_name, to_json_msg({ test: 'pop' }))
+      client.produce(queue_name, to_json_msg({ test: 'pop' }))
 
       msg = client.pop(queue_name)
       expect(msg).to be_a(PGMQ::Message)
@@ -36,7 +36,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
 
   describe '#pop_batch' do
     it 'pops multiple messages atomically' do
-      client.send_batch(queue_name, [
+      client.produce_batch(queue_name, [
                           to_json_msg({ n: 1 }),
                           to_json_msg({ n: 2 }),
                           to_json_msg({ n: 3 })
@@ -53,7 +53,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
     end
 
     it 'returns only available messages when qty exceeds queue size' do
-      client.send_batch(queue_name, [to_json_msg({ n: 1 }), to_json_msg({ n: 2 })])
+      client.produce_batch(queue_name, [to_json_msg({ n: 1 }), to_json_msg({ n: 2 })])
 
       messages = client.pop_batch(queue_name, 10)
 
@@ -66,7 +66,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
     end
 
     it 'returns empty array when qty is zero' do
-      client.send(queue_name, to_json_msg({ test: 'data' }))
+      client.produce(queue_name, to_json_msg({ test: 'data' }))
       messages = client.pop_batch(queue_name, 0)
       expect(messages).to eq([])
 
@@ -82,7 +82,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
 
   describe '#delete' do
     it 'deletes a message' do
-      client.send(queue_name, to_json_msg({ test: 'data' }))
+      client.produce(queue_name, to_json_msg({ test: 'data' }))
       msg = client.read(queue_name, vt: 30)
 
       result = client.delete(queue_name, msg.msg_id)
@@ -102,7 +102,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
   describe '#delete_batch' do
     it 'deletes multiple messages' do
       batch = [to_json_msg({ a: 1 }), to_json_msg({ b: 2 }), to_json_msg({ c: 3 })]
-      client.send_batch(queue_name, batch)
+      client.produce_batch(queue_name, batch)
       messages = client.read_batch(queue_name, vt: 30, qty: 3)
 
       deleted_ids = client.delete_batch(queue_name, messages.map(&:msg_id))
@@ -121,7 +121,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
 
   describe '#archive' do
     it 'archives a message' do
-      client.send(queue_name, to_json_msg({ test: 'archive' }))
+      client.produce(queue_name, to_json_msg({ test: 'archive' }))
       msg = client.read(queue_name, vt: 30)
 
       result = client.archive(queue_name, msg.msg_id)
@@ -140,7 +140,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
 
   describe '#archive_batch' do
     it 'archives multiple messages' do
-      client.send_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ b: 2 })])
+      client.produce_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ b: 2 })])
       messages = client.read_batch(queue_name, vt: 30, qty: 2)
 
       archived_ids = client.archive_batch(queue_name, messages.map(&:msg_id))
@@ -159,7 +159,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
 
   describe '#set_vt' do
     it 'updates visibility timeout' do
-      client.send(queue_name, to_json_msg({ test: 'vt' }))
+      client.produce(queue_name, to_json_msg({ test: 'vt' }))
       msg = client.read(queue_name, vt: 5)
 
       updated_msg = client.set_vt(queue_name, msg.msg_id, vt_offset: 60)
@@ -175,7 +175,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
 
   describe '#set_vt_batch' do
     it 'updates visibility timeout for multiple messages' do
-      client.send_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ b: 2 }), to_json_msg({ c: 3 })])
+      client.produce_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ b: 2 }), to_json_msg({ c: 3 })])
       messages = client.read_batch(queue_name, vt: 5, qty: 3)
       original_vts = messages.map(&:vt)
 
@@ -214,8 +214,8 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
 
     it 'updates visibility timeout for messages from multiple queues' do
       # Send messages to both queues
-      client.send_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ a: 2 })])
-      client.send_batch(queue2, [to_json_msg({ b: 1 })])
+      client.produce_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ a: 2 })])
+      client.produce_batch(queue2, [to_json_msg({ b: 1 })])
 
       # Read messages
       msgs1 = client.read_batch(queue_name, vt: 5, qty: 2)
@@ -253,7 +253,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
     end
 
     it 'skips queues with empty message arrays' do
-      client.send(queue_name, to_json_msg({ test: 1 }))
+      client.produce(queue_name, to_json_msg({ test: 1 }))
       msg = client.read(queue_name, vt: 5)
 
       result = client.set_vt_multi({

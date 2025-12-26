@@ -112,8 +112,8 @@ RSpec.describe PGMQ::Transaction do
     describe 'successful transactions' do
       it 'commits messages to multiple queues atomically' do
         client.transaction do |txn|
-          txn.send(queue1, to_json_msg({ data: 'message1' }))
-          txn.send(queue2, to_json_msg({ data: 'message2' }))
+          txn.produce(queue1, to_json_msg({ data: 'message1' }))
+          txn.produce(queue2, to_json_msg({ data: 'message2' }))
         end
 
         # Both messages should be committed
@@ -127,7 +127,7 @@ RSpec.describe PGMQ::Transaction do
       end
 
       it 'allows read and delete within transaction' do
-        client.send(queue1, to_json_msg({ order_id: 123 }))
+        client.produce(queue1, to_json_msg({ order_id: 123 }))
 
         client.transaction do |txn|
           msg = txn.read(queue1, vt: 30)
@@ -141,7 +141,7 @@ RSpec.describe PGMQ::Transaction do
       end
 
       it 'supports archive operations in transaction' do
-        msg_id = client.send(queue1, to_json_msg({ data: 'to_archive' }))
+        msg_id = client.produce(queue1, to_json_msg({ data: 'to_archive' }))
 
         client.transaction do |txn|
           txn.archive(queue1, msg_id)
@@ -154,7 +154,7 @@ RSpec.describe PGMQ::Transaction do
 
       it 'returns transaction block result' do
         result = client.transaction do |txn|
-          txn.send(queue1, { test: 'data' })
+          txn.produce(queue1, { test: 'data' })
           'transaction_result'
         end
 
@@ -166,7 +166,7 @@ RSpec.describe PGMQ::Transaction do
       it 'rolls back on raised exception' do
         expect do
           client.transaction do |txn|
-            txn.send(queue1, { data: 'will_rollback' })
+            txn.produce(queue1, { data: 'will_rollback' })
             raise 'Test error'
           end
         end.to raise_error(PGMQ::Errors::ConnectionError, /Transaction failed/)
@@ -179,8 +179,8 @@ RSpec.describe PGMQ::Transaction do
       it 'rolls back all queue operations on error' do
         expect do
           client.transaction do |txn|
-            txn.send(queue1, { data: 'message1' })
-            txn.send(queue2, { data: 'message2' })
+            txn.produce(queue1, { data: 'message1' })
+            txn.produce(queue2, { data: 'message2' })
             raise StandardError, 'Rollback trigger'
           end
         end.to raise_error(PGMQ::Errors::ConnectionError)
@@ -195,11 +195,11 @@ RSpec.describe PGMQ::Transaction do
 
       it 'does not persist messages after rollback' do
         # Send message outside transaction first
-        client.send(queue1, to_json_msg({ data: 'before_txn' }))
+        client.produce(queue1, to_json_msg({ data: 'before_txn' }))
 
         expect do
           client.transaction do |txn|
-            txn.send(queue1, { data: 'in_txn' })
+            txn.produce(queue1, { data: 'in_txn' })
             raise 'Rollback'
           end
         end.to raise_error(PGMQ::Errors::ConnectionError)
@@ -215,7 +215,7 @@ RSpec.describe PGMQ::Transaction do
       it 'properly handles PG::Error during transaction' do
         expect do
           client.transaction do |txn|
-            txn.send(queue1, { data: 'test' })
+            txn.produce(queue1, { data: 'test' })
             # Trigger a PG error by using invalid SQL
             txn.connection.with_connection do |conn|
               conn.exec('INVALID SQL STATEMENT')
@@ -235,7 +235,7 @@ RSpec.describe PGMQ::Transaction do
 
         10.times do
           client.transaction do |txn|
-            txn.send(queue1, { iteration: 'test' })
+            txn.produce(queue1, { iteration: 'test' })
           end
         end
 

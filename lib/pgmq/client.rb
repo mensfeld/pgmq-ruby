@@ -14,7 +14,7 @@ module PGMQ
   #     password: 'postgres'
   #   )
   #   client.create('my_queue')
-  #   msg_id = client.send('my_queue', { data: 'value' })
+  #   msg_id = client.produce('my_queue', '{"data":"value"}')
   #   msg = client.read('my_queue', vt: 30)
   #   client.delete('my_queue', msg.msg_id)
   #
@@ -27,7 +27,7 @@ module PGMQ
     # Include functional modules (order matters for discoverability)
     include Transaction          # Transaction support (already existed)
     include QueueManagement      # Queue lifecycle (create, drop, list)
-    include Producer             # Message sending operations
+    include Producer             # Message producing operations
     include Consumer             # Single-queue reading operations
     include MultiQueue           # Multi-queue operations
     include MessageLifecycle     # Message state transitions (pop, delete, archive)

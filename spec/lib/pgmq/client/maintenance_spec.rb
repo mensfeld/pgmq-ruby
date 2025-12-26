@@ -18,7 +18,7 @@ RSpec.describe PGMQ::Client::Maintenance, :integration do
   describe '#purge_queue' do
     it 'purges all messages from queue' do
       batch = [to_json_msg({ a: 1 }), to_json_msg({ b: 2 }), to_json_msg({ c: 3 })]
-      client.send_batch(queue_name, batch)
+      client.produce_batch(queue_name, batch)
 
       count = client.purge_queue(queue_name)
       expect(count).to eq('3')
@@ -36,14 +36,14 @@ RSpec.describe PGMQ::Client::Maintenance, :integration do
   describe '#detach_archive' do
     it 'detaches archive table from queue management' do
       # Send and archive a message first
-      msg_id = client.send(queue_name, to_json_msg({ test: 'archive' }))
+      msg_id = client.produce(queue_name, to_json_msg({ test: 'archive' }))
       client.archive(queue_name, msg_id)
 
       # Detach the archive
       client.detach_archive(queue_name)
 
       # Queue should still exist and be usable
-      new_msg_id = client.send(queue_name, to_json_msg({ test: 'after_detach' }))
+      new_msg_id = client.produce(queue_name, to_json_msg({ test: 'after_detach' }))
       msg = client.read(queue_name, vt: 30)
       expect(msg.msg_id).to eq(new_msg_id)
     end
