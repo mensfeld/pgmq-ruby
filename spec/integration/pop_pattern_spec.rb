@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Pop Pattern (Atomic Read + Delete)
@@ -8,7 +7,7 @@
 # - pop_batch: Atomic batch read+delete
 # - No VT needed - message is immediately deleted
 #
-# Run: bundle exec ruby examples/13_pop_pattern_spec.rb
+# Run: bundle exec ruby spec/integration/pop_pattern_spec.rb
 
 require_relative 'support/example_helper'
 

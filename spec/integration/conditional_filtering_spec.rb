@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Conditional Filtering
@@ -8,7 +7,7 @@
 # - Multiple conditions use AND logic
 # - Works with read, read_batch, and read_with_poll
 #
-# Run: bundle exec ruby examples/07_conditional_filtering_spec.rb
+# Run: bundle exec ruby spec/integration/conditional_filtering_spec.rb
 
 require_relative 'support/example_helper'
 

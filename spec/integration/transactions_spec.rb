@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Transactions
@@ -8,7 +7,7 @@
 # - Automatic rollback on errors
 # - Essential for read-process-forward patterns
 #
-# Run: bundle exec ruby examples/05_transactions_spec.rb
+# Run: bundle exec ruby spec/integration/transactions_spec.rb
 
 require_relative 'support/example_helper'
 
@@ -52,6 +51,7 @@ ExampleHelper.run_example('Transactions') do |client, queues, interrupted|
   # Verify rollback (message still in inbox)
   msg = client.read(inbox, vt: 1)
   puts "Message still in inbox after rollback: #{!msg.nil?}"
+  # Make message immediately visible again (negative offset moves VT back in time)
   client.set_vt(inbox, msg.msg_id, vt_offset: -30) if msg
 
   # Clean up

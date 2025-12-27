@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Delayed Messages
@@ -7,7 +6,7 @@
 # - produce with delay: Message invisible until delay expires
 # - Use cases: scheduled tasks, retry backoff, rate limiting
 #
-# Run: bundle exec ruby examples/10_delayed_messages_spec.rb
+# Run: bundle exec ruby spec/integration/delayed_messages_spec.rb
 
 require_relative 'support/example_helper'
 

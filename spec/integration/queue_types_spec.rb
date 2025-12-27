@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Queue Types
@@ -8,7 +7,7 @@
 # - Unlogged (create_unlogged): Fast, no WAL, not crash-safe
 # - Partitioned (create_partitioned): For high-volume queues
 #
-# Run: bundle exec ruby examples/12_queue_types_spec.rb
+# Run: bundle exec ruby spec/integration/queue_types_spec.rb
 
 require_relative 'support/example_helper'
 

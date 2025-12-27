@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Queue Metrics and Monitoring
@@ -8,7 +7,7 @@
 # - metrics_all: Get metrics for all queues
 # - list_queues: List all queues with metadata
 #
-# Run: bundle exec ruby examples/09_queue_metrics_spec.rb
+# Run: bundle exec ruby spec/integration/queue_metrics_spec.rb
 
 require_relative 'support/example_helper'
 

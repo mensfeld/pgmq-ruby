@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Basic Produce and Consume
@@ -9,7 +8,7 @@
 # 3. Read the message with visibility timeout
 # 4. Delete the message after processing
 #
-# Run: bundle exec ruby examples/01_basic_produce_consume_spec.rb
+# Run: bundle exec ruby spec/integration/basic_produce_consume_spec.rb
 
 require_relative 'support/example_helper'
 

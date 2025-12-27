@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Batch Operations
@@ -8,7 +7,7 @@
 # - read_batch: Read multiple messages at once
 # - delete_batch: Delete multiple messages efficiently
 #
-# Run: bundle exec ruby examples/02_batch_operations_spec.rb
+# Run: bundle exec ruby spec/integration/batch_operations_spec.rb
 
 require_relative 'support/example_helper'
 

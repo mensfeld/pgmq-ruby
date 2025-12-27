@@ -1,5 +1,0 @@
----
-# Exclude examples/ which is a symlink to spec/integration/
-# Coditsu has issues with git blame on symlinked paths
-excluded_paths:
-  - examples/

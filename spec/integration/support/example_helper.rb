@@ -69,7 +69,11 @@ module ExampleHelper
         exit(1)
       ensure
         # Restore original signal handler
-        Signal.trap('INT', original_handler || 'DEFAULT')
+        case original_handler
+        when String then Signal.trap('INT', original_handler)
+        when Proc then Signal.trap('INT', &original_handler)
+        else Signal.trap('INT', 'DEFAULT')
+        end
         cleanup(client, queues)
         client.close
       end

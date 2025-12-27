@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Message Archiving
@@ -7,7 +6,7 @@
 # - delete: Permanently removes message
 # - archive: Moves to archive table for audit/analysis
 #
-# Run: bundle exec ruby examples/08_archiving_spec.rb
+# Run: bundle exec ruby spec/integration/archiving_spec.rb
 
 require_relative 'support/example_helper'
 

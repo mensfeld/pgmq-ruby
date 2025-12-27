@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Error Handling
@@ -8,7 +7,7 @@
 # - Dead letter queue (DLQ) pattern
 # - Retry with max attempts
 #
-# Run: bundle exec ruby examples/14_error_handling_spec.rb
+# Run: bundle exec ruby spec/integration/error_handling_spec.rb
 
 require_relative 'support/example_helper'
 

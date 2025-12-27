@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Long Polling
@@ -7,7 +6,7 @@
 # - read_with_poll blocks until a message arrives or timeout expires
 # - More efficient than busy-waiting with repeated read calls
 #
-# Run: bundle exec ruby examples/03_long_polling_spec.rb
+# Run: bundle exec ruby spec/integration/long_polling_spec.rb
 
 require_relative 'support/example_helper'
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Visibility Timeout Management
@@ -7,7 +6,7 @@
 # - set_vt: Extend visibility timeout for a message
 # - Heartbeat pattern: Periodically extend VT during long processing
 #
-# Run: bundle exec ruby examples/06_visibility_timeout_spec.rb
+# Run: bundle exec ruby spec/integration/visibility_timeout_spec.rb
 
 require_relative 'support/example_helper'
 

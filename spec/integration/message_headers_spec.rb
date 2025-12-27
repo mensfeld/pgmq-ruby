@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Example: Message Headers
@@ -7,7 +6,7 @@
 # - Headers are stored separately from payload
 # - Useful for tracing, routing, priority handling
 #
-# Run: bundle exec ruby examples/11_message_headers_spec.rb
+# Run: bundle exec ruby spec/integration/message_headers_spec.rb
 
 require_relative 'support/example_helper'
 
