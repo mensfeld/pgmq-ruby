@@ -75,6 +75,67 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 - Ruby 3.2+
 - PostgreSQL 14-18 with PGMQ extension installed
 
+### Installing PGMQ Extension
+
+PGMQ can be installed on your PostgreSQL instance in several ways:
+
+#### Standard Installation (Self-hosted PostgreSQL)
+
+For self-hosted PostgreSQL instances with filesystem access, install via [PGXN](https://pgxn.org/dist/pgmq/):
+
+```bash
+pgxn install pgmq
+```
+
+Or build from source:
+
+```bash
+git clone https://github.com/pgmq/pgmq.git
+cd pgmq/pgmq-extension
+make && make install
+```
+
+Then enable the extension:
+
+```sql
+CREATE EXTENSION pgmq;
+```
+
+#### Managed PostgreSQL Services (AWS RDS, Aurora, etc.)
+
+For managed PostgreSQL services that don't allow native extension installation, PGMQ provides a **SQL-only installation** that works without filesystem access:
+
+```bash
+git clone https://github.com/pgmq/pgmq.git
+cd pgmq
+psql -f pgmq-extension/sql/pgmq.sql postgres://user:pass@your-rds-host:5432/database
+```
+
+This creates a `pgmq` schema with all required functions. See [PGMQ Installation Guide](https://github.com/pgmq/pgmq/blob/main/INSTALLATION.md) for details.
+
+**Comparison:**
+
+| Feature | Extension | SQL-only |
+|---------|-----------|----------|
+| Version tracking | Yes | No |
+| Upgrade path | Yes | Manual |
+| Filesystem access | Required | Not needed |
+| Managed cloud services | Limited | Full support |
+
+#### Using pg_tle (Trusted Language Extensions)
+
+If your managed PostgreSQL service supports [pg_tle](https://github.com/aws/pg_tle) (available on AWS RDS PostgreSQL 14.5+ and Aurora), you can potentially install PGMQ as a Trusted Language Extension since PGMQ is written in PL/pgSQL and SQL (both supported by pg_tle).
+
+To use pg_tle:
+
+1. Enable pg_tle on your instance (add to `shared_preload_libraries`)
+2. Create the pg_tle extension: `CREATE EXTENSION pg_tle;`
+3. Use `pgtle.install_extension()` to install PGMQ's SQL functions
+
+See [AWS pg_tle documentation](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/PostgreSQL_trusted_language_extension.html) for setup instructions.
+
+> **Note:** The SQL-only installation is simpler and recommended for most managed service use cases. pg_tle provides additional version management and extension lifecycle features if needed.
+
 ## Installation
 
 Add to your Gemfile:
