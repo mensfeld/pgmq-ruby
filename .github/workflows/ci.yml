@@ -102,6 +102,15 @@ jobs:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
         run: bundle exec rspec
 
+      - name: Run examples
+        env:
+          PG_HOST: localhost
+          PG_PORT: 5433
+          PG_DATABASE: pgmq_test
+          PG_USER: postgres
+          PG_PASSWORD: postgres
+        run: bundle exec rake examples
+
   yard-lint:
     timeout-minutes: 5
     runs-on: ubuntu-latest
