@@ -7,7 +7,6 @@ gemspec
 group :development, :test do
   gem 'rake'
   gem 'rspec'
-  gem 'yard-lint'
 end
 
 group :test do
