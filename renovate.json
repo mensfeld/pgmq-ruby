@@ -7,6 +7,7 @@
     ".ruby-version",
     "Gemfile",
     "Gemfile.lint",
+    "pgmq-ruby.gemspec",
     ".github/workflows/**"
   ],
   "minimumReleaseAge": "7 days",
