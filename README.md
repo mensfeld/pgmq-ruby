@@ -25,17 +25,11 @@ PGMQ-Ruby is a Ruby client for PGMQ (PostgreSQL Message Queue). It provides dire
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 - [API Reference](#api-reference)
-  - [Queue Management](#queue-management)
-  - [Sending Messages](#sending-messages)
-  - [Reading Messages](#reading-messages)
-  - [Grouped Round-Robin Reading](#grouped-round-robin-reading)
-  - [Message Lifecycle](#message-lifecycle)
-  - [Monitoring](#monitoring)
-  - [Transaction Support](#transaction-support)
-  - [Topic Routing](#topic-routing-amqp-like-patterns)
 - [Message Object](#message-object)
-- [Working with JSON](#working-with-json)
+- [Serializers](#serializers)
+- [Rails Integration](#rails-integration)
 - [Development](#development)
+- [License](#license)
 - [Author](#author)
 
 ## PGMQ Feature Support
@@ -49,8 +43,6 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | **Reading** | `read` | Read single message with visibility timeout | ✅ |
 | | `read_batch` | Read multiple messages with visibility timeout | ✅ |
 | | `read_with_poll` | Long-polling for efficient message consumption | ✅ |
-| | `read_grouped_rr` | Round-robin reading across message groups | ✅ |
-| | `read_grouped_rr_with_poll` | Round-robin with long-polling | ✅ |
 | | `pop` | Atomic read + delete operation | ✅ |
 | | `pop_batch` | Atomic batch read + delete operation | ✅ |
 | **Deleting/Archiving** | `delete` | Delete single message | ✅ |
@@ -62,13 +54,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | `create_partitioned` | Create partitioned queue (requires pg_partman) | ✅ |
 | | `create_unlogged` | Create unlogged queue (faster, no crash recovery) | ✅ |
 | | `drop_queue` | Delete queue and all messages | ✅ |
-| **Topic Routing** | `bind_topic` | Bind topic pattern to queue (AMQP-like) | ✅ |
-| | `unbind_topic` | Remove topic binding | ✅ |
-| | `produce_topic` | Send message via routing key | ✅ |
-| | `produce_batch_topic` | Batch send via routing key | ✅ |
-| | `list_topic_bindings` | List all topic bindings | ✅ |
-| | `test_routing` | Test which queues match a routing key | ✅ |
-| **Utilities** | `set_vt` | Update visibility timeout (integer or Time) | ✅ |
+| **Utilities** | `set_vt` | Update message visibility timeout | ✅ |
 | | `set_vt_batch` | Batch update visibility timeouts | ✅ |
 | | `set_vt_multi` | Update visibility timeouts across multiple queues | ✅ |
 | | `list_queues` | List all queues with metadata | ✅ |
@@ -408,50 +394,6 @@ msg = client.pop("queue_name")
 
 # Pop batch (atomic read + delete for multiple messages)
 messages = client.pop_batch("queue_name", 10)
-
-# Grouped round-robin reading (fair processing across entities)
-# Messages are grouped by the first key in their JSON payload
-messages = client.read_grouped_rr("queue_name", vt: 30, qty: 10)
-
-# Grouped round-robin with long-polling
-messages = client.read_grouped_rr_with_poll("queue_name",
-  vt: 30,
-  qty: 10,
-  max_poll_seconds: 5,
-  poll_interval_ms: 100
-)
-```
-
-#### Grouped Round-Robin Reading
-
-When processing messages from multiple entities (users, orders, tenants), regular FIFO ordering can cause starvation - one entity with many messages can monopolize workers.
-
-Grouped round-robin ensures fair processing by interleaving messages from different groups:
-
-```ruby
-# Queue contains messages for different users:
-# user_a: 5 messages, user_b: 2 messages, user_c: 1 message
-
-# Regular read would process all user_a messages first (unfair)
-messages = client.read_batch("tasks", vt: 30, qty: 8)
-# => [user_a_1, user_a_2, user_a_3, user_a_4, user_a_5, user_b_1, user_b_2, user_c_1]
-
-# Grouped round-robin ensures fair distribution
-messages = client.read_grouped_rr("tasks", vt: 30, qty: 8)
-# => [user_a_1, user_b_1, user_c_1, user_a_2, user_b_2, user_a_3, user_a_4, user_a_5]
-```
-
-**How it works:**
-- Messages are grouped by the **first key** in their JSON payload
-- The first key should be your grouping identifier (e.g., `user_id`, `tenant_id`, `order_id`)
-- PGMQ rotates through groups, taking one message from each before repeating
-
-**Message format for grouping:**
-```ruby
-# Good - user_id is first key, used for grouping
-client.produce("tasks", '{"user_id":"user_a","task":"process"}')
-
-# The grouping key should come first in your JSON
 ```
 
 #### Conditional Message Filtering
@@ -516,18 +458,11 @@ client.archive("queue_name", msg_id)
 # Archive batch
 archived_ids = client.archive_batch("queue_name", [101, 102, 103])
 
-# Update visibility timeout with integer offset (seconds from now)
+# Update visibility timeout (vt: accepts integer seconds or Time object for PGMQ v1.11.0+)
 msg = client.set_vt("queue_name", msg_id, vt: 60)
-
-# Update visibility timeout with absolute Time (PGMQ v1.11.0+)
-future_time = Time.now + 300  # 5 minutes from now
-msg = client.set_vt("queue_name", msg_id, vt: future_time)
 
 # Batch update visibility timeout
 updated_msgs = client.set_vt_batch("queue_name", [101, 102, 103], vt: 60)
-
-# Batch update with absolute Time
-updated_msgs = client.set_vt_batch("queue_name", [101, 102, 103], vt: Time.now + 120)
 
 # Update visibility timeout across multiple queues
 client.set_vt_multi({
@@ -637,82 +572,6 @@ end
 - Read operations with long visibility timeouts may cause lock contention
 - Consider using `pop()` for atomic read+delete in simple cases
 
-### Topic Routing (AMQP-like Patterns)
-
-PGMQ v1.11.0+ supports AMQP-style topic routing, allowing messages to be delivered to multiple queues based on pattern matching.
-
-#### Topic Patterns
-
-Topic patterns support wildcards:
-- `*` matches exactly one word (e.g., `orders.*` matches `orders.new` but not `orders.new.priority`)
-- `#` matches zero or more words (e.g., `orders.#` matches `orders`, `orders.new`, and `orders.new.priority`)
-
-```ruby
-# Create queues for different purposes
-client.create("new_orders")
-client.create("order_updates")
-client.create("all_orders")
-client.create("audit_log")
-
-# Bind topic patterns to queues
-client.bind_topic("orders.new", "new_orders")        # Exact match
-client.bind_topic("orders.update", "order_updates")  # Exact match
-client.bind_topic("orders.*", "all_orders")          # Single-word wildcard
-client.bind_topic("#", "audit_log")                  # Catch-all
-
-# Send messages via routing key
-# Message is delivered to ALL queues with matching patterns
-count = client.produce_topic("orders.new", '{"order_id":123}')
-# => 3 (delivered to: new_orders, all_orders, audit_log)
-
-count = client.produce_topic("orders.update", '{"order_id":123,"status":"shipped"}')
-# => 3 (delivered to: order_updates, all_orders, audit_log)
-
-# Send with headers and delay
-count = client.produce_topic("orders.new.priority",
-  '{"order_id":456}',
-  headers: '{"trace_id":"abc123"}',
-  delay: 0
-)
-
-# Batch send via topic routing
-results = client.produce_batch_topic("orders.new", [
-  '{"order_id":1}',
-  '{"order_id":2}',
-  '{"order_id":3}'
-])
-# => [{ queue_name: "new_orders", msg_id: "1" }, ...]
-
-# List all topic bindings
-bindings = client.list_topic_bindings
-bindings.each do |b|
-  puts "#{b[:pattern]} -> #{b[:queue_name]}"
-end
-
-# List bindings for specific queue
-bindings = client.list_topic_bindings(queue_name: "all_orders")
-
-# Test which queues a routing key would match (for debugging)
-matches = client.test_routing("orders.new.priority")
-# => [{ pattern: "orders.#", queue_name: "all_orders" }, ...]
-
-# Validate routing keys and patterns
-client.validate_routing_key("orders.new.priority")  # => true
-client.validate_routing_key("orders.*")             # => false (wildcards not allowed in keys)
-client.validate_topic_pattern("orders.*")           # => true
-client.validate_topic_pattern("orders.#")           # => true
-
-# Remove bindings when done
-client.unbind_topic("orders.new", "new_orders")
-client.unbind_topic("orders.*", "all_orders")
-```
-
-**Use Cases:**
-- **Event broadcasting**: Send events to multiple consumers based on event type
-- **Multi-tenant routing**: Route messages to tenant-specific queues
-- **Log aggregation**: Capture all messages in an audit queue while routing to specific handlers
-- **Fan-out patterns**: Deliver one message to multiple processing pipelines
-
 ## Message Object
 
 PGMQ-Ruby is a **low-level transport library** - it returns raw values from PostgreSQL without any transformation. You are responsible for parsing JSON and type conversion.
@@ -725,7 +584,6 @@ msg.msg_id          # => "123" (String, not Integer)
 msg.id              # => "123" (alias for msg_id)
 msg.read_ct         # => "1" (String, not Integer)
 msg.enqueued_at     # => "2025-01-15 10:30:00+00" (String, not Time)
-msg.last_read_at    # => "2025-01-15 10:30:15+00" (String, or nil if never read)
 msg.vt              # => "2025-01-15 10:30:30+00" (String, not Time)
 msg.message         # => "{\"data\":\"value\"}" (Raw JSONB as JSON string)
 msg.headers         # => "{\"trace_id\":\"abc123\"}" (Raw JSONB as JSON string, optional)
@@ -739,7 +597,6 @@ metadata = JSON.parse(msg.headers) if msg.headers  # => { "trace_id" => "abc123"
 id = msg.msg_id.to_i           # => 123
 read_count = msg.read_ct.to_i  # => 1
 enqueued = Time.parse(msg.enqueued_at)  # => 2025-01-15 10:30:00 UTC
-last_read = Time.parse(msg.last_read_at) if msg.last_read_at  # => Time or nil
 ```
 
 ### Message Headers
