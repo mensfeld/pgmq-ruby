@@ -218,9 +218,10 @@ module PGMQ
       # Validates a routing key
       #
       # Routing keys are dot-separated words (no wildcards allowed).
+      # Returns false for invalid routing keys (PGMQ raises an error for invalid keys).
       #
       # @param routing_key [String] routing key to validate
-      # @return [Boolean] true if valid
+      # @return [Boolean] true if valid, false if invalid
       #
       # @example
       #   client.validate_routing_key("orders.new.priority")  # => true
@@ -234,6 +235,11 @@ module PGMQ
         end
 
         result[0]["validate_routing_key"] == "t"
+      rescue PGMQ::Errors::ConnectionError => e
+        # PGMQ raises an error for invalid routing keys
+        return false if e.message.include?("invalid characters")
+
+        raise
       end
 
       # Validates a topic pattern
