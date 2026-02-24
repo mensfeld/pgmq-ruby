@@ -29,7 +29,8 @@ module PGMQ
       #
       # @deprecated This method is deprecated and will be removed in a future version.
       #   PGMQ 2.0 no longer requires archive table detachment as archive tables
-      #   are no longer member objects. The server-side function is now a no-op.
+      #   are no longer member objects. This method still calls the SQL function for
+      #   backward compatibility, but the server-side function is a no-op in PGMQ 2.0+.
       # @param queue_name [String] name of the queue
       # @return [void]
       #

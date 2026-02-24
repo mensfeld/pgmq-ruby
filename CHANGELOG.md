@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Deprecations
-- **[Deprecation]** Mark `detach_archive(queue_name)` as deprecated. PGMQ 2.0 no longer requires archive table detachment as archive tables are no longer member objects. The method now emits a deprecation warning and will be removed in a future version.
+- **[Deprecation]** Mark `detach_archive(queue_name)` as deprecated. PGMQ 2.0 no longer requires archive table detachment as archive tables are no longer member objects. The method still calls the SQL function for backward compatibility with older PGMQ versions, but the server-side function is a no-op in PGMQ 2.0+. The method now emits a deprecation warning and will be removed in a future version.
 
 ### Testing
 - **[Feature]** Add Fiber Scheduler integration tests demonstrating compatibility with Ruby's Fiber Scheduler API and the `async` gem for concurrent I/O operations.
