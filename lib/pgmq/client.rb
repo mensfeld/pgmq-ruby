@@ -33,6 +33,7 @@ module PGMQ
     include MessageLifecycle     # Message state transitions (pop, delete, archive)
     include Maintenance          # Queue maintenance (purge, notifications)
     include Metrics              # Monitoring and metrics
+    include Topics               # Topic routing (AMQP-like patterns, PGMQ v1.11.0+)
 
     # Default visibility timeout in seconds
     DEFAULT_VT = 30
