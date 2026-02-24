@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 (2026-02-24)
 
 ### Breaking Changes
 - **[Breaking]** Remove `detach_archive(queue_name)` method. PGMQ 2.0 no longer requires archive table detachment as archive tables are no longer member objects. The server-side function was already a no-op in PGMQ 2.0+.
