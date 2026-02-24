@@ -8,6 +8,9 @@
 ### Testing
 - **[Feature]** Add Fiber Scheduler integration tests demonstrating compatibility with Ruby's Fiber Scheduler API and the `async` gem for concurrent I/O operations.
 
+### PGMQ v1.11.0 Features
+- **[Feature]** Add timestamp support to `set_vt`, `set_vt_batch`, and `set_vt_multi` methods. Now accepts either an integer offset (seconds from now) or an absolute `Time` object. The old `vt_offset:` parameter is deprecated in favor of `vt:` which accepts both types. (PGMQ v1.11.0+)
+
 ### Infrastructure
 - **[Fix]** Update docker-compose.yml volume mount for PostgreSQL 18+ compatibility.
 - **[Change]** Replace Coditsu with StandardRB for code linting. This provides faster, more consistent linting using the community Ruby Style Guide.

@@ -49,6 +49,32 @@ module DatabaseHelpers
     client&.close
   end
 
+  # Returns the PGMQ extension version as an array [major, minor, patch]
+  def pgmq_version
+    client = create_test_client
+    result = client.connection.with_connection do |conn|
+      conn.exec("SELECT extversion FROM pg_extension WHERE extname = 'pgmq'")
+    end
+    return nil if result.ntuples.zero?
+
+    version_str = result[0]["extversion"]
+    # Parse version string like "v1.9.0" or "1.9.0"
+    version_str.gsub(/^v/, "").split(".").map(&:to_i)
+  rescue
+    nil
+  ensure
+    client&.close
+  end
+
+  # Checks if PGMQ version supports set_vt with timestamp (v1.11.0+)
+  def pgmq_supports_set_vt_timestamp?
+    version = pgmq_version
+    return false unless version
+
+    # v1.11.0 or higher
+    version[0] > 1 || (version[0] == 1 && version[1] >= 11)
+  end
+
   # Ensures test database and extension exist
   def setup_test_database
     # Try to create extension if database exists

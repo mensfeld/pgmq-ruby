@@ -158,7 +158,16 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
   end
 
   describe "#set_vt" do
-    it "updates visibility timeout" do
+    it "updates visibility timeout with integer offset" do
+      client.produce(queue_name, to_json_msg({ test: "vt" }))
+      msg = client.read(queue_name, vt: 5)
+
+      updated_msg = client.set_vt(queue_name, msg.msg_id, vt: 60)
+      expect(updated_msg).to be_a(PGMQ::Message)
+      expect(updated_msg.vt).to be > msg.vt
+    end
+
+    it "updates visibility timeout with deprecated vt_offset parameter" do
       client.produce(queue_name, to_json_msg({ test: "vt" }))
       msg = client.read(queue_name, vt: 5)
 
@@ -167,19 +176,39 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       expect(updated_msg.vt).to be > msg.vt
     end
 
+    it "updates visibility timeout with absolute timestamp" do
+      skip "PGMQ v1.11.0+ required for timestamp support" unless pgmq_supports_set_vt_timestamp?
+
+      client.produce(queue_name, to_json_msg({ test: "vt_timestamp" }))
+      msg = client.read(queue_name, vt: 5)
+
+      future_time = Time.now + 120
+      updated_msg = client.set_vt(queue_name, msg.msg_id, vt: future_time)
+
+      expect(updated_msg).to be_a(PGMQ::Message)
+      expect(updated_msg.vt).to be > msg.vt
+    end
+
     it "returns nil for non-existent message" do
-      updated_msg = client.set_vt(queue_name, 99_999, vt_offset: 60)
+      updated_msg = client.set_vt(queue_name, 99_999, vt: 60)
       expect(updated_msg).to be_nil
+    end
+
+    it "raises ArgumentError when vt is not provided" do
+      client.produce(queue_name, to_json_msg({ test: "vt" }))
+      msg = client.read(queue_name, vt: 5)
+
+      expect { client.set_vt(queue_name, msg.msg_id) }.to raise_error(ArgumentError, /vt or vt_offset is required/)
     end
   end
 
   describe "#set_vt_batch" do
-    it "updates visibility timeout for multiple messages" do
+    it "updates visibility timeout for multiple messages with integer offset" do
       client.produce_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ b: 2 }), to_json_msg({ c: 3 })])
       messages = client.read_batch(queue_name, vt: 5, qty: 3)
       original_vts = messages.map(&:vt)
 
-      updated_messages = client.set_vt_batch(queue_name, messages.map(&:msg_id), vt_offset: 120)
+      updated_messages = client.set_vt_batch(queue_name, messages.map(&:msg_id), vt: 120)
 
       expect(updated_messages.size).to eq(3)
       expect(updated_messages).to all(be_a(PGMQ::Message))
@@ -188,14 +217,48 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       end
     end
 
+    it "updates visibility timeout with deprecated vt_offset parameter" do
+      client.produce_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ b: 2 })])
+      messages = client.read_batch(queue_name, vt: 5, qty: 2)
+      original_vts = messages.map(&:vt)
+
+      updated_messages = client.set_vt_batch(queue_name, messages.map(&:msg_id), vt_offset: 120)
+
+      expect(updated_messages.size).to eq(2)
+      updated_messages.each_with_index do |msg, i|
+        expect(msg.vt).to be > original_vts[i]
+      end
+    end
+
+    it "updates visibility timeout with absolute timestamp" do
+      skip "PGMQ v1.11.0+ required for timestamp support" unless pgmq_supports_set_vt_timestamp?
+
+      client.produce_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ b: 2 })])
+      messages = client.read_batch(queue_name, vt: 5, qty: 2)
+      original_vts = messages.map(&:vt)
+
+      future_time = Time.now + 180
+      updated_messages = client.set_vt_batch(queue_name, messages.map(&:msg_id), vt: future_time)
+
+      expect(updated_messages.size).to eq(2)
+      expect(updated_messages).to all(be_a(PGMQ::Message))
+      updated_messages.each_with_index do |msg, i|
+        expect(msg.vt).to be > original_vts[i]
+      end
+    end
+
     it "handles empty array" do
-      updated_messages = client.set_vt_batch(queue_name, [], vt_offset: 60)
+      updated_messages = client.set_vt_batch(queue_name, [], vt: 60)
       expect(updated_messages).to eq([])
     end
 
     it "returns empty array for non-existent messages" do
-      updated_messages = client.set_vt_batch(queue_name, [99_998, 99_999], vt_offset: 60)
+      updated_messages = client.set_vt_batch(queue_name, [99_998, 99_999], vt: 60)
       expect(updated_messages).to eq([])
+    end
+
+    it "raises ArgumentError when vt is not provided" do
+      expect { client.set_vt_batch(queue_name, [1, 2]) }.to raise_error(ArgumentError, /vt or vt_offset is required/)
     end
   end
 
@@ -210,7 +273,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       nil
     end
 
-    it "updates visibility timeout for messages from multiple queues" do
+    it "updates visibility timeout for messages from multiple queues with integer offset" do
       # Send messages to both queues
       client.produce_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ a: 2 })])
       client.produce_batch(queue2, [to_json_msg({ b: 1 })])
@@ -226,7 +289,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       result = client.set_vt_multi({
         queue_name => msgs1.map(&:msg_id),
         queue2 => msgs2.map(&:msg_id)
-      }, vt_offset: 120)
+      }, vt: 120)
 
       expect(result.keys).to contain_exactly(queue_name, queue2)
       expect(result[queue_name].size).to eq(2)
@@ -241,13 +304,54 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       end
     end
 
+    it "updates visibility timeout with deprecated vt_offset parameter" do
+      client.produce(queue_name, to_json_msg({ test: 1 }))
+      msg = client.read(queue_name, vt: 5)
+      original_vt = msg.vt
+
+      result = client.set_vt_multi({ queue_name => [msg.msg_id] }, vt_offset: 120)
+
+      expect(result[queue_name].first.vt).to be > original_vt
+    end
+
+    it "updates visibility timeout with absolute timestamp" do
+      skip "PGMQ v1.11.0+ required for timestamp support" unless pgmq_supports_set_vt_timestamp?
+
+      client.produce_batch(queue_name, [to_json_msg({ a: 1 })])
+      client.produce_batch(queue2, [to_json_msg({ b: 1 })])
+
+      msgs1 = client.read_batch(queue_name, vt: 5, qty: 1)
+      msgs2 = client.read_batch(queue2, vt: 5, qty: 1)
+
+      original_vts1 = msgs1.map(&:vt)
+      original_vts2 = msgs2.map(&:vt)
+
+      future_time = Time.now + 200
+      result = client.set_vt_multi({
+        queue_name => msgs1.map(&:msg_id),
+        queue2 => msgs2.map(&:msg_id)
+      }, vt: future_time)
+
+      result[queue_name].each_with_index do |msg, i|
+        expect(msg.vt).to be > original_vts1[i]
+      end
+
+      result[queue2].each do |msg|
+        expect(msg.vt).to be > original_vts2.first
+      end
+    end
+
     it "returns empty hash for empty input" do
-      result = client.set_vt_multi({}, vt_offset: 60)
+      result = client.set_vt_multi({}, vt: 60)
       expect(result).to eq({})
     end
 
     it "raises ArgumentError when updates is not a hash" do
-      expect { client.set_vt_multi([], vt_offset: 60) }.to raise_error(ArgumentError, /must be a hash/)
+      expect { client.set_vt_multi([], vt: 60) }.to raise_error(ArgumentError, /must be a hash/)
+    end
+
+    it "raises ArgumentError when vt is not provided" do
+      expect { client.set_vt_multi({ queue_name => [1] }) }.to raise_error(ArgumentError, /vt or vt_offset is required/)
     end
 
     it "skips queues with empty message arrays" do
@@ -257,7 +361,7 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       result = client.set_vt_multi({
         queue_name => [msg.msg_id],
         queue2 => []
-      }, vt_offset: 60)
+      }, vt: 60)
 
       expect(result.keys).to contain_exactly(queue_name)
       expect(result[queue_name].size).to eq(1)
