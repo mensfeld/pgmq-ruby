@@ -229,26 +229,35 @@ module PGMQ
 
       # Updates the visibility timeout for a message
       #
+      # Supports two modes:
+      # - Integer offset (seconds from now): `vt: 60` - message visible in 60 seconds
+      # - Absolute timestamp: `vt: Time.now + 300` - message visible at specific time
+      #
       # @param queue_name [String] name of the queue
       # @param msg_id [Integer] message ID
-      # @param vt_offset [Integer] visibility timeout offset in seconds
+      # @param vt [Integer, Time] visibility timeout as seconds offset or absolute timestamp
       # @return [PGMQ::Message, nil] updated message or nil if not found
       #
-      # @example
-      #   # Extend processing time by 60 more seconds
-      #   msg = client.set_vt("orders", 123, vt_offset: 60)
-      def set_vt(
-        queue_name,
-        msg_id,
-        vt_offset:
-      )
+      # @example Extend processing time by 60 more seconds (offset)
+      #   msg = client.set_vt("orders", 123, vt: 60)
+      #
+      # @example Set absolute visibility time (timestamp)
+      #   msg = client.set_vt("orders", 123, vt: Time.now + 300)
+      def set_vt(queue_name, msg_id, vt:)
         validate_queue_name!(queue_name)
 
         result = with_connection do |conn|
-          conn.exec_params(
-            "SELECT * FROM pgmq.set_vt($1::text, $2::bigint, $3::integer)",
-            [queue_name, msg_id, vt_offset]
-          )
+          if vt.is_a?(Time)
+            conn.exec_params(
+              "SELECT * FROM pgmq.set_vt($1::text, $2::bigint, $3::timestamptz)",
+              [queue_name, msg_id, vt.utc.iso8601(6)]
+            )
+          else
+            conn.exec_params(
+              "SELECT * FROM pgmq.set_vt($1::text, $2::bigint, $3::integer)",
+              [queue_name, msg_id, vt]
+            )
+          end
         end
 
         return nil if result.ntuples.zero?
@@ -258,19 +267,21 @@ module PGMQ
 
       # Updates visibility timeout for multiple messages
       #
+      # Supports two modes:
+      # - Integer offset (seconds from now): `vt: 60` - messages visible in 60 seconds
+      # - Absolute timestamp: `vt: Time.now + 300` - messages visible at specific time
+      #
       # @param queue_name [String] name of the queue
       # @param msg_ids [Array<Integer>] array of message IDs
-      # @param vt_offset [Integer] visibility timeout offset in seconds
+      # @param vt [Integer, Time] visibility timeout as seconds offset or absolute timestamp
       # @return [Array<PGMQ::Message>] array of updated messages
       #
-      # @example
-      #   # Extend processing time for multiple messages
-      #   messages = client.set_vt_batch("orders", [101, 102, 103], vt_offset: 60)
-      def set_vt_batch(
-        queue_name,
-        msg_ids,
-        vt_offset:
-      )
+      # @example Extend processing time for multiple messages (offset)
+      #   messages = client.set_vt_batch("orders", [101, 102, 103], vt: 60)
+      #
+      # @example Set absolute visibility time (timestamp)
+      #   messages = client.set_vt_batch("orders", [101, 102], vt: Time.now + 300)
+      def set_vt_batch(queue_name, msg_ids, vt:)
         validate_queue_name!(queue_name)
         return [] if msg_ids.empty?
 
@@ -278,10 +289,17 @@ module PGMQ
           encoder = PG::TextEncoder::Array.new
           encoded_array = encoder.encode(msg_ids)
 
-          conn.exec_params(
-            "SELECT * FROM pgmq.set_vt($1::text, $2::bigint[], $3::integer)",
-            [queue_name, encoded_array, vt_offset]
-          )
+          if vt.is_a?(Time)
+            conn.exec_params(
+              "SELECT * FROM pgmq.set_vt($1::text, $2::bigint[], $3::timestamptz)",
+              [queue_name, encoded_array, vt.utc.iso8601(6)]
+            )
+          else
+            conn.exec_params(
+              "SELECT * FROM pgmq.set_vt($1::text, $2::bigint[], $3::integer)",
+              [queue_name, encoded_array, vt]
+            )
+          end
         end
 
         result.map { |row| Message.new(row) }
@@ -293,8 +311,12 @@ module PGMQ
       # Useful when processing related messages from different queues and needing
       # to extend their visibility timeouts together.
       #
+      # Supports two modes:
+      # - Integer offset (seconds from now): `vt: 60` - messages visible in 60 seconds
+      # - Absolute timestamp: `vt: Time.now + 300` - messages visible at specific time
+      #
       # @param updates [Hash] hash of queue_name => array of msg_ids
-      # @param vt_offset [Integer] visibility timeout offset in seconds (applied to all)
+      # @param vt [Integer, Time] visibility timeout as seconds offset or absolute timestamp
       # @return [Hash] hash of queue_name => array of updated PGMQ::Message objects
       #
       # @example Extend visibility timeout for messages from multiple queues
@@ -302,14 +324,17 @@ module PGMQ
       #     'orders' => [1, 2, 3],
       #     'notifications' => [5, 6],
       #     'emails' => [10]
-      #   }, vt_offset: 60)
+      #   }, vt: 60)
       #   # => { 'orders' => [<Message>, ...], 'notifications' => [...], 'emails' => [...] }
+      #
+      # @example Set absolute visibility time
+      #   client.set_vt_multi(updates, vt: Time.now + 300)
       #
       # @example Extend timeout after batch reading from multiple queues
       #   messages = client.read_multi(['q1', 'q2', 'q3'], qty: 10)
       #   updates = messages.group_by(&:queue_name).transform_values { |msgs| msgs.map(&:msg_id) }
-      #   client.set_vt_multi(updates, vt_offset: 120)
-      def set_vt_multi(updates, vt_offset:)
+      #   client.set_vt_multi(updates, vt: 120)
+      def set_vt_multi(updates, vt:)
         raise ArgumentError, "updates must be a hash" unless updates.is_a?(Hash)
         return {} if updates.empty?
 
@@ -321,7 +346,7 @@ module PGMQ
           updates.each do |queue_name, msg_ids|
             next if msg_ids.empty?
 
-            updated_messages = txn.set_vt_batch(queue_name, msg_ids, vt_offset: vt_offset)
+            updated_messages = txn.set_vt_batch(queue_name, msg_ids, vt: vt)
             result[queue_name] = updated_messages
           end
           result

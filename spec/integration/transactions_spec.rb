@@ -52,7 +52,7 @@ ExampleHelper.run_example("Transactions") do |client, queues, interrupted|
   msg = client.read(inbox, vt: 1)
   puts "Message still in inbox after rollback: #{!msg.nil?}"
   # Make message immediately visible again (negative offset moves VT back in time)
-  client.set_vt(inbox, msg.msg_id, vt_offset: -30) if msg
+  client.set_vt(inbox, msg.msg_id, vt: -30) if msg
 
   # Clean up
   loop { break unless client.pop(inbox) }

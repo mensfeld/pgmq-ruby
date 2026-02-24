@@ -4,6 +4,7 @@
 
 ### Breaking Changes
 - **[Breaking]** Remove `detach_archive(queue_name)` method. PGMQ 2.0 no longer requires archive table detachment as archive tables are no longer member objects. The server-side function was already a no-op in PGMQ 2.0+.
+- **[Breaking]** Rename `vt_offset:` parameter to `vt:` in `set_vt`, `set_vt_batch`, and `set_vt_multi` methods. The `vt:` parameter now accepts either an integer offset (seconds from now) or an absolute `Time` object for PGMQ v1.11.0+.
 
 ### PGMQ v1.11.0 Features
 - **[Feature]** Add `last_read_at` field to `PGMQ::Message`. Returns the timestamp of the last read operation for the message, or nil if the message has never been read. This enables tracking when messages were last accessed (PGMQ v1.8.1+).

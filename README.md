@@ -458,17 +458,17 @@ client.archive("queue_name", msg_id)
 # Archive batch
 archived_ids = client.archive_batch("queue_name", [101, 102, 103])
 
-# Update visibility timeout
-msg = client.set_vt("queue_name", msg_id, vt_offset: 60)
+# Update visibility timeout (vt: accepts integer seconds or Time object for PGMQ v1.11.0+)
+msg = client.set_vt("queue_name", msg_id, vt: 60)
 
 # Batch update visibility timeout
-updated_msgs = client.set_vt_batch("queue_name", [101, 102, 103], vt_offset: 60)
+updated_msgs = client.set_vt_batch("queue_name", [101, 102, 103], vt: 60)
 
 # Update visibility timeout across multiple queues
 client.set_vt_multi({
   "orders" => [1, 2, 3],
   "notifications" => [5, 6]
-}, vt_offset: 120)
+}, vt: 120)
 
 # Purge all messages
 count = client.purge_queue("queue_name")

@@ -22,7 +22,7 @@ ExampleHelper.run_example("Visibility Timeout Management") do |client, queues, i
   puts "Read message, VT expires: #{msg.vt}"
 
   # Extend VT
-  updated = client.set_vt(queue, msg.msg_id, vt_offset: 30)
+  updated = client.set_vt(queue, msg.msg_id, vt: 30)
   puts "Extended VT to: #{updated.vt}"
 
   client.delete(queue, msg.msg_id)
@@ -38,7 +38,7 @@ ExampleHelper.run_example("Visibility Timeout Management") do |client, queues, i
     break if interrupted.call
 
     sleep 0.5
-    client.set_vt(queue, msg.msg_id, vt_offset: 2)
+    client.set_vt(queue, msg.msg_id, vt: 2)
     puts "  Heartbeat #{i + 1}: VT extended"
   end
 
