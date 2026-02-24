@@ -9,10 +9,10 @@
 #
 # Run: bundle exec ruby spec/integration/batch_operations_spec.rb
 
-require_relative 'support/example_helper'
+require_relative "support/example_helper"
 
-ExampleHelper.run_example('Batch Operations') do |client, queues, _interrupted|
-  queue = ExampleHelper.unique_queue_name('batch')
+ExampleHelper.run_example("Batch Operations") do |client, queues, _interrupted|
+  queue = ExampleHelper.unique_queue_name("batch")
   queues << queue
 
   client.create(queue)

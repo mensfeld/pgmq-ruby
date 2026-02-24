@@ -6,9 +6,9 @@
 # and measuring concurrent execution to verify true non-blocking I/O.
 
 # Suppress async gem's console logging during tests
-ENV['CONSOLE_LEVEL'] ||= 'fatal'
+ENV["CONSOLE_LEVEL"] ||= "fatal"
 
-require 'async'
+require "async"
 
 module FiberSchedulerHelper
   # Runs a block under the Async fiber scheduler.

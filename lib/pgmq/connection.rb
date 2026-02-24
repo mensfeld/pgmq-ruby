@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'pg'
-require 'connection_pool'
+require "pg"
+require "connection_pool"
 
 module PGMQ
   # Manages database connections for PGMQ
@@ -45,7 +45,7 @@ module PGMQ
       if conn_params.nil?
         raise(
           PGMQ::Errors::ConfigurationError,
-          'Connection parameters are required'
+          "Connection parameters are required"
         )
       end
 
@@ -113,12 +113,12 @@ module PGMQ
     def connection_lost_error?(error)
       # Common connection lost errors
       lost_connection_messages = [
-        'server closed the connection',
-        'connection not open',
-        'no connection to the server',
-        'terminating connection',
-        'connection to server was lost',
-        'could not receive data from server'
+        "server closed the connection",
+        "connection not open",
+        "no connection to the server",
+        "terminating connection",
+        "connection to server was lost",
+        "could not receive data from server"
       ]
 
       message = error.message.downcase
@@ -145,7 +145,7 @@ module PGMQ
       return parse_connection_string(params) if params.is_a?(String)
       return params if params.is_a?(Hash) && !params.empty?
 
-      raise PGMQ::Errors::ConfigurationError, 'Invalid connection parameters format'
+      raise PGMQ::Errors::ConfigurationError, "Invalid connection parameters format"
     end
 
     # Parses a PostgreSQL connection string
@@ -173,7 +173,7 @@ module PGMQ
       ConnectionPool.new(size: @pool_size, timeout: @pool_timeout) do
         create_connection(params)
       end
-    rescue StandardError => e
+    rescue => e
       raise PGMQ::Errors::ConnectionError, "Failed to create connection pool: #{e.message}"
     end
 

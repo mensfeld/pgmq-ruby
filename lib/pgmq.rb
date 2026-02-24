@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require 'zeitwerk'
-require 'time'
+require "zeitwerk"
+require "time"
 
 loader = Zeitwerk::Loader.for_gem
 loader.inflector.inflect(
-  'pgmq' => 'PGMQ'
+  "pgmq" => "PGMQ"
 )
 loader.setup
 loader.eager_load

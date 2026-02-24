@@ -2,9 +2,9 @@
 
 RSpec.describe PGMQ::Client::MultiQueue, :integration do
   let(:client) { PGMQ::Client.new(TEST_DB_PARAMS) }
-  let(:queue1) { test_queue_name('multi1') }
-  let(:queue2) { test_queue_name('multi2') }
-  let(:queue3) { test_queue_name('multi3') }
+  let(:queue1) { test_queue_name("multi1") }
+  let(:queue2) { test_queue_name("multi2") }
+  let(:queue3) { test_queue_name("multi3") }
 
   before do
     ensure_test_queue(client, queue1)
@@ -15,17 +15,17 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
   after do
     [queue1, queue2, queue3].each do |q|
       client.drop_queue(q)
-    rescue StandardError
+    rescue
       nil
     end
   end
 
-  describe 'single connection, single query' do
-    it 'reads from multiple queues in one query' do
+  describe "single connection, single query" do
+    it "reads from multiple queues in one query" do
       # Send to different queues
-      client.produce(queue1, to_json_msg({ from: 'q1' }))
-      client.produce(queue2, to_json_msg({ from: 'q2' }))
-      client.produce(queue3, to_json_msg({ from: 'q3' }))
+      client.produce(queue1, to_json_msg({ from: "q1" }))
+      client.produce(queue2, to_json_msg({ from: "q2" }))
+      client.produce(queue3, to_json_msg({ from: "q3" }))
 
       messages = client.read_multi([queue1, queue2, queue3], vt: 30)
 
@@ -33,17 +33,17 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(messages.map(&:queue_name).sort).to eq([queue1, queue2, queue3].sort)
     end
 
-    it 'returns messages with queue_name attribute' do
-      client.produce(queue1, to_json_msg({ data: 'test' }))
+    it "returns messages with queue_name attribute" do
+      client.produce(queue1, to_json_msg({ data: "test" }))
 
       messages = client.read_multi([queue1, queue2], vt: 30)
 
       expect(messages.size).to eq(1)
       expect(messages.first.queue_name).to eq(queue1)
-      expect(JSON.parse(messages.first.message)['data']).to eq('test')
+      expect(JSON.parse(messages.first.message)["data"]).to eq("test")
     end
 
-    it 'respects limit parameter' do
+    it "respects limit parameter" do
       5.times { client.produce(queue1, to_json_msg({ n: 1 })) }
       5.times { client.produce(queue2, to_json_msg({ n: 2 })) }
 
@@ -52,7 +52,7 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(messages.size).to eq(3)
     end
 
-    it 'respects qty per queue' do
+    it "respects qty per queue" do
       10.times { client.produce(queue1, to_json_msg({ n: 1 })) }
       10.times { client.produce(queue2, to_json_msg({ n: 2 })) }
 
@@ -66,15 +66,15 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(q2_count).to be <= 2
     end
 
-    it 'returns empty array when no messages' do
+    it "returns empty array when no messages" do
       messages = client.read_multi([queue1, queue2, queue3], vt: 30)
 
       expect(messages).to eq([])
     end
 
-    it 'gets first available message from any queue with limit 1' do
+    it "gets first available message from any queue with limit 1" do
       # Only send to queue2
-      client.produce(queue2, to_json_msg({ from: 'q2' }))
+      client.produce(queue2, to_json_msg({ from: "q2" }))
 
       messages = client.read_multi([queue1, queue2, queue3], vt: 30, limit: 1)
 
@@ -83,26 +83,26 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
     end
   end
 
-  describe 'validation' do
-    it 'requires array of queue names' do
+  describe "validation" do
+    it "requires array of queue names" do
       expect do
-        client.read_multi('not_an_array', vt: 30)
+        client.read_multi("not_an_array", vt: 30)
       end.to raise_error(ArgumentError, /must be an array/)
     end
 
-    it 'rejects empty array' do
+    it "rejects empty array" do
       expect do
         client.read_multi([], vt: 30)
       end.to raise_error(ArgumentError, /cannot be empty/)
     end
 
-    it 'validates all queue names' do
+    it "validates all queue names" do
       expect do
-        client.read_multi(['valid_queue', 'invalid-queue!'], vt: 30)
+        client.read_multi(["valid_queue", "invalid-queue!"], vt: 30)
       end.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
 
-    it 'limits to 50 queues maximum' do
+    it "limits to 50 queues maximum" do
       many_queues = (1..51).map { |i| "queue#{i}" }
 
       expect do
@@ -111,12 +111,12 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
     end
   end
 
-  describe 'practical use cases' do
-    it 'supports round-robin processing' do
+  describe "practical use cases" do
+    it "supports round-robin processing" do
       # Simulate worker pattern: process first available from multiple queues
-      client.produce(queue1, to_json_msg({ job: 'email' }))
-      client.produce(queue2, to_json_msg({ job: 'notification' }))
-      client.produce(queue3, to_json_msg({ job: 'webhook' }))
+      client.produce(queue1, to_json_msg({ job: "email" }))
+      client.produce(queue2, to_json_msg({ job: "notification" }))
+      client.produce(queue3, to_json_msg({ job: "webhook" }))
 
       processed = []
       3.times do
@@ -132,11 +132,11 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(processed.uniq.size).to eq(3) # All different queues
     end
 
-    it 'supports batch processing across queues' do
+    it "supports batch processing across queues" do
       # Send multiple to each queue
-      5.times { client.produce(queue1, to_json_msg({ type: 'order' })) }
-      5.times { client.produce(queue2, to_json_msg({ type: 'email' })) }
-      5.times { client.produce(queue3, to_json_msg({ type: 'sms' })) }
+      5.times { client.produce(queue1, to_json_msg({ type: "order" })) }
+      5.times { client.produce(queue2, to_json_msg({ type: "email" })) }
+      5.times { client.produce(queue3, to_json_msg({ type: "sms" })) }
 
       # Get messages from all queues
       messages = client.read_multi([queue1, queue2, queue3], vt: 1, qty: 2, limit: 5)
@@ -163,8 +163,8 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
     end
   end
 
-  describe '#read_multi_with_poll' do
-    it 'waits for messages to arrive' do
+  describe "#read_multi_with_poll" do
+    it "waits for messages to arrive" do
       # Start polling in background
       result = nil
       thread = Thread.new do
@@ -186,7 +186,7 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(result.first.queue_name).to eq(queue2)
     end
 
-    it 'returns immediately if messages exist' do
+    it "returns immediately if messages exist" do
       client.produce(queue1, to_json_msg({ immediate: true }))
 
       start = Time.now
@@ -201,7 +201,7 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(elapsed).to be < 0.5 # Should return immediately
     end
 
-    it 'times out when no messages arrive' do
+    it "times out when no messages arrive" do
       start = Time.now
       messages = client.read_multi_with_poll(
         [queue1, queue2, queue3],
@@ -216,7 +216,7 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(elapsed).to be < 1.5
     end
 
-    it 'respects qty and limit parameters' do
+    it "respects qty and limit parameters" do
       5.times { client.produce(queue1, to_json_msg({ n: 1 })) }
       5.times { client.produce(queue2, to_json_msg({ n: 2 })) }
 
@@ -231,19 +231,19 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(messages.size).to be <= 3
     end
 
-    it 'validates queue names array' do
+    it "validates queue names array" do
       expect do
-        client.read_multi_with_poll('not_array', vt: 30)
+        client.read_multi_with_poll("not_array", vt: 30)
       end.to raise_error(ArgumentError, /must be an array/)
     end
 
-    it 'validates non-empty array' do
+    it "validates non-empty array" do
       expect do
         client.read_multi_with_poll([], vt: 30)
       end.to raise_error(ArgumentError, /cannot be empty/)
     end
 
-    it 'gets first available from any queue' do
+    it "gets first available from any queue" do
       # Only queue3 has messages
       client.produce(queue3, to_json_msg({ only_in_q3: true }))
 
@@ -259,62 +259,62 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
     end
   end
 
-  describe '#pop_multi' do
-    it 'pops and deletes from first available queue' do
-      client.produce(queue2, to_json_msg({ data: 'test' }))
+  describe "#pop_multi" do
+    it "pops and deletes from first available queue" do
+      client.produce(queue2, to_json_msg({ data: "test" }))
 
       msg = client.pop_multi([queue1, queue2, queue3])
 
       expect(msg).not_to be_nil
       expect(msg.queue_name).to eq(queue2)
-      expect(JSON.parse(msg.message)['data']).to eq('test')
+      expect(JSON.parse(msg.message)["data"]).to eq("test")
 
       # Verify deleted
       remaining = client.read(queue2, vt: 30)
       expect(remaining).to be_nil
     end
 
-    it 'returns nil when all queues empty' do
+    it "returns nil when all queues empty" do
       msg = client.pop_multi([queue1, queue2, queue3])
       expect(msg).to be_nil
     end
 
-    it 'pops from first non-empty queue' do
+    it "pops from first non-empty queue" do
       # Send to queue3 only
-      client.produce(queue3, to_json_msg({ from: 'q3' }))
+      client.produce(queue3, to_json_msg({ from: "q3" }))
 
       msg = client.pop_multi([queue1, queue2, queue3])
 
       expect(msg.queue_name).to eq(queue3)
     end
 
-    it 'validates queue names' do
+    it "validates queue names" do
       expect do
-        client.pop_multi(['invalid-name!'])
+        client.pop_multi(["invalid-name!"])
       end.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
 
-    it 'validates array input' do
+    it "validates array input" do
       expect do
-        client.pop_multi('not_array')
+        client.pop_multi("not_array")
       end.to raise_error(ArgumentError, /must be an array/)
     end
 
-    it 'validates non-empty array' do
+    it "validates non-empty array" do
       expect do
         client.pop_multi([])
       end.to raise_error(ArgumentError, /cannot be empty/)
     end
 
-    it 'limits to 50 queues' do
+    it "limits to 50 queues" do
       many_queues = (1..51).map { |i| "queue#{i}" }
       expect do
         client.pop_multi(many_queues)
       end.to raise_error(ArgumentError, /cannot exceed 50/)
     end
 
-    it 'has queue_name attribute on returned message' do
-      client.produce(queue1, to_json_msg({ test: 'data' }))
+    it "has queue_name attribute on returned message" do
+      client.produce(queue1, to_json_msg({ test: "data" }))
       msg = client.pop_multi([queue1, queue2])
 
       expect(msg).to respond_to(:queue_name)
@@ -322,8 +322,8 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
     end
   end
 
-  describe '#delete_multi' do
-    it 'deletes messages from multiple queues' do
+  describe "#delete_multi" do
+    it "deletes messages from multiple queues" do
       # Send messages
       id1 = client.produce(queue1, to_json_msg({ n: 1 }))
       id2 = client.produce(queue1, to_json_msg({ n: 2 }))
@@ -342,12 +342,12 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(client.read(queue2, vt: 30)).to be_nil
     end
 
-    it 'returns empty hash for empty input' do
+    it "returns empty hash for empty input" do
       result = client.delete_multi({})
       expect(result).to eq({})
     end
 
-    it 'skips empty message ID arrays' do
+    it "skips empty message ID arrays" do
       id1 = client.produce(queue1, to_json_msg({ n: 1 }))
 
       result = client.delete_multi({
@@ -359,19 +359,19 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(result[queue2]).to be_nil
     end
 
-    it 'validates hash input' do
+    it "validates hash input" do
       expect do
-        client.delete_multi('not_hash')
+        client.delete_multi("not_hash")
       end.to raise_error(ArgumentError, /must be a hash/)
     end
 
-    it 'validates all queue names' do
+    it "validates all queue names" do
       expect do
-        client.delete_multi({ 'invalid-name!' => [1, 2] })
+        client.delete_multi({ "invalid-name!" => [1, 2] })
       end.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
 
-    it 'is transactional (all or nothing)' do
+    it "is transactional (all or nothing)" do
       id1 = client.produce(queue1, to_json_msg({ n: 1 }))
       id2 = client.produce(queue2, to_json_msg({ n: 2 }))
 
@@ -384,7 +384,7 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(result.values.flatten.size).to eq(2)
     end
 
-    it 'works with batch processing pattern' do
+    it "works with batch processing pattern" do
       5.times { client.produce(queue1, to_json_msg({ q: 1 })) }
       5.times { client.produce(queue2, to_json_msg({ q: 2 })) }
 
@@ -397,8 +397,8 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
     end
   end
 
-  describe '#archive_multi' do
-    it 'archives messages from multiple queues' do
+  describe "#archive_multi" do
+    it "archives messages from multiple queues" do
       id1 = client.produce(queue1, to_json_msg({ n: 1 }))
       id2 = client.produce(queue2, to_json_msg({ n: 2 }))
 
@@ -415,12 +415,12 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(client.read(queue2, vt: 30)).to be_nil
     end
 
-    it 'returns empty hash for empty input' do
+    it "returns empty hash for empty input" do
       result = client.archive_multi({})
       expect(result).to eq({})
     end
 
-    it 'skips empty message ID arrays' do
+    it "skips empty message ID arrays" do
       id1 = client.produce(queue1, to_json_msg({ n: 1 }))
 
       result = client.archive_multi({
@@ -432,19 +432,19 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(result[queue2]).to be_nil
     end
 
-    it 'validates hash input' do
+    it "validates hash input" do
       expect do
-        client.archive_multi('not_hash')
+        client.archive_multi("not_hash")
       end.to raise_error(ArgumentError, /must be a hash/)
     end
 
-    it 'validates all queue names' do
+    it "validates all queue names" do
       expect do
-        client.archive_multi({ 'invalid-name!' => [1] })
+        client.archive_multi({ "invalid-name!" => [1] })
       end.to raise_error(PGMQ::Errors::InvalidQueueNameError)
     end
 
-    it 'is transactional' do
+    it "is transactional" do
       id1 = client.produce(queue1, to_json_msg({ n: 1 }))
       id2 = client.produce(queue2, to_json_msg({ n: 2 }))
 
@@ -456,7 +456,7 @@ RSpec.describe PGMQ::Client::MultiQueue, :integration do
       expect(result.values.flatten.size).to eq(2)
     end
 
-    it 'archives multiple messages from same queue' do
+    it "archives multiple messages from same queue" do
       ids = Array.new(3) { client.produce(queue1, to_json_msg({ n: 1 })) }
 
       result = client.archive_multi({

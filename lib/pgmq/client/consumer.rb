@@ -33,12 +33,12 @@ module PGMQ
         result = with_connection do |conn|
           if conditional.empty?
             conn.exec_params(
-              'SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer)',
+              "SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer)",
               [queue_name, vt, 1]
             )
           else
             conn.exec_params(
-              'SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer, $4::jsonb)',
+              "SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer, $4::jsonb)",
               [queue_name, vt, 1, conditional.to_json]
             )
           end
@@ -82,12 +82,12 @@ module PGMQ
         result = with_connection do |conn|
           if conditional.empty?
             conn.exec_params(
-              'SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer)',
+              "SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer)",
               [queue_name, vt, qty]
             )
           else
             conn.exec_params(
-              'SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer, $4::jsonb)',
+              "SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer, $4::jsonb)",
               [queue_name, vt, qty, conditional.to_json]
             )
           end
@@ -135,12 +135,12 @@ module PGMQ
         result = with_connection do |conn|
           if conditional.empty?
             conn.exec_params(
-              'SELECT * FROM pgmq.read_with_poll($1::text, $2::integer, $3::integer, $4::integer, $5::integer)',
+              "SELECT * FROM pgmq.read_with_poll($1::text, $2::integer, $3::integer, $4::integer, $5::integer)",
               [queue_name, vt, qty, max_poll_seconds, poll_interval_ms]
             )
           else
-            sql = 'SELECT * FROM pgmq.read_with_poll($1::text, $2::integer, $3::integer, ' \
-                  '$4::integer, $5::integer, $6::jsonb)'
+            sql = "SELECT * FROM pgmq.read_with_poll($1::text, $2::integer, $3::integer, " \
+                  "$4::integer, $5::integer, $6::jsonb)"
             conn.exec_params(
               sql,
               [queue_name, vt, qty, max_poll_seconds, poll_interval_ms, conditional.to_json]

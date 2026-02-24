@@ -9,23 +9,23 @@
 #
 # Run: bundle exec ruby spec/integration/multi_queue_spec.rb
 
-require_relative 'support/example_helper'
+require_relative "support/example_helper"
 
-ExampleHelper.run_example('Multi-Queue Operations') do |client, queues, interrupted|
-  q1 = ExampleHelper.unique_queue_name('orders')
-  q2 = ExampleHelper.unique_queue_name('notifications')
-  q3 = ExampleHelper.unique_queue_name('emails')
+ExampleHelper.run_example("Multi-Queue Operations") do |client, queues, interrupted|
+  q1 = ExampleHelper.unique_queue_name("orders")
+  q2 = ExampleHelper.unique_queue_name("notifications")
+  q3 = ExampleHelper.unique_queue_name("emails")
   all_queues = [q1, q2, q3]
   queues.concat(all_queues)
 
   all_queues.each { |q| client.create(q) }
 
   # Produce to different queues
-  client.produce(q1, ExampleHelper.to_json({ type: 'order', id: 1 }))
-  client.produce(q1, ExampleHelper.to_json({ type: 'order', id: 2 }))
-  client.produce(q2, ExampleHelper.to_json({ type: 'notification' }))
-  client.produce(q3, ExampleHelper.to_json({ type: 'email' }))
-  puts 'Produced: 2 orders, 1 notification, 1 email'
+  client.produce(q1, ExampleHelper.to_json({ type: "order", id: 1 }))
+  client.produce(q1, ExampleHelper.to_json({ type: "order", id: 2 }))
+  client.produce(q2, ExampleHelper.to_json({ type: "notification" }))
+  client.produce(q3, ExampleHelper.to_json({ type: "email" }))
+  puts "Produced: 2 orders, 1 notification, 1 email"
 
   break if interrupted.call
 
@@ -44,7 +44,7 @@ ExampleHelper.run_example('Multi-Queue Operations') do |client, queues, interrup
   break if interrupted.call
 
   # pop_multi (atomic read+delete)
-  client.produce(q1, ExampleHelper.to_json({ type: 'order', id: 3 }))
+  client.produce(q1, ExampleHelper.to_json({ type: "order", id: 3 }))
   msg = client.pop_multi(all_queues)
-  puts "pop_multi: got message from #{msg&.queue_name || 'none'}"
+  puts "pop_multi: got message from #{msg&.queue_name || "none"}"
 end

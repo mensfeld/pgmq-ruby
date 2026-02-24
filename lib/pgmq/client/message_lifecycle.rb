@@ -19,7 +19,7 @@ module PGMQ
         validate_queue_name!(queue_name)
 
         result = with_connection do |conn|
-          conn.exec_params('SELECT * FROM pgmq.pop($1::text)', [queue_name])
+          conn.exec_params("SELECT * FROM pgmq.pop($1::text)", [queue_name])
         end
 
         return nil if result.ntuples.zero?
@@ -41,7 +41,7 @@ module PGMQ
         return [] if qty <= 0
 
         result = with_connection do |conn|
-          conn.exec_params('SELECT * FROM pgmq.pop($1::text, $2::integer)', [queue_name, qty])
+          conn.exec_params("SELECT * FROM pgmq.pop($1::text, $2::integer)", [queue_name, qty])
         end
 
         result.map { |row| Message.new(row) }
@@ -63,14 +63,14 @@ module PGMQ
 
         result = with_connection do |conn|
           conn.exec_params(
-            'SELECT pgmq.delete($1::text, $2::bigint)',
+            "SELECT pgmq.delete($1::text, $2::bigint)",
             [queue_name, msg_id]
           )
         end
 
         return false if result.ntuples.zero?
 
-        result[0]['delete'] == 't'
+        result[0]["delete"] == "t"
       end
 
       # Deletes multiple messages from the queue
@@ -94,12 +94,12 @@ module PGMQ
           encoded_array = encoder.encode(msg_ids)
 
           conn.exec_params(
-            'SELECT * FROM pgmq.delete($1::text, $2::bigint[])',
+            "SELECT * FROM pgmq.delete($1::text, $2::bigint[])",
             [queue_name, encoded_array]
           )
         end
 
-        result.map { |row| row['delete'] }
+        result.map { |row| row["delete"] }
       end
 
       # Deletes specific messages from multiple queues in a single transaction
@@ -123,7 +123,7 @@ module PGMQ
       #   deletions = messages.group_by(&:queue_name).transform_values { |mss| mss.map(&:msg_id) }
       #   client.delete_multi(deletions)
       def delete_multi(deletions)
-        raise ArgumentError, 'deletions must be a hash' unless deletions.is_a?(Hash)
+        raise ArgumentError, "deletions must be a hash" unless deletions.is_a?(Hash)
         return {} if deletions.empty?
 
         # Validate all queue names
@@ -157,14 +157,14 @@ module PGMQ
 
         result = with_connection do |conn|
           conn.exec_params(
-            'SELECT pgmq.archive($1::text, $2::bigint)',
+            "SELECT pgmq.archive($1::text, $2::bigint)",
             [queue_name, msg_id]
           )
         end
 
         return false if result.ntuples.zero?
 
-        result[0]['archive'] == 't'
+        result[0]["archive"] == "t"
       end
 
       # Archives multiple messages
@@ -188,12 +188,12 @@ module PGMQ
           encoded_array = encoder.encode(msg_ids)
 
           conn.exec_params(
-            'SELECT * FROM pgmq.archive($1::text, $2::bigint[])',
+            "SELECT * FROM pgmq.archive($1::text, $2::bigint[])",
             [queue_name, encoded_array]
           )
         end
 
-        result.map { |row| row['archive'] }
+        result.map { |row| row["archive"] }
       end
 
       # Archives specific messages from multiple queues in a single transaction
@@ -209,7 +209,7 @@ module PGMQ
       #     'notifications' => [5]
       #   })
       def archive_multi(archives)
-        raise ArgumentError, 'archives must be a hash' unless archives.is_a?(Hash)
+        raise ArgumentError, "archives must be a hash" unless archives.is_a?(Hash)
         return {} if archives.empty?
 
         # Validate all queue names
@@ -246,7 +246,7 @@ module PGMQ
 
         result = with_connection do |conn|
           conn.exec_params(
-            'SELECT * FROM pgmq.set_vt($1::text, $2::bigint, $3::integer)',
+            "SELECT * FROM pgmq.set_vt($1::text, $2::bigint, $3::integer)",
             [queue_name, msg_id, vt_offset]
           )
         end
@@ -279,7 +279,7 @@ module PGMQ
           encoded_array = encoder.encode(msg_ids)
 
           conn.exec_params(
-            'SELECT * FROM pgmq.set_vt($1::text, $2::bigint[], $3::integer)',
+            "SELECT * FROM pgmq.set_vt($1::text, $2::bigint[], $3::integer)",
             [queue_name, encoded_array, vt_offset]
           )
         end
@@ -310,7 +310,7 @@ module PGMQ
       #   updates = messages.group_by(&:queue_name).transform_values { |msgs| msgs.map(&:msg_id) }
       #   client.set_vt_multi(updates, vt_offset: 120)
       def set_vt_multi(updates, vt_offset:)
-        raise ArgumentError, 'updates must be a hash' unless updates.is_a?(Hash)
+        raise ArgumentError, "updates must be a hash" unless updates.is_a?(Hash)
         return {} if updates.empty?
 
         # Validate all queue names

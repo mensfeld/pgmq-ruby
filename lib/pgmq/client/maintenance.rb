@@ -19,10 +19,10 @@ module PGMQ
         validate_queue_name!(queue_name)
 
         result = with_connection do |conn|
-          conn.exec_params('SELECT pgmq.purge_queue($1::text)', [queue_name])
+          conn.exec_params("SELECT pgmq.purge_queue($1::text)", [queue_name])
         end
 
-        result[0]['purge_queue']
+        result[0]["purge_queue"]
       end
 
       # Detaches the archive table from PGMQ management
@@ -36,12 +36,12 @@ module PGMQ
       # @example
       #   client.detach_archive("orders")
       def detach_archive(queue_name)
-        warn '[DEPRECATION] `detach_archive` is deprecated and will be removed in a future version. ' \
-             'PGMQ 2.0 no longer requires archive table detachment.'
+        warn "[DEPRECATION] `detach_archive` is deprecated and will be removed in a future version. " \
+             "PGMQ 2.0 no longer requires archive table detachment."
         validate_queue_name!(queue_name)
 
         with_connection do |conn|
-          conn.exec_params('SELECT pgmq.detach_archive($1::text)', [queue_name])
+          conn.exec_params("SELECT pgmq.detach_archive($1::text)", [queue_name])
         end
 
         nil
@@ -70,7 +70,7 @@ module PGMQ
 
         with_connection do |conn|
           conn.exec_params(
-            'SELECT pgmq.enable_notify_insert($1::text, $2::integer)',
+            "SELECT pgmq.enable_notify_insert($1::text, $2::integer)",
             [queue_name, throttle_interval_ms]
           )
         end
@@ -89,7 +89,7 @@ module PGMQ
         validate_queue_name!(queue_name)
 
         with_connection do |conn|
-          conn.exec_params('SELECT pgmq.disable_notify_insert($1::text)', [queue_name])
+          conn.exec_params("SELECT pgmq.disable_notify_insert($1::text)", [queue_name])
         end
 
         nil

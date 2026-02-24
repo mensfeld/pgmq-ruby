@@ -10,6 +10,7 @@
 
 ### Infrastructure
 - **[Fix]** Update docker-compose.yml volume mount for PostgreSQL 18+ compatibility.
+- **[Change]** Replace Coditsu with StandardRB for code linting. This provides faster, more consistent linting using the community Ruby Style Guide.
 
 ## 0.4.0 (2025-12-26)
 

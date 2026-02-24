@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require 'bundler/setup'
-require 'bundler/gem_tasks'
+require "bundler/setup"
+require "bundler/gem_tasks"
 
 namespace :examples do
-  desc 'Run all examples (validates gem functionality)'
+  desc "Run all examples (validates gem functionality)"
   task :run do
-    examples_dir = File.expand_path('spec/integration', __dir__)
-    example_files = Dir.glob(File.join(examples_dir, '*_spec.rb')).sort
+    examples_dir = File.expand_path("spec/integration", __dir__)
+    example_files = Dir.glob(File.join(examples_dir, "*_spec.rb")).sort
 
     puts "Running #{example_files.size} examples..."
     puts
@@ -19,7 +19,7 @@ namespace :examples do
 
       success = system("bundle exec ruby #{example}")
       if success.nil?
-        puts 'Interrupted. Aborting.'
+        puts "Interrupted. Aborting."
         exit(130)
       elsif !success
         failed << name
@@ -28,7 +28,7 @@ namespace :examples do
       puts
     end
 
-    puts '=' * 60
+    puts "=" * 60
     if failed.empty?
       puts "All #{example_files.size} examples passed."
     else
@@ -38,9 +38,9 @@ namespace :examples do
     end
   end
 
-  desc 'Run a specific example by name (e.g., rake examples:run_one[basic_produce_consume])'
+  desc "Run a specific example by name (e.g., rake examples:run_one[basic_produce_consume])"
   task :run_one, [:name] do |_t, args|
-    examples_dir = File.expand_path('spec/integration', __dir__)
+    examples_dir = File.expand_path("spec/integration", __dir__)
     pattern = File.join(examples_dir, "*#{args[:name]}*_spec.rb")
     matches = Dir.glob(pattern)
 
@@ -52,22 +52,22 @@ namespace :examples do
     exec("bundle exec ruby #{matches.first}")
   end
 
-  desc 'List all available examples'
+  desc "List all available examples"
   task :list do
-    examples_dir = File.expand_path('spec/integration', __dir__)
-    example_files = Dir.glob(File.join(examples_dir, '*_spec.rb')).sort
+    examples_dir = File.expand_path("spec/integration", __dir__)
+    example_files = Dir.glob(File.join(examples_dir, "*_spec.rb")).sort
 
-    puts 'Available examples:'
+    puts "Available examples:"
     example_files.each do |f|
-      name = File.basename(f, '_spec.rb')
+      name = File.basename(f, "_spec.rb")
       puts "  #{name}"
     end
     puts
-    puts 'Run with: bundle exec rake examples:run_one[NAME]'
-    puts 'Example:  bundle exec rake examples:run_one[basic_produce_consume]'
+    puts "Run with: bundle exec rake examples:run_one[NAME]"
+    puts "Example:  bundle exec rake examples:run_one[basic_produce_consume]"
   end
 end
 
 # Shorthand task
-desc 'Run all examples'
-task examples: 'examples:run'
+desc "Run all examples"
+task examples: "examples:run"

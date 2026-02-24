@@ -20,7 +20,7 @@ module PGMQ
         validate_queue_name!(queue_name)
 
         result = with_connection do |conn|
-          conn.exec_params('SELECT * FROM pgmq.metrics($1::text)', [queue_name])
+          conn.exec_params("SELECT * FROM pgmq.metrics($1::text)", [queue_name])
         end
 
         return nil if result.ntuples.zero?
@@ -39,7 +39,7 @@ module PGMQ
       #   end
       def metrics_all
         result = with_connection do |conn|
-          conn.exec('SELECT * FROM pgmq.metrics_all()')
+          conn.exec("SELECT * FROM pgmq.metrics_all()")
         end
 
         result.map { |row| PGMQ::Metrics.new(row) }

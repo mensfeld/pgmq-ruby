@@ -5,19 +5,19 @@
 # Provides common functionality for database connection, queue management,
 # and graceful shutdown handling.
 
-require 'bundler/setup'
-require 'pgmq'
-require 'json'
-require 'securerandom'
+require "bundler/setup"
+require "pgmq"
+require "json"
+require "securerandom"
 
 module ExampleHelper
   # Database connection parameters matching test configuration
   DB_PARAMS = {
-    host: ENV.fetch('PG_HOST', 'localhost'),
-    port: ENV.fetch('PG_PORT', 5433).to_i,
-    dbname: ENV.fetch('PG_DATABASE', 'pgmq_test'),
-    user: ENV.fetch('PG_USER', 'postgres'),
-    password: ENV.fetch('PG_PASSWORD', 'postgres')
+    host: ENV.fetch("PG_HOST", "localhost"),
+    port: ENV.fetch("PG_PORT", 5433).to_i,
+    dbname: ENV.fetch("PG_DATABASE", "pgmq_test"),
+    user: ENV.fetch("PG_USER", "postgres"),
+    password: ENV.fetch("PG_PASSWORD", "postgres")
   }.freeze
 
   class << self
@@ -41,7 +41,7 @@ module ExampleHelper
     #
     # @param prefix [String] Prefix for the queue name
     # @return [String] Unique queue name
-    def unique_queue_name(prefix = 'example')
+    def unique_queue_name(prefix = "example")
       "#{prefix}_#{SecureRandom.hex(4)}"
     end
 
@@ -53,9 +53,9 @@ module ExampleHelper
     # @yieldparam queues [Array<String>] Array to track created queues for cleanup
     # @yieldparam interrupted [Proc] Proc that returns true if SIGINT received
     def run_example(name)
-      puts '=' * 60
+      puts "=" * 60
       puts "Example: #{name}"
-      puts '=' * 60
+      puts "=" * 60
       puts
 
       client = create_client
@@ -63,7 +63,7 @@ module ExampleHelper
       interrupted = false
 
       # Handle graceful shutdown on SIGINT (Ctrl+C)
-      original_handler = Signal.trap('INT') do
+      original_handler = Signal.trap("INT") do
         puts "\nInterrupted. Cleaning up..."
         interrupted = true
       end
@@ -71,16 +71,16 @@ module ExampleHelper
       begin
         yield(client, queues, -> { interrupted })
         puts "\nExample completed successfully."
-      rescue StandardError => e
+      rescue => e
         puts "\nError: #{e.class}: #{e.message}"
-        puts e.backtrace.first(5).join("\n") if ENV['DEBUG']
+        puts e.backtrace.first(5).join("\n") if ENV["DEBUG"]
         exit(1)
       ensure
         # Restore original signal handler
         case original_handler
-        when String then Signal.trap('INT', original_handler)
-        when Proc then Signal.trap('INT', &original_handler)
-        else Signal.trap('INT', 'DEFAULT')
+        when String then Signal.trap("INT", original_handler)
+        when Proc then Signal.trap("INT", &original_handler)
+        else Signal.trap("INT", "DEFAULT")
         end
         cleanup(client, queues)
         client.close
@@ -98,7 +98,7 @@ module ExampleHelper
       queues.each do |queue_name|
         client.drop_queue(queue_name)
         puts "  Dropped: #{queue_name}"
-      rescue StandardError => e
+      rescue => e
         puts "  Failed to drop #{queue_name}: #{e.message}"
       end
     end
