@@ -54,7 +54,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | `create_partitioned` | Create partitioned queue (requires pg_partman) | ✅ |
 | | `create_unlogged` | Create unlogged queue (faster, no crash recovery) | ✅ |
 | | `drop_queue` | Delete queue and all messages | ✅ |
-| | `detach_archive` | Detach archive table from queue | ✅ |
+| | `detach_archive` | Detach archive table from queue | ⚠️ Deprecated |
 | **Utilities** | `set_vt` | Update message visibility timeout | ✅ |
 | | `set_vt_batch` | Batch update visibility timeouts | ✅ |
 | | `set_vt_multi` | Update visibility timeouts across multiple queues | ✅ |
@@ -279,7 +279,7 @@ client = PGMQ::Client.new(
 
 **Connection Pool Benefits:**
 - **Thread-safe** - Multiple threads can safely share a single client
-- **Fiber-aware** - Works with Ruby 3.0+ Fiber Scheduler for non-blocking I/O
+- **Fiber-aware** - Works with Ruby 3.0+ Fiber Scheduler for non-blocking I/O (tested with the `async` gem)
 - **Auto-reconnect** - Recovers from lost connections (configurable)
 - **Health checks** - Verifies connections before use to prevent stale connection errors
 - **Monitoring** - Track pool utilization with `client.stats`
