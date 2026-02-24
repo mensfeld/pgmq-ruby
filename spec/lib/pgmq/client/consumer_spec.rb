@@ -26,6 +26,17 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
       expect(JSON.parse(msg.message)).to eq({ "order_id" => 123, "status" => "pending" })
     end
 
+    it "returns last_read_at as nil or timestamp depending on PGMQ version" do
+      # The last_read_at field was added in PGMQ v1.8.1
+      # For older versions it will be nil, for newer versions it will be a timestamp
+      client.produce(queue_name, to_json_msg({ test: 1 }))
+
+      msg = client.read(queue_name, vt: 30)
+      expect(msg).to respond_to(:last_read_at)
+      # last_read_at can be nil (older PGMQ) or a timestamp string (PGMQ v1.8.1+)
+      expect(msg.last_read_at).to be_nil.or(be_a(String))
+    end
+
     it "returns nil when queue is empty" do
       msg = client.read(queue_name, vt: 30)
       expect(msg).to be_nil
