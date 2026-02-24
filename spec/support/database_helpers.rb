@@ -66,14 +66,18 @@ module DatabaseHelpers
     client&.close
   end
 
-  # Checks if PGMQ version supports set_vt with timestamp (v1.11.0+)
-  def pgmq_supports_set_vt_timestamp?
+  # Checks if PGMQ version supports v1.11.0+ features (set_vt timestamp, topic routing)
+  def pgmq_supports_v1_11_features?
     version = pgmq_version
     return false unless version
 
     # v1.11.0 or higher
     version[0] > 1 || (version[0] == 1 && version[1] >= 11)
   end
+
+  # Alias for readability in different contexts
+  alias_method :pgmq_supports_set_vt_timestamp?, :pgmq_supports_v1_11_features?
+  alias_method :pgmq_supports_topic_routing?, :pgmq_supports_v1_11_features?
 
   # Ensures test database and extension exist
   def setup_test_database

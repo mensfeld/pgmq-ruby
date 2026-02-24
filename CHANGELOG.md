@@ -15,6 +15,18 @@
   Messages are grouped by the first key in their JSON payload. This ensures fair processing
   when multiple entities (users, orders, etc.) have messages in the queue, preventing any
   single entity from monopolizing workers.
+- **[Feature]** Add Topic Routing support (AMQP-like patterns). New methods in `PGMQ::Client`:
+  - `bind_topic(pattern, queue_name)` - Bind a topic pattern to a queue
+  - `unbind_topic(pattern, queue_name)` - Remove a topic binding
+  - `produce_topic(routing_key, message, headers:, delay:)` - Send message via routing key
+  - `produce_batch_topic(routing_key, messages, headers:, delay:)` - Batch send via routing key
+  - `list_topic_bindings(queue_name:)` - List all topic bindings
+  - `test_routing(routing_key)` - Test which queues a routing key matches
+  - `validate_routing_key(routing_key)` - Validate a routing key
+  - `validate_topic_pattern(pattern)` - Validate a topic pattern
+
+  Topic patterns support wildcards: `*` (single word) and `#` (zero or more words).
+  Requires PGMQ v1.11.0+.
 
 ### Testing
 - **[Feature]** Add Fiber Scheduler integration tests demonstrating compatibility with Ruby's Fiber Scheduler API and the `async` gem for concurrent I/O operations.
