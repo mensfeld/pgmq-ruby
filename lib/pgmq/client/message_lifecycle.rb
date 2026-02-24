@@ -236,7 +236,6 @@ module PGMQ
       # @param queue_name [String] name of the queue
       # @param msg_id [Integer] message ID
       # @param vt [Integer, Time] visibility timeout as seconds offset or absolute timestamp
-      # @param vt_offset [Integer] (deprecated) use vt: instead
       # @return [PGMQ::Message, nil] updated message or nil if not found
       #
       # @example Extend processing time by 60 more seconds (offset)
@@ -244,23 +243,19 @@ module PGMQ
       #
       # @example Set absolute visibility time (timestamp)
       #   msg = client.set_vt("orders", 123, vt: Time.now + 300)
-      def set_vt(queue_name, msg_id, vt: nil, vt_offset: nil)
+      def set_vt(queue_name, msg_id, vt:)
         validate_queue_name!(queue_name)
 
-        # Support both new vt: and deprecated vt_offset: parameter
-        visibility_timeout = vt || vt_offset
-        raise ArgumentError, "vt or vt_offset is required" if visibility_timeout.nil?
-
         result = with_connection do |conn|
-          if visibility_timeout.is_a?(Time)
+          if vt.is_a?(Time)
             conn.exec_params(
               "SELECT * FROM pgmq.set_vt($1::text, $2::bigint, $3::timestamptz)",
-              [queue_name, msg_id, visibility_timeout.utc.iso8601(6)]
+              [queue_name, msg_id, vt.utc.iso8601(6)]
             )
           else
             conn.exec_params(
               "SELECT * FROM pgmq.set_vt($1::text, $2::bigint, $3::integer)",
-              [queue_name, msg_id, visibility_timeout]
+              [queue_name, msg_id, vt]
             )
           end
         end
@@ -279,7 +274,6 @@ module PGMQ
       # @param queue_name [String] name of the queue
       # @param msg_ids [Array<Integer>] array of message IDs
       # @param vt [Integer, Time] visibility timeout as seconds offset or absolute timestamp
-      # @param vt_offset [Integer] (deprecated) use vt: instead
       # @return [Array<PGMQ::Message>] array of updated messages
       #
       # @example Extend processing time for multiple messages (offset)
@@ -287,27 +281,23 @@ module PGMQ
       #
       # @example Set absolute visibility time (timestamp)
       #   messages = client.set_vt_batch("orders", [101, 102], vt: Time.now + 300)
-      def set_vt_batch(queue_name, msg_ids, vt: nil, vt_offset: nil)
+      def set_vt_batch(queue_name, msg_ids, vt:)
         validate_queue_name!(queue_name)
         return [] if msg_ids.empty?
-
-        # Support both new vt: and deprecated vt_offset: parameter
-        visibility_timeout = vt || vt_offset
-        raise ArgumentError, "vt or vt_offset is required" if visibility_timeout.nil?
 
         result = with_connection do |conn|
           encoder = PG::TextEncoder::Array.new
           encoded_array = encoder.encode(msg_ids)
 
-          if visibility_timeout.is_a?(Time)
+          if vt.is_a?(Time)
             conn.exec_params(
               "SELECT * FROM pgmq.set_vt($1::text, $2::bigint[], $3::timestamptz)",
-              [queue_name, encoded_array, visibility_timeout.utc.iso8601(6)]
+              [queue_name, encoded_array, vt.utc.iso8601(6)]
             )
           else
             conn.exec_params(
               "SELECT * FROM pgmq.set_vt($1::text, $2::bigint[], $3::integer)",
-              [queue_name, encoded_array, visibility_timeout]
+              [queue_name, encoded_array, vt]
             )
           end
         end
@@ -327,7 +317,6 @@ module PGMQ
       #
       # @param updates [Hash] hash of queue_name => array of msg_ids
       # @param vt [Integer, Time] visibility timeout as seconds offset or absolute timestamp
-      # @param vt_offset [Integer] (deprecated) use vt: instead
       # @return [Hash] hash of queue_name => array of updated PGMQ::Message objects
       #
       # @example Extend visibility timeout for messages from multiple queues
@@ -345,13 +334,9 @@ module PGMQ
       #   messages = client.read_multi(['q1', 'q2', 'q3'], qty: 10)
       #   updates = messages.group_by(&:queue_name).transform_values { |msgs| msgs.map(&:msg_id) }
       #   client.set_vt_multi(updates, vt: 120)
-      def set_vt_multi(updates, vt: nil, vt_offset: nil)
+      def set_vt_multi(updates, vt:)
         raise ArgumentError, "updates must be a hash" unless updates.is_a?(Hash)
         return {} if updates.empty?
-
-        # Support both new vt: and deprecated vt_offset: parameter
-        visibility_timeout = vt || vt_offset
-        raise ArgumentError, "vt or vt_offset is required" if visibility_timeout.nil?
 
         # Validate all queue names
         updates.each_key { |qn| validate_queue_name!(qn) }
@@ -361,7 +346,7 @@ module PGMQ
           updates.each do |queue_name, msg_ids|
             next if msg_ids.empty?
 
-            updated_messages = txn.set_vt_batch(queue_name, msg_ids, vt: visibility_timeout)
+            updated_messages = txn.set_vt_batch(queue_name, msg_ids, vt: vt)
             result[queue_name] = updated_messages
           end
           result

@@ -167,15 +167,6 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       expect(updated_msg.vt).to be > msg.vt
     end
 
-    it "updates visibility timeout with deprecated vt_offset parameter" do
-      client.produce(queue_name, to_json_msg({ test: "vt" }))
-      msg = client.read(queue_name, vt: 5)
-
-      updated_msg = client.set_vt(queue_name, msg.msg_id, vt_offset: 60)
-      expect(updated_msg).to be_a(PGMQ::Message)
-      expect(updated_msg.vt).to be > msg.vt
-    end
-
     it "updates visibility timeout with absolute timestamp" do
       skip "PGMQ v1.11.0+ required for timestamp support" unless pgmq_supports_set_vt_timestamp?
 
@@ -194,12 +185,6 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       expect(updated_msg).to be_nil
     end
 
-    it "raises ArgumentError when vt is not provided" do
-      client.produce(queue_name, to_json_msg({ test: "vt" }))
-      msg = client.read(queue_name, vt: 5)
-
-      expect { client.set_vt(queue_name, msg.msg_id) }.to raise_error(ArgumentError, /vt or vt_offset is required/)
-    end
   end
 
   describe "#set_vt_batch" do
@@ -212,19 +197,6 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
 
       expect(updated_messages.size).to eq(3)
       expect(updated_messages).to all(be_a(PGMQ::Message))
-      updated_messages.each_with_index do |msg, i|
-        expect(msg.vt).to be > original_vts[i]
-      end
-    end
-
-    it "updates visibility timeout with deprecated vt_offset parameter" do
-      client.produce_batch(queue_name, [to_json_msg({ a: 1 }), to_json_msg({ b: 2 })])
-      messages = client.read_batch(queue_name, vt: 5, qty: 2)
-      original_vts = messages.map(&:vt)
-
-      updated_messages = client.set_vt_batch(queue_name, messages.map(&:msg_id), vt_offset: 120)
-
-      expect(updated_messages.size).to eq(2)
       updated_messages.each_with_index do |msg, i|
         expect(msg.vt).to be > original_vts[i]
       end
@@ -257,9 +229,6 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       expect(updated_messages).to eq([])
     end
 
-    it "raises ArgumentError when vt is not provided" do
-      expect { client.set_vt_batch(queue_name, [1, 2]) }.to raise_error(ArgumentError, /vt or vt_offset is required/)
-    end
   end
 
   describe "#set_vt_multi" do
@@ -304,16 +273,6 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       end
     end
 
-    it "updates visibility timeout with deprecated vt_offset parameter" do
-      client.produce(queue_name, to_json_msg({ test: 1 }))
-      msg = client.read(queue_name, vt: 5)
-      original_vt = msg.vt
-
-      result = client.set_vt_multi({ queue_name => [msg.msg_id] }, vt_offset: 120)
-
-      expect(result[queue_name].first.vt).to be > original_vt
-    end
-
     it "updates visibility timeout with absolute timestamp" do
       skip "PGMQ v1.11.0+ required for timestamp support" unless pgmq_supports_set_vt_timestamp?
 
@@ -348,10 +307,6 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
 
     it "raises ArgumentError when updates is not a hash" do
       expect { client.set_vt_multi([], vt: 60) }.to raise_error(ArgumentError, /must be a hash/)
-    end
-
-    it "raises ArgumentError when vt is not provided" do
-      expect { client.set_vt_multi({ queue_name => [1] }) }.to raise_error(ArgumentError, /vt or vt_offset is required/)
     end
 
     it "skips queues with empty message arrays" do
