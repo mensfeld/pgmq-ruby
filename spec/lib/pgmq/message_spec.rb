@@ -8,6 +8,7 @@ RSpec.describe PGMQ::Message do
       "msg_id" => "123",
       "read_ct" => "2",
       "enqueued_at" => "2025-01-15 10:00:00 UTC",
+      "last_read_at" => "2025-01-15 10:01:00 UTC",
       "vt" => "2025-01-15 10:00:30 UTC",
       "message" => '{"order_id":456,"status":"pending"}',
       "headers" => '{"trace_id":"abc123"}',
@@ -28,6 +29,10 @@ RSpec.describe PGMQ::Message do
       expect(message.enqueued_at).to eq("2025-01-15 10:00:00 UTC")
     end
 
+    it "returns raw last_read_at as string" do
+      expect(message.last_read_at).to eq("2025-01-15 10:01:00 UTC")
+    end
+
     it "returns raw vt as string" do
       expect(message.vt).to eq("2025-01-15 10:00:30 UTC")
     end
@@ -44,6 +49,12 @@ RSpec.describe PGMQ::Message do
       row_with_queue = row.merge("queue_name" => "test_queue")
       msg = described_class.new(row_with_queue)
       expect(msg.queue_name).to eq("test_queue")
+    end
+
+    it "returns nil for last_read_at when message has never been read" do
+      row_without_read = row.merge("last_read_at" => nil, "read_ct" => "0")
+      msg = described_class.new(row_without_read)
+      expect(msg.last_read_at).to be_nil
     end
   end
 
