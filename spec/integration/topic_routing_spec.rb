@@ -18,7 +18,8 @@ ExampleHelper.run_example("Topic Routing (AMQP-like)") do |client, queues, inter
   end
   version_str = version_result[0]["extversion"].gsub(/^v/, "")
   version_parts = version_str.split(".").map(&:to_i)
-  unless version_parts[0] > 1 || (version_parts[0] == 1 && version_parts[1] >= 11)
+  supports_topic_routing = version_parts[0] > 1 || (version_parts[0] == 1 && version_parts[1] >= 11)
+  unless supports_topic_routing
     puts "⚠️  Skipping: PGMQ v1.11.0+ required for topic routing (current: #{version_str})"
     break
   end
