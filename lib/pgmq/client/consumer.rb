@@ -150,6 +150,79 @@ module PGMQ
 
         result.map { |row| Message.new(row) }
       end
+
+      # Reads messages using grouped round-robin ordering
+      #
+      # Messages are grouped by the first key in their JSON payload and returned
+      # in round-robin order across groups. This ensures fair processing when
+      # messages from different entities (users, orders, etc.) are in the queue.
+      #
+      # @param queue_name [String] name of the queue
+      # @param vt [Integer] visibility timeout in seconds
+      # @param qty [Integer] number of messages to read
+      # @return [Array<PGMQ::Message>] array of messages in round-robin order
+      #
+      # @example Fair processing across users
+      #   # Queue contains: user1_msg1, user1_msg2, user2_msg1, user3_msg1
+      #   messages = client.read_grouped_rr("tasks", vt: 30, qty: 4)
+      #   # Returns in round-robin: user1_msg1, user2_msg1, user3_msg1, user1_msg2
+      #
+      # @example Prevent single entity from monopolizing worker
+      #   loop do
+      #     messages = client.read_grouped_rr("orders", vt: 30, qty: 10)
+      #     break if messages.empty?
+      #     messages.each { |msg| process(msg) }
+      #   end
+      def read_grouped_rr(queue_name, vt: DEFAULT_VT, qty: 1)
+        validate_queue_name!(queue_name)
+
+        result = with_connection do |conn|
+          conn.exec_params(
+            "SELECT * FROM pgmq.read_grouped_rr($1::text, $2::integer, $3::integer)",
+            [queue_name, vt, qty]
+          )
+        end
+
+        result.map { |row| Message.new(row) }
+      end
+
+      # Reads messages using grouped round-robin with long-polling support
+      #
+      # Combines grouped round-robin ordering with long-polling for efficient
+      # and fair message consumption.
+      #
+      # @param queue_name [String] name of the queue
+      # @param vt [Integer] visibility timeout in seconds
+      # @param qty [Integer] number of messages to read
+      # @param max_poll_seconds [Integer] maximum time to poll in seconds
+      # @param poll_interval_ms [Integer] interval between polls in milliseconds
+      # @return [Array<PGMQ::Message>] array of messages in round-robin order
+      #
+      # @example Long-polling with fair ordering
+      #   messages = client.read_grouped_rr_with_poll("tasks",
+      #     vt: 30,
+      #     qty: 10,
+      #     max_poll_seconds: 5,
+      #     poll_interval_ms: 100
+      #   )
+      def read_grouped_rr_with_poll(
+        queue_name,
+        vt: DEFAULT_VT,
+        qty: 1,
+        max_poll_seconds: 5,
+        poll_interval_ms: 100
+      )
+        validate_queue_name!(queue_name)
+
+        result = with_connection do |conn|
+          conn.exec_params(
+            "SELECT * FROM pgmq.read_grouped_rr_with_poll($1::text, $2::integer, $3::integer, $4::integer, $5::integer)",
+            [queue_name, vt, qty, max_poll_seconds, poll_interval_ms]
+          )
+        end
+
+        result.map { |row| Message.new(row) }
+      end
     end
   end
 end

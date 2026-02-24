@@ -9,7 +9,8 @@
     "Gemfile.lint",
     "pgmq-ruby.gemspec",
     ".github/workflows/**",
-    "docker-compose*.yml"
+    "docker-compose*.yml",
+    "package.json"
   ],
   "minimumReleaseAge": "7 days",
   "github-actions": {
