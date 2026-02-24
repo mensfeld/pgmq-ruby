@@ -31,7 +31,7 @@ module PGMQ
     include Consumer             # Single-queue reading operations
     include MultiQueue           # Multi-queue operations
     include MessageLifecycle     # Message state transitions (pop, delete, archive)
-    include Maintenance          # Queue maintenance (purge, detach_archive)
+    include Maintenance          # Queue maintenance (purge, notifications)
     include Metrics              # Monitoring and metrics
 
     # Default visibility timeout in seconds

@@ -33,26 +33,6 @@ RSpec.describe PGMQ::Client::Maintenance, :integration do
     end
   end
 
-  describe "#detach_archive" do
-    it "emits deprecation warning and still works" do
-      # Send and archive a message first
-      msg_id = client.produce(queue_name, to_json_msg({ test: "archive" }))
-      client.archive(queue_name, msg_id)
-
-      # Detach the archive - should emit deprecation warning
-      expect { client.detach_archive(queue_name) }.to output(/DEPRECATION/).to_stderr
-
-      # Queue should still exist and be usable
-      new_msg_id = client.produce(queue_name, to_json_msg({ test: "after_detach" }))
-      msg = client.read(queue_name, vt: 30)
-      expect(msg.msg_id).to eq(new_msg_id)
-    end
-
-    it "raises error for invalid queue name" do
-      expect { client.detach_archive("123invalid") }.to raise_error(PGMQ::Errors::InvalidQueueNameError)
-    end
-  end
-
   describe "#enable_notify_insert" do
     it "enables notifications on the queue" do
       expect { client.enable_notify_insert(queue_name) }.not_to raise_error
