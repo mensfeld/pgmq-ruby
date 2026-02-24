@@ -31,7 +31,7 @@ module PGMQ
     include Consumer             # Single-queue reading operations
     include MultiQueue           # Multi-queue operations
     include MessageLifecycle     # Message state transitions (pop, delete, archive)
-    include Maintenance          # Queue maintenance (purge, detach_archive)
+    include Maintenance          # Queue maintenance (purge, notifications)
     include Metrics              # Monitoring and metrics
 
     # Default visibility timeout in seconds
@@ -65,15 +65,15 @@ module PGMQ
       auto_reconnect: true
     )
       @connection = if conn_params.is_a?(Connection)
-                      conn_params
-                    else
-                      Connection.new(
-                        conn_params,
-                        pool_size: pool_size,
-                        pool_timeout: pool_timeout,
-                        auto_reconnect: auto_reconnect
-                      )
-                    end
+        conn_params
+      else
+        Connection.new(
+          conn_params,
+          pool_size: pool_size,
+          pool_timeout: pool_timeout,
+          auto_reconnect: auto_reconnect
+        )
+      end
     end
 
     # Closes all connections in the pool
@@ -109,7 +109,7 @@ module PGMQ
       if queue_name.nil? || queue_name.to_s.strip.empty?
         raise(
           Errors::InvalidQueueNameError,
-          'Queue name cannot be empty'
+          "Queue name cannot be empty"
         )
       end
 
@@ -131,7 +131,7 @@ module PGMQ
       raise(
         Errors::InvalidQueueNameError,
         "Invalid queue name '#{queue_name}': must start with a letter or underscore " \
-        'and contain only letters, digits, and underscores'
+        "and contain only letters, digits, and underscores"
       )
     end
   end

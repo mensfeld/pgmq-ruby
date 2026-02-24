@@ -8,16 +8,16 @@
 #
 # Run: bundle exec ruby spec/integration/archiving_spec.rb
 
-require_relative 'support/example_helper'
+require_relative "support/example_helper"
 
-ExampleHelper.run_example('Message Archiving') do |client, queues, interrupted|
-  queue = ExampleHelper.unique_queue_name('archive')
+ExampleHelper.run_example("Message Archiving") do |client, queues, interrupted|
+  queue = ExampleHelper.unique_queue_name("archive")
   queues << queue
 
   client.create(queue)
 
   3.times { |i| client.produce(queue, ExampleHelper.to_json({ order_id: 1000 + i })) }
-  puts 'Produced 3 messages'
+  puts "Produced 3 messages"
 
   break if interrupted.call
 

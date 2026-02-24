@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'time'
+require "time"
 
 module PGMQ
   # Represents metadata about a PGMQ queue
@@ -18,20 +18,20 @@ module PGMQ
       def new(row, **)
         # Return raw values as-is from PostgreSQL
         super(
-          queue_name: row['queue_name'],
-          created_at: row['created_at'],
-          is_partitioned: row['is_partitioned'],
-          is_unlogged: row['is_unlogged']
+          queue_name: row["queue_name"],
+          created_at: row["created_at"],
+          is_partitioned: row["is_partitioned"],
+          is_unlogged: row["is_unlogged"]
         )
       end
     end
 
     # Alias for is_partitioned
     # @return [String] 't' or 'f' from PostgreSQL
-    alias partitioned? is_partitioned
+    alias_method :partitioned?, :is_partitioned
 
     # Alias for is_unlogged
     # @return [String] 't' or 'f' from PostgreSQL
-    alias unlogged? is_unlogged
+    alias_method :unlogged?, :is_unlogged
   end
 end

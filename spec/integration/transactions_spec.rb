@@ -9,18 +9,18 @@
 #
 # Run: bundle exec ruby spec/integration/transactions_spec.rb
 
-require_relative 'support/example_helper'
+require_relative "support/example_helper"
 
-ExampleHelper.run_example('Transactions') do |client, queues, interrupted|
-  inbox = ExampleHelper.unique_queue_name('inbox')
-  processed = ExampleHelper.unique_queue_name('processed')
+ExampleHelper.run_example("Transactions") do |client, queues, interrupted|
+  inbox = ExampleHelper.unique_queue_name("inbox")
+  processed = ExampleHelper.unique_queue_name("processed")
   queues << inbox << processed
 
   client.create(inbox)
   client.create(processed)
 
   3.times { |i| client.produce(inbox, ExampleHelper.to_json({ job: i + 1 })) }
-  puts 'Produced 3 jobs to inbox'
+  puts "Produced 3 jobs to inbox"
 
   break if interrupted.call
 
@@ -29,9 +29,9 @@ ExampleHelper.run_example('Transactions') do |client, queues, interrupted|
     msg = txn.read(inbox, vt: 30)
     if msg
       data = ExampleHelper.parse_message(msg)
-      txn.produce(processed, ExampleHelper.to_json({ job: data['job'], status: 'done' }))
+      txn.produce(processed, ExampleHelper.to_json({ job: data["job"], status: "done" }))
       txn.delete(inbox, msg.msg_id)
-      puts "Transaction committed: job #{data['job']} moved to processed"
+      puts "Transaction committed: job #{data["job"]} moved to processed"
     end
   end
 
@@ -41,10 +41,10 @@ ExampleHelper.run_example('Transactions') do |client, queues, interrupted|
   begin
     client.transaction do |txn|
       msg = txn.read(inbox, vt: 30)
-      txn.produce(processed, ExampleHelper.to_json({ status: 'processing' })) if msg
-      raise StandardError, 'Simulated error!'
+      txn.produce(processed, ExampleHelper.to_json({ status: "processing" })) if msg
+      raise StandardError, "Simulated error!"
     end
-  rescue StandardError => e
+  rescue => e
     puts "Transaction rolled back: #{e.message}"
   end
 

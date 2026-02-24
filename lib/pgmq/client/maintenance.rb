@@ -19,27 +19,10 @@ module PGMQ
         validate_queue_name!(queue_name)
 
         result = with_connection do |conn|
-          conn.exec_params('SELECT pgmq.purge_queue($1::text)', [queue_name])
+          conn.exec_params("SELECT pgmq.purge_queue($1::text)", [queue_name])
         end
 
-        result[0]['purge_queue']
-      end
-
-      # Detaches the archive table from PGMQ management
-      #
-      # @param queue_name [String] name of the queue
-      # @return [void]
-      #
-      # @example
-      #   client.detach_archive("orders")
-      def detach_archive(queue_name)
-        validate_queue_name!(queue_name)
-
-        with_connection do |conn|
-          conn.exec_params('SELECT pgmq.detach_archive($1::text)', [queue_name])
-        end
-
-        nil
+        result[0]["purge_queue"]
       end
 
       # Enables PostgreSQL NOTIFY when messages are inserted into a queue
@@ -65,7 +48,7 @@ module PGMQ
 
         with_connection do |conn|
           conn.exec_params(
-            'SELECT pgmq.enable_notify_insert($1::text, $2::integer)',
+            "SELECT pgmq.enable_notify_insert($1::text, $2::integer)",
             [queue_name, throttle_interval_ms]
           )
         end
@@ -84,7 +67,7 @@ module PGMQ
         validate_queue_name!(queue_name)
 
         with_connection do |conn|
-          conn.exec_params('SELECT pgmq.disable_notify_insert($1::text)', [queue_name])
+          conn.exec_params("SELECT pgmq.disable_notify_insert($1::text)", [queue_name])
         end
 
         nil

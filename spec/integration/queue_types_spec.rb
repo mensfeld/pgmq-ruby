@@ -9,11 +9,11 @@
 #
 # Run: bundle exec ruby spec/integration/queue_types_spec.rb
 
-require_relative 'support/example_helper'
+require_relative "support/example_helper"
 
-ExampleHelper.run_example('Queue Types') do |client, queues, _interrupted|
-  std = ExampleHelper.unique_queue_name('standard')
-  unlog = ExampleHelper.unique_queue_name('unlogged')
+ExampleHelper.run_example("Queue Types") do |client, queues, _interrupted|
+  std = ExampleHelper.unique_queue_name("standard")
+  unlog = ExampleHelper.unique_queue_name("unlogged")
 
   # Standard queue (default)
   client.create(std)
@@ -27,12 +27,12 @@ ExampleHelper.run_example('Queue Types') do |client, queues, _interrupted|
 
   # Partitioned queue (requires pg_partman extension)
   begin
-    part = ExampleHelper.unique_queue_name('partitioned')
+    part = ExampleHelper.unique_queue_name("partitioned")
     client.create_partitioned(part)
     queues << part
     puts "Created PARTITIONED queue: auto-partitioned by msg_id"
-  rescue StandardError
-    puts 'PARTITIONED queue: requires pg_partman extension (skipped)'
+  rescue
+    puts "PARTITIONED queue: requires pg_partman extension (skipped)"
   end
 
   # All queue types work identically
@@ -41,5 +41,5 @@ ExampleHelper.run_example('Queue Types') do |client, queues, _interrupted|
     msg = client.read(q, vt: 30)
     client.delete(q, msg.msg_id) if msg
   end
-  puts 'All queue types use identical API'
+  puts "All queue types use identical API"
 end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'securerandom'
+require "securerandom"
 
 module DatabaseHelpers
   # Creates a test client with test database connection
@@ -28,7 +28,7 @@ module DatabaseHelpers
     loop do
       return true if block.call
 
-      raise 'Timeout waiting for condition' if Time.now - start_time > timeout
+      raise "Timeout waiting for condition" if Time.now - start_time > timeout
 
       sleep 0.1
     end
@@ -41,7 +41,7 @@ module DatabaseHelpers
       conn.exec("SELECT 1 FROM pg_extension WHERE extname = 'pgmq'")
     end
     result.ntuples.positive?
-  rescue StandardError => e
+  rescue => e
     warn "\n⚠️  PGMQ extension not available: #{e.message}"
     warn "   Run 'docker compose up -d' to start PostgreSQL with PGMQ extension"
     false
@@ -55,15 +55,15 @@ module DatabaseHelpers
 
     client = create_test_client
     client.connection.with_connection do |conn|
-      conn.exec('CREATE EXTENSION IF NOT EXISTS pgmq CASCADE')
+      conn.exec("CREATE EXTENSION IF NOT EXISTS pgmq CASCADE")
     end
     true
   rescue PG::UndefinedFile
     warn "\n⚠️  PGMQ extension not installed in PostgreSQL"
-    warn '   Use Docker: docker compose up -d'
-    warn '   Or install PGMQ extension manually'
+    warn "   Use Docker: docker compose up -d"
+    warn "   Or install PGMQ extension manually"
     false
-  rescue StandardError => e
+  rescue => e
     warn "\n⚠️  Could not setup test database: #{e.message}"
     false
   ensure

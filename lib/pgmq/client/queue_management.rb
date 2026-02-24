@@ -22,7 +22,7 @@ module PGMQ
 
         with_connection do |conn|
           existed = queue_exists?(conn, queue_name)
-          conn.exec_params('SELECT pgmq.create($1::text)', [queue_name])
+          conn.exec_params("SELECT pgmq.create($1::text)", [queue_name])
           !existed
         end
       end
@@ -43,15 +43,15 @@ module PGMQ
       #   )  # => true
       def create_partitioned(
         queue_name,
-        partition_interval: '10000',
-        retention_interval: '100000'
+        partition_interval: "10000",
+        retention_interval: "100000"
       )
         validate_queue_name!(queue_name)
 
         with_connection do |conn|
           existed = queue_exists?(conn, queue_name)
           conn.exec_params(
-            'SELECT pgmq.create_partitioned($1::text, $2::text, $3::text)',
+            "SELECT pgmq.create_partitioned($1::text, $2::text, $3::text)",
             [queue_name, partition_interval, retention_interval]
           )
           !existed
@@ -70,7 +70,7 @@ module PGMQ
 
         with_connection do |conn|
           existed = queue_exists?(conn, queue_name)
-          conn.exec_params('SELECT pgmq.create_unlogged($1::text)', [queue_name])
+          conn.exec_params("SELECT pgmq.create_unlogged($1::text)", [queue_name])
           !existed
         end
       end
@@ -86,12 +86,12 @@ module PGMQ
         validate_queue_name!(queue_name)
 
         result = with_connection do |conn|
-          conn.exec_params('SELECT pgmq.drop_queue($1::text)', [queue_name])
+          conn.exec_params("SELECT pgmq.drop_queue($1::text)", [queue_name])
         end
 
         return false if result.ntuples.zero?
 
-        result[0]['drop_queue'] == 't'
+        result[0]["drop_queue"] == "t"
       end
 
       # Lists all queues
@@ -103,7 +103,7 @@ module PGMQ
       #   queues.each { |q| puts q.queue_name }
       def list_queues
         result = with_connection do |conn|
-          conn.exec('SELECT * FROM pgmq.list_queues()')
+          conn.exec("SELECT * FROM pgmq.list_queues()")
         end
 
         result.map { |row| QueueMetadata.new(row) }
@@ -118,7 +118,7 @@ module PGMQ
       # @return [Boolean] true if queue exists, false otherwise
       def queue_exists?(conn, queue_name)
         result = conn.exec_params(
-          'SELECT 1 FROM pgmq.meta WHERE queue_name = $1 LIMIT 1',
+          "SELECT 1 FROM pgmq.meta WHERE queue_name = $1 LIMIT 1",
           [queue_name]
         )
         result.ntuples.positive?

@@ -43,18 +43,18 @@ module PGMQ
         result = with_connection do |conn|
           if headers
             conn.exec_params(
-              'SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::jsonb, $4::integer)',
+              "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::jsonb, $4::integer)",
               [queue_name, message, headers, delay]
             )
           else
             conn.exec_params(
-              'SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::integer)',
+              "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::integer)",
               [queue_name, message, delay]
             )
           end
         end
 
-        result[0]['send']
+        result[0]["send"]
       end
 
       # Produces multiple messages to a queue in a batch
@@ -94,7 +94,7 @@ module PGMQ
 
         if headers && headers.length != messages.length
           raise ArgumentError,
-                "headers array length (#{headers.length}) must match messages array length (#{messages.length})"
+            "headers array length (#{headers.length}) must match messages array length (#{messages.length})"
         end
 
         # Use PostgreSQL array parameter binding for security
@@ -107,18 +107,18 @@ module PGMQ
           if headers
             encoded_headers = encoder.encode(headers)
             conn.exec_params(
-              'SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::jsonb[], $4::integer)',
+              "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::jsonb[], $4::integer)",
               [queue_name, encoded_messages, encoded_headers, delay]
             )
           else
             conn.exec_params(
-              'SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::integer)',
+              "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::integer)",
               [queue_name, encoded_messages, delay]
             )
           end
         end
 
-        result.map { |row| row['send_batch'] }
+        result.map { |row| row["send_batch"] }
       end
     end
   end

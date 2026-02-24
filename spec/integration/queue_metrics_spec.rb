@@ -9,18 +9,18 @@
 #
 # Run: bundle exec ruby spec/integration/queue_metrics_spec.rb
 
-require_relative 'support/example_helper'
+require_relative "support/example_helper"
 
-ExampleHelper.run_example('Queue Metrics') do |client, queues, interrupted|
-  q1 = ExampleHelper.unique_queue_name('orders')
-  q2 = ExampleHelper.unique_queue_name('empty')
+ExampleHelper.run_example("Queue Metrics") do |client, queues, interrupted|
+  q1 = ExampleHelper.unique_queue_name("orders")
+  q2 = ExampleHelper.unique_queue_name("empty")
   queues << q1 << q2
 
   client.create(q1)
   client.create(q2)
 
   10.times { |i| client.produce(q1, ExampleHelper.to_json({ id: i })) }
-  puts 'Created 2 queues, added 10 messages to first'
+  puts "Created 2 queues, added 10 messages to first"
 
   break if interrupted.call
 
@@ -30,7 +30,7 @@ ExampleHelper.run_example('Queue Metrics') do |client, queues, interrupted|
 
   # All queues metrics
   all = client.metrics_all.select { |x| queues.include?(x.queue_name) }
-  puts "All queues: #{all.map { |x| "#{x.queue_name.split('_').first}=#{x.queue_length}" }.join(', ')}"
+  puts "All queues: #{all.map { |x| "#{x.queue_name.split("_").first}=#{x.queue_length}" }.join(", ")}"
 
   break if interrupted.call
 

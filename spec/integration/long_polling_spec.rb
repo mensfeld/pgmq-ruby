@@ -8,10 +8,10 @@
 #
 # Run: bundle exec ruby spec/integration/long_polling_spec.rb
 
-require_relative 'support/example_helper'
+require_relative "support/example_helper"
 
-ExampleHelper.run_example('Long Polling') do |client, queues, interrupted|
-  queue = ExampleHelper.unique_queue_name('polling')
+ExampleHelper.run_example("Long Polling") do |client, queues, interrupted|
+  queue = ExampleHelper.unique_queue_name("polling")
   queues << queue
 
   client.create(queue)
@@ -25,7 +25,7 @@ ExampleHelper.run_example('Long Polling') do |client, queues, interrupted|
 
   # Produce messages
   5.times { |i| client.produce(queue, ExampleHelper.to_json({ task: i + 1 })) }
-  puts 'Produced 5 messages'
+  puts "Produced 5 messages"
 
   # Poll with messages (returns immediately)
   start = Time.now

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Breaking Changes
+- **[Breaking]** Remove `detach_archive(queue_name)` method. PGMQ 2.0 no longer requires archive table detachment as archive tables are no longer member objects. The server-side function was already a no-op in PGMQ 2.0+.
+
+### Testing
+- **[Feature]** Add Fiber Scheduler integration tests demonstrating compatibility with Ruby's Fiber Scheduler API and the `async` gem for concurrent I/O operations.
+
+### Infrastructure
+- **[Fix]** Update docker-compose.yml volume mount for PostgreSQL 18+ compatibility.
+- **[Change]** Replace Coditsu with StandardRB for code linting. This provides faster, more consistent linting using the community Ruby Style Guide.
+
 ## 0.4.0 (2025-12-26)
 
 ### Breaking Changes

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'time'
+require "time"
 
 module PGMQ
   # Represents metrics for a PGMQ queue
@@ -24,12 +24,12 @@ module PGMQ
       def new(row, **)
         # Return raw values as-is from PostgreSQL
         super(
-          queue_name: row['queue_name'],
-          queue_length: row['queue_length'],
-          newest_msg_age_sec: row['newest_msg_age_sec'],
-          oldest_msg_age_sec: row['oldest_msg_age_sec'],
-          total_messages: row['total_messages'],
-          scrape_time: row['scrape_time']
+          queue_name: row["queue_name"],
+          queue_length: row["queue_length"],
+          newest_msg_age_sec: row["newest_msg_age_sec"],
+          oldest_msg_age_sec: row["oldest_msg_age_sec"],
+          total_messages: row["total_messages"],
+          scrape_time: row["scrape_time"]
         )
       end
     end

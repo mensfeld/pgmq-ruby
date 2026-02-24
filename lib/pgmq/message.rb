@@ -27,19 +27,19 @@ module PGMQ
         # No parsing, no deserialization, no transformation
         # The pg gem returns JSONB as String by default
         super(
-          msg_id: row['msg_id'],
-          read_ct: row['read_ct'],
-          enqueued_at: row['enqueued_at'],
-          vt: row['vt'],
-          message: row['message'],
-          headers: row['headers'], # JSONB column for metadata (optional)
-          queue_name: row['queue_name'] # nil for single-queue operations
+          msg_id: row["msg_id"],
+          read_ct: row["read_ct"],
+          enqueued_at: row["enqueued_at"],
+          vt: row["vt"],
+          message: row["message"],
+          headers: row["headers"], # JSONB column for metadata (optional)
+          queue_name: row["queue_name"] # nil for single-queue operations
         )
       end
     end
 
     # Alias for msg_id (common in messaging systems)
     # @return [String]
-    alias id msg_id
+    alias_method :id, :msg_id
   end
 end
