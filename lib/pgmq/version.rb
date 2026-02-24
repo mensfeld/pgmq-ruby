@@ -2,5 +2,5 @@
 
 module PGMQ
   # Current version of the pgmq-ruby gem
-  VERSION = "0.4.0"
+  VERSION = "0.5.0"
 end
