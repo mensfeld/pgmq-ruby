@@ -5,6 +5,9 @@
 ### Breaking Changes
 - **[Breaking]** Remove `detach_archive(queue_name)` method. PGMQ 2.0 no longer requires archive table detachment as archive tables are no longer member objects. The server-side function was already a no-op in PGMQ 2.0+.
 
+### PGMQ v1.11.0 Features
+- **[Feature]** Add `last_read_at` field to `PGMQ::Message`. Returns the timestamp of the last read operation for the message, or nil if the message has never been read. This enables tracking when messages were last accessed (PGMQ v1.8.1+).
+
 ### Testing
 - **[Feature]** Add Fiber Scheduler integration tests demonstrating compatibility with Ruby's Fiber Scheduler API and the `async` gem for concurrent I/O operations.
 
