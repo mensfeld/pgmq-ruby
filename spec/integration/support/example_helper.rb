@@ -23,10 +23,18 @@ module ExampleHelper
   class << self
     # Creates a PGMQ client with test database parameters
     #
-    # @param options [Hash] Additional options to merge with DB_PARAMS
+    # @param pool_size [Integer] Connection pool size (default: 5)
+    # @param pool_timeout [Integer] Connection pool timeout in seconds (default: 5)
+    # @param auto_reconnect [Boolean] Auto-reconnect on connection errors (default: true)
+    # @param options [Hash] Additional connection options to merge with DB_PARAMS
     # @return [PGMQ::Client] Configured client instance
-    def create_client(**options)
-      PGMQ::Client.new(DB_PARAMS.merge(options))
+    def create_client(pool_size: 5, pool_timeout: 5, auto_reconnect: true, **options)
+      PGMQ::Client.new(
+        DB_PARAMS.merge(options),
+        pool_size: pool_size,
+        pool_timeout: pool_timeout,
+        auto_reconnect: auto_reconnect
+      )
     end
 
     # Generates a unique queue name to avoid conflicts between runs

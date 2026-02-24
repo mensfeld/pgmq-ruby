@@ -11,7 +11,7 @@ services:
     ports:
       - "5433:5432"  # Use port 5433 locally to avoid conflicts
     volumes:
-      - pgmq_data:/var/lib/postgresql/data
+      - pgmq_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s

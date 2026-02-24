@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Deprecations
+- **[Deprecation]** Mark `detach_archive(queue_name)` as deprecated. PGMQ 2.0 no longer requires archive table detachment as archive tables are no longer member objects. The method now emits a deprecation warning and will be removed in a future version.
+
+### Testing
+- **[Feature]** Add Fiber Scheduler integration tests demonstrating compatibility with Ruby's Fiber Scheduler API and the `async` gem for concurrent I/O operations.
+
+### Infrastructure
+- **[Fix]** Update docker-compose.yml volume mount for PostgreSQL 18+ compatibility.
+
 ## 0.4.0 (2025-12-26)
 
 ### Breaking Changes

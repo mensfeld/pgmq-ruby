@@ -27,12 +27,17 @@ module PGMQ
 
       # Detaches the archive table from PGMQ management
       #
+      # @deprecated This method is deprecated and will be removed in a future version.
+      #   PGMQ 2.0 no longer requires archive table detachment as archive tables
+      #   are no longer member objects. This method is now a no-op.
       # @param queue_name [String] name of the queue
       # @return [void]
       #
       # @example
       #   client.detach_archive("orders")
       def detach_archive(queue_name)
+        warn '[DEPRECATION] `detach_archive` is deprecated and will be removed in a future version. ' \
+             'PGMQ 2.0 no longer requires archive table detachment.'
         validate_queue_name!(queue_name)
 
         with_connection do |conn|
