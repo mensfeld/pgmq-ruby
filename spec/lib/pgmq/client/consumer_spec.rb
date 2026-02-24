@@ -232,4 +232,103 @@ RSpec.describe PGMQ::Client::Consumer, :integration do
       expect(msg3.read_ct).to eq("2")
     end
   end
+
+  describe "#read_grouped_rr" do
+    it "reads messages in round-robin order across groups" do
+      # Send messages from different "users" (grouped by first key value)
+      client.produce(queue_name, to_json_msg({ user_id: "user1", seq: 1 }))
+      client.produce(queue_name, to_json_msg({ user_id: "user1", seq: 2 }))
+      client.produce(queue_name, to_json_msg({ user_id: "user2", seq: 1 }))
+      client.produce(queue_name, to_json_msg({ user_id: "user3", seq: 1 }))
+
+      messages = client.read_grouped_rr(queue_name, vt: 30, qty: 4)
+
+      expect(messages.size).to eq(4)
+      expect(messages).to all(be_a(PGMQ::Message))
+
+      # All users should be represented in the results
+      user_ids = messages.map { |m| JSON.parse(m.message)["user_id"] }
+      expect(user_ids).to include("user1", "user2", "user3")
+    end
+
+    it "returns empty array for empty queue" do
+      messages = client.read_grouped_rr(queue_name, vt: 30, qty: 5)
+      expect(messages).to eq([])
+    end
+
+    it "respects visibility timeout" do
+      client.produce(queue_name, to_json_msg({ user_id: "user1", data: "test" }))
+
+      messages1 = client.read_grouped_rr(queue_name, vt: 2, qty: 1)
+      expect(messages1.size).to eq(1)
+
+      # Should not be visible immediately
+      messages2 = client.read_grouped_rr(queue_name, vt: 2, qty: 1)
+      expect(messages2).to be_empty
+
+      sleep 2.5
+
+      # Should be visible again
+      messages3 = client.read_grouped_rr(queue_name, vt: 30, qty: 1)
+      expect(messages3.size).to eq(1)
+    end
+  end
+
+  describe "#read_grouped_rr_with_poll" do
+    it "waits for messages with long-polling in round-robin order" do
+      Thread.new do
+        sleep 0.5
+        client.produce(queue_name, to_json_msg({ user_id: "user1", delayed: true }))
+      end
+
+      start_time = Time.now
+      messages = client.read_grouped_rr_with_poll(
+        queue_name,
+        vt: 30,
+        qty: 1,
+        max_poll_seconds: 2,
+        poll_interval_ms: 100
+      )
+      elapsed = Time.now - start_time
+
+      expect(messages).not_to be_empty
+      expect(elapsed).to be >= 0.5
+      expect(elapsed).to be < 2.0
+    end
+
+    it "returns empty array if no messages within timeout" do
+      start_time = Time.now
+      messages = client.read_grouped_rr_with_poll(
+        queue_name,
+        vt: 30,
+        qty: 1,
+        max_poll_seconds: 1,
+        poll_interval_ms: 100
+      )
+      elapsed = Time.now - start_time
+
+      expect(messages).to be_empty
+      expect(elapsed).to be >= 1
+    end
+
+    it "provides fair ordering with multiple groups" do
+      # Pre-populate queue
+      client.produce(queue_name, to_json_msg({ user_id: "userA", n: 1 }))
+      client.produce(queue_name, to_json_msg({ user_id: "userA", n: 2 }))
+      client.produce(queue_name, to_json_msg({ user_id: "userB", n: 1 }))
+
+      messages = client.read_grouped_rr_with_poll(
+        queue_name,
+        vt: 30,
+        qty: 3,
+        max_poll_seconds: 1,
+        poll_interval_ms: 50
+      )
+
+      expect(messages.size).to eq(3)
+      user_ids = messages.map { |m| JSON.parse(m.message)["user_id"] }
+      # Both users should be represented in the results
+      expect(user_ids).to include("userA", "userB")
+    end
+  end
 end

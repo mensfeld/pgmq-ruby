@@ -7,6 +7,13 @@
 
 ### PGMQ v1.11.0 Features
 - **[Feature]** Add `last_read_at` field to `PGMQ::Message`. Returns the timestamp of the last read operation for the message, or nil if the message has never been read. This enables tracking when messages were last accessed (PGMQ v1.8.1+).
+- **[Feature]** Add Grouped Round-Robin reading for fair message processing:
+  - `read_grouped_rr(queue_name, vt:, qty:)` - Read messages in round-robin order across groups
+  - `read_grouped_rr_with_poll(queue_name, vt:, qty:, max_poll_seconds:, poll_interval_ms:)` - With long-polling
+
+  Messages are grouped by the first key in their JSON payload. This ensures fair processing
+  when multiple entities (users, orders, etc.) have messages in the queue, preventing any
+  single entity from monopolizing workers.
 
 ### Testing
 - **[Feature]** Add Fiber Scheduler integration tests demonstrating compatibility with Ruby's Fiber Scheduler API and the `async` gem for concurrent I/O operations.
