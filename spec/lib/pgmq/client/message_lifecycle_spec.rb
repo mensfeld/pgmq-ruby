@@ -184,7 +184,6 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       updated_msg = client.set_vt(queue_name, 99_999, vt: 60)
       expect(updated_msg).to be_nil
     end
-
   end
 
   describe "#set_vt_batch" do
@@ -228,7 +227,6 @@ RSpec.describe PGMQ::Client::MessageLifecycle, :integration do
       updated_messages = client.set_vt_batch(queue_name, [99_998, 99_999], vt: 60)
       expect(updated_messages).to eq([])
     end
-
   end
 
   describe "#set_vt_multi" do
