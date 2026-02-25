@@ -62,6 +62,3 @@ build-iPhoneSimulator/
 
 ## Claude Code settings (user-specific)
 .claude/
-
-## Coditsu configuration (user-specific)
-.coditsu/local.yml
