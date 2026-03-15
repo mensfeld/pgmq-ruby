@@ -34,21 +34,6 @@ module DatabaseHelpers
     end
   end
 
-  # Checks if PostgreSQL with PGMQ extension is available
-  def pgmq_available?
-    client = create_test_client
-    result = client.connection.with_connection do |conn|
-      conn.exec("SELECT 1 FROM pg_extension WHERE extname = 'pgmq'")
-    end
-    result.ntuples.positive?
-  rescue => e
-    warn "\n  PGMQ extension not available: #{e.message}"
-    warn "   Run 'docker compose up -d' to start PostgreSQL with PGMQ extension"
-    false
-  ensure
-    client&.close
-  end
-
   # Returns the PGMQ extension version as an array [major, minor, patch]
   def pgmq_version
     client = create_test_client
@@ -93,26 +78,5 @@ module DatabaseHelpers
     nil
   ensure
     @client.close
-  end
-
-  # Ensures test database and extension exist
-  def setup_test_database
-    # Try to create extension if database exists
-
-    client = create_test_client
-    client.connection.with_connection do |conn|
-      conn.exec("CREATE EXTENSION IF NOT EXISTS pgmq CASCADE")
-    end
-    true
-  rescue PG::UndefinedFile
-    warn "\n  PGMQ extension not installed in PostgreSQL"
-    warn "   Use Docker: docker compose up -d"
-    warn "   Or install PGMQ extension manually"
-    false
-  rescue => e
-    warn "\n  Could not setup test database: #{e.message}"
-    false
-  ensure
-    client&.close
   end
 end

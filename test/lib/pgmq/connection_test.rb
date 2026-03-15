@@ -99,7 +99,7 @@ describe PGMQ::Connection do
       client = PGMQ::Client.new(@conn_params, pool_size: 1, pool_timeout: 0.5)
 
       # Hold the only connection
-      Thread.new do
+      thread = Thread.new do
         client.instance_variable_get(:@connection).with_connection do |_conn|
           sleep 2 # Hold for longer than timeout
         end
@@ -112,6 +112,7 @@ describe PGMQ::Connection do
         client.list_queues
       end
 
+      thread.join
       client.close
     end
   end

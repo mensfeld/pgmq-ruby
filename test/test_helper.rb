@@ -50,22 +50,4 @@ Dir[File.join(__dir__, "support", "**", "*.rb")].each { |f| require f }
 class Minitest::Spec
   include JSONHelpers
   include DatabaseHelpers
-
-  # Clean up any test queues after each test
-  after do
-    cleanup_test_queues
-  end
-end
-
-# Helper to clean up test queues
-def cleanup_test_queues
-  return unless defined?(@test_client)
-
-  @test_client&.list_queues&.each do |queue|
-    @test_client.drop_queue(queue.queue_name) if queue.queue_name.start_with?("test_")
-  rescue
-    # Ignore errors during cleanup
-  end
-rescue
-  # Ignore errors if connection is already closed
 end
