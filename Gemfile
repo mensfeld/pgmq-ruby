@@ -6,7 +6,8 @@ gemspec
 
 group :development, :test do
   gem "rake"
-  gem "rspec"
+  gem "minitest"
+  gem "mocha"
   gem "async", "~> 2.6" # Fiber Scheduler for concurrent I/O testing
 end
 
