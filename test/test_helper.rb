@@ -36,7 +36,7 @@ module JSONHelpers
   end
 end
 
-# Alias context to describe for RSpec-style grouping
+# Alias context to describe for nested grouping
 class Minitest::Spec
   class << self
     alias_method :context, :describe
