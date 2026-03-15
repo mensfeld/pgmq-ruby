@@ -24,7 +24,6 @@ jobs:
           - '4.0.0'
           - '3.4'
           - '3.3'
-          - '3.2'
         postgres:
           - '14'
           - '15'
@@ -100,7 +99,7 @@ jobs:
           PG_PASSWORD: postgres
           CI: true
           GITHUB_COVERAGE: ${{ matrix.coverage }}
-        run: bundle exec rspec
+        run: bundle exec rake test
 
       - name: Run examples
         env:
