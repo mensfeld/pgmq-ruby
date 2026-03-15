@@ -11,6 +11,7 @@ AllValidators:
   - vendor/**/*
   - node_modules/**/*
   - spec/**/*
+  - test/**/*
   FailOnSeverity: convention
   RequiredCoverage: 100
 

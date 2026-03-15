@@ -1,46 +1,49 @@
 # frozen_string_literal: true
 
-RSpec.describe PGMQ::Connection do
-  let(:conn_params) { TEST_DB_PARAMS }
+describe PGMQ::Connection do
+  before { @conn_params = TEST_DB_PARAMS }
 
   describe "pool statistics" do
     it "provides pool size and available connections" do
-      connection = described_class.new(conn_params, pool_size: 3)
+      connection = PGMQ::Connection.new(@conn_params, pool_size: 3)
 
       stats = connection.stats
 
-      expect(stats[:size]).to eq(3)
-      expect(stats[:available]).to eq(3)
+      assert_equal 3, stats[:size]
+      assert_equal 3, stats[:available]
 
       connection.close
     end
 
     it "tracks available connections when in use" do
-      connection = described_class.new(conn_params, pool_size: 2)
+      connection = PGMQ::Connection.new(@conn_params, pool_size: 2)
 
       stats_before = connection.stats
-      expect(stats_before[:available]).to eq(2)
+
+      assert_equal 2, stats_before[:available]
 
       # Hold one connection
       connection.with_connection do |_conn|
         stats_during = connection.stats
-        expect(stats_during[:available]).to eq(1)
+
+        assert_equal 1, stats_during[:available]
       end
 
       # Connection should be returned
       stats_after = connection.stats
-      expect(stats_after[:available]).to eq(2)
+
+      assert_equal 2, stats_after[:available]
 
       connection.close
     end
 
     it "is accessible from client" do
-      client = PGMQ::Client.new(conn_params, pool_size: 4)
+      client = PGMQ::Client.new(@conn_params, pool_size: 4)
 
       stats = client.stats
 
-      expect(stats[:size]).to eq(4)
-      expect(stats[:available]).to eq(4)
+      assert_equal 4, stats[:size]
+      assert_equal 4, stats[:available]
 
       client.close
     end
@@ -48,19 +51,19 @@ RSpec.describe PGMQ::Connection do
 
   describe "auto-reconnect" do
     it "is enabled by default" do
-      client = PGMQ::Client.new(conn_params)
+      client = PGMQ::Client.new(@conn_params)
 
       # Should not raise when enabled (default)
-      expect { client.list_queues }.not_to raise_error
+      client.list_queues
 
       client.close
     end
 
     it "can be disabled" do
-      client = PGMQ::Client.new(conn_params, auto_reconnect: false)
+      client = PGMQ::Client.new(@conn_params, auto_reconnect: false)
 
       # Should still work normally
-      expect { client.list_queues }.not_to raise_error
+      client.list_queues
 
       client.close
     end
@@ -68,7 +71,7 @@ RSpec.describe PGMQ::Connection do
 
   describe "connection verification" do
     it "verifies connections before use when auto_reconnect enabled" do
-      connection = described_class.new(conn_params, auto_reconnect: true)
+      connection = PGMQ::Connection.new(@conn_params, auto_reconnect: true)
 
       verified = false
 
@@ -77,17 +80,15 @@ RSpec.describe PGMQ::Connection do
         verified = !conn.finished?
       end
 
-      expect(verified).to be true
+      assert verified
       connection.close
     end
 
     it "skips verification when auto_reconnect disabled" do
-      connection = described_class.new(conn_params, auto_reconnect: false)
+      connection = PGMQ::Connection.new(@conn_params, auto_reconnect: false)
 
       # Should work normally without verification
-      expect do
-        connection.with_connection { |conn| conn.exec("SELECT 1") }
-      end.not_to raise_error
+      connection.with_connection { |conn| conn.exec("SELECT 1") }
 
       connection.close
     end
@@ -95,10 +96,10 @@ RSpec.describe PGMQ::Connection do
 
   describe "connection pool timeout" do
     it "raises error when pool is exhausted" do
-      client = PGMQ::Client.new(conn_params, pool_size: 1, pool_timeout: 0.5)
+      client = PGMQ::Client.new(@conn_params, pool_size: 1, pool_timeout: 0.5)
 
       # Hold the only connection
-      Thread.new do
+      thread = Thread.new do
         client.instance_variable_get(:@connection).with_connection do |_conn|
           sleep 2 # Hold for longer than timeout
         end
@@ -107,18 +108,19 @@ RSpec.describe PGMQ::Connection do
       sleep 0.1 # Let thread acquire connection
 
       # Try to acquire while exhausted
-      expect do
+      assert_raises(PGMQ::Errors::ConnectionError) do
         client.list_queues
-      end.to raise_error(PGMQ::Errors::ConnectionError, /pool timeout/)
+      end
 
+      thread.join
       client.close
     end
   end
 
   describe "concurrent access" do
     it "handles multiple threads accessing pool" do
-      client = PGMQ::Client.new(conn_params, pool_size: 5)
-      queue = test_queue_name("concurrent")
+      client = PGMQ::Client.new(@conn_params, pool_size: 5)
+      queue = unique_queue_name("concurrent")
       client.create(queue)
 
       threads = Array.new(10) do |i|
@@ -136,14 +138,14 @@ RSpec.describe PGMQ::Connection do
         messages << msg if msg
       end
 
-      expect(messages.size).to eq(10)
+      assert_equal 10, messages.size
 
       client.drop_queue(queue)
       client.close
     end
 
     it "properly returns connections to pool" do
-      client = PGMQ::Client.new(conn_params, pool_size: 2)
+      client = PGMQ::Client.new(@conn_params, pool_size: 2)
 
       # Use all connections multiple times
       10.times do
@@ -158,7 +160,8 @@ RSpec.describe PGMQ::Connection do
 
       # Pool should still be healthy
       stats = client.stats
-      expect(stats[:available]).to eq(2)
+
+      assert_equal 2, stats[:available]
 
       client.close
     end
@@ -167,8 +170,8 @@ RSpec.describe PGMQ::Connection do
   describe "fiber scheduler compatibility" do
     # ConnectionPool gem is Fiber-aware, so basic fiber usage works
     it "supports fiber-based concurrency" do
-      client = PGMQ::Client.new(conn_params, pool_size: 3)
-      queue = test_queue_name("fiber")
+      client = PGMQ::Client.new(@conn_params, pool_size: 3)
+      queue = unique_queue_name("fiber")
       client.create(queue)
 
       results = []
@@ -185,7 +188,7 @@ RSpec.describe PGMQ::Connection do
       # Resume all fibers
       fibers.each(&:resume)
 
-      expect(results.size).to eq(5)
+      assert_equal 5, results.size
 
       client.drop_queue(queue)
       client.close
@@ -194,20 +197,22 @@ RSpec.describe PGMQ::Connection do
 
   describe "connection lifecycle" do
     it "closes all connections properly" do
-      client = PGMQ::Client.new(conn_params, pool_size: 3)
+      client = PGMQ::Client.new(@conn_params, pool_size: 3)
 
       # Use connections
       3.times { client.list_queues }
 
       # Close should work without errors
-      expect { client.close }.not_to raise_error
+      client.close
 
       # Further operations should fail
-      expect { client.list_queues }.to raise_error(PGMQ::Errors::ConnectionError)
+      assert_raises(PGMQ::Errors::ConnectionError) do
+        client.list_queues
+      end
     end
 
     it "handles closing with connections in use" do
-      client = PGMQ::Client.new(conn_params, pool_size: 2)
+      client = PGMQ::Client.new(@conn_params, pool_size: 2)
 
       thread = Thread.new do
         client.instance_variable_get(:@connection).with_connection do |_conn|
@@ -218,7 +223,7 @@ RSpec.describe PGMQ::Connection do
       sleep 0.1 # Let thread acquire connection
 
       # Close while connection is in use
-      expect { client.close }.not_to raise_error
+      client.close
 
       thread.join
     end

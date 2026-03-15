@@ -1,17 +1,19 @@
 # frozen_string_literal: true
 
-RSpec.describe PGMQ do
+describe PGMQ do
   describe ".new" do
     it "creates a client via the convenience method with hash params" do
-      client = described_class.new(TEST_DB_PARAMS)
-      expect(client).to be_a(PGMQ::Client)
-      expect(client.connection).to be_a(PGMQ::Connection)
+      client = PGMQ.new(TEST_DB_PARAMS)
+
+      assert_kind_of PGMQ::Client, client
+      assert_kind_of PGMQ::Connection, client.connection
     end
 
     it "supports connection string parameter" do
       conn_string = "postgres://postgres:postgres@localhost:5433/pgmq_test"
-      client = described_class.new(conn_string)
-      expect(client).to be_a(PGMQ::Client)
+      client = PGMQ.new(conn_string)
+
+      assert_kind_of PGMQ::Client, client
     end
   end
 end

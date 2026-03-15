@@ -877,7 +877,7 @@ bundle install
 docker compose up -d
 
 # Run tests
-bundle exec rspec
+bundle exec rake test
 
 # Run console
 bundle exec bin/console

@@ -1,45 +1,47 @@
 # frozen_string_literal: true
 
-RSpec.describe "PGMQ::Errors" do
+describe "PGMQ::Errors" do
   describe "error hierarchy" do
     it "has BaseError inheriting from StandardError" do
-      expect(PGMQ::Errors::BaseError.superclass).to eq(StandardError)
+      assert_equal StandardError, PGMQ::Errors::BaseError.superclass
     end
 
     it "has ConnectionError inheriting from BaseError" do
-      expect(PGMQ::Errors::ConnectionError.superclass).to eq(PGMQ::Errors::BaseError)
+      assert_equal PGMQ::Errors::BaseError, PGMQ::Errors::ConnectionError.superclass
     end
 
     it "has QueueNotFoundError inheriting from BaseError" do
-      expect(PGMQ::Errors::QueueNotFoundError.superclass).to eq(PGMQ::Errors::BaseError)
+      assert_equal PGMQ::Errors::BaseError, PGMQ::Errors::QueueNotFoundError.superclass
     end
 
     it "has MessageNotFoundError inheriting from BaseError" do
-      expect(PGMQ::Errors::MessageNotFoundError.superclass).to eq(PGMQ::Errors::BaseError)
+      assert_equal PGMQ::Errors::BaseError, PGMQ::Errors::MessageNotFoundError.superclass
     end
 
     it "has SerializationError inheriting from BaseError" do
-      expect(PGMQ::Errors::SerializationError.superclass).to eq(PGMQ::Errors::BaseError)
+      assert_equal PGMQ::Errors::BaseError, PGMQ::Errors::SerializationError.superclass
     end
 
     it "has ConfigurationError inheriting from BaseError" do
-      expect(PGMQ::Errors::ConfigurationError.superclass).to eq(PGMQ::Errors::BaseError)
+      assert_equal PGMQ::Errors::BaseError, PGMQ::Errors::ConfigurationError.superclass
     end
 
     it "has InvalidQueueNameError inheriting from BaseError" do
-      expect(PGMQ::Errors::InvalidQueueNameError.superclass).to eq(PGMQ::Errors::BaseError)
+      assert_equal PGMQ::Errors::BaseError, PGMQ::Errors::InvalidQueueNameError.superclass
     end
   end
 
   describe "error instantiation" do
     it "creates ConnectionError with message" do
       error = PGMQ::Errors::ConnectionError.new("test connection error")
-      expect(error.message).to eq("test connection error")
+
+      assert_equal "test connection error", error.message
     end
 
     it "creates InvalidQueueNameError with message" do
       error = PGMQ::Errors::InvalidQueueNameError.new("invalid name")
-      expect(error.message).to eq("invalid name")
+
+      assert_equal "invalid name", error.message
     end
   end
 end
