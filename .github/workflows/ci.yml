@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 jobs:
-  specs:
+  tests:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     strategy:
@@ -169,7 +169,7 @@ jobs:
     if: always()
     needs:
       - rubocop
-      - specs
+      - tests
       - yard-lint
       - lostconf
     steps:

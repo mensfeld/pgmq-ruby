@@ -38,8 +38,8 @@ build-iPhoneSimulator/
 /doc/
 /rdoc/
 
-## RSpec test status file
-.rspec_status
+## Minitest artifacts
+.minitest_status
 
 ## Environment normalization:
 /.bundle/

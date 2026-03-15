@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 (Unreleased)
+
+### Breaking Changes
+- **[Breaking]** Drop Ruby 3.2 support. Minimum required Ruby version is now 3.3.0.
+
+### Infrastructure
+- **[Change]** Migrate test framework from RSpec to Minitest/Spec with Mocha for mocking, aligning with the broader Karafka ecosystem conventions.
+- **[Change]** Replace `rubocop-rspec` with `rubocop-minitest` for test linting.
+
 ## 0.5.0 (2026-02-24)
 
 ### Breaking Changes
@@ -153,7 +162,7 @@ Initial release of pgmq-ruby - a low-level Ruby client for PGMQ (PostgreSQL Mess
 - [Enhancement] Example scripts demonstrating all features.
 
 ### Dependencies
-- Ruby >= 3.2.0
+- Ruby >= 3.3.0
 - PostgreSQL >= 14 with PGMQ extension
 - `pg` gem (~> 1.5)
 - `connection_pool` gem (~> 2.4)

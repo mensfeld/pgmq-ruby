@@ -251,7 +251,7 @@ Located in `test/support/database_helpers.rb`:
 
 - Ruby 3.3+ syntax
 - Frozen string literals (`# frozen_string_literal: true`)
-- Max line length: 120 characters (except specs/gemspec)
+- Max line length: 120 characters (except tests/gemspec)
 - YARD documentation for public methods
 - Single quotes for strings (unless interpolation needed)
 
