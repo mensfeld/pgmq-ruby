@@ -9,7 +9,7 @@ module DatabaseHelpers
   end
 
   # Generates a unique test queue name
-  def unique_queue_name(suffix = nil)
+  def test_queue_name(suffix = nil)
     name = "test_queue_#{SecureRandom.hex(4)}"
     name += "_#{suffix}" if suffix
     name
@@ -42,7 +42,7 @@ module DatabaseHelpers
     end
     result.ntuples.positive?
   rescue => e
-    warn "\n  PGMQ extension not available: #{e.message}"
+    warn "\n⚠️  PGMQ extension not available: #{e.message}"
     warn "   Run 'docker compose up -d' to start PostgreSQL with PGMQ extension"
     false
   ensure
@@ -89,14 +89,27 @@ module DatabaseHelpers
     end
     true
   rescue PG::UndefinedFile
-    warn "\n  PGMQ extension not installed in PostgreSQL"
+    warn "\n⚠️  PGMQ extension not installed in PostgreSQL"
     warn "   Use Docker: docker compose up -d"
     warn "   Or install PGMQ extension manually"
     false
   rescue => e
-    warn "\n  Could not setup test database: #{e.message}"
+    warn "\n⚠️  Could not setup test database: #{e.message}"
     false
   ensure
     client&.close
+  end
+end
+
+RSpec.configure do |config|
+  config.include DatabaseHelpers
+
+  # Skip integration tests if PGMQ is not available
+  config.before(:each, :integration) do
+    unless pgmq_available?
+      skip(
+        "PGMQ extension not available. Run 'docker compose up -d' to start PostgreSQL with PGMQ."
+      )
+    end
   end
 end

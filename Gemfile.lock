@@ -20,8 +20,8 @@ GEM
       fiber-annotation
       fiber-local (~> 1.1)
       json
+    diff-lcs (1.6.2)
     docile (1.4.1)
-    drb (2.2.3)
     fiber-annotation (0.2.0)
     fiber-local (1.1.0)
       fiber-storage
@@ -29,11 +29,6 @@ GEM
     io-event (1.14.2)
     json (2.18.1)
     metrics (0.15.0)
-    minitest (6.0.2)
-      drb (~> 2.0)
-      prism (~> 1.5)
-    mocha (3.1.0)
-      ruby2_keywords (>= 0.0.5)
     pg (1.6.2)
     pg (1.6.2-aarch64-linux)
     pg (1.6.2-aarch64-linux-musl)
@@ -41,9 +36,20 @@ GEM
     pg (1.6.2-x86_64-darwin)
     pg (1.6.2-x86_64-linux)
     pg (1.6.2-x86_64-linux-musl)
-    prism (1.9.0)
     rake (13.3.1)
-    ruby2_keywords (0.0.5)
+    rspec (3.13.2)
+      rspec-core (~> 3.13.0)
+      rspec-expectations (~> 3.13.0)
+      rspec-mocks (~> 3.13.0)
+    rspec-core (3.13.6)
+      rspec-support (~> 3.13.0)
+    rspec-expectations (3.13.5)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.13.0)
+    rspec-mocks (3.13.7)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.13.0)
+    rspec-support (3.13.6)
     simplecov (0.22.0)
       docile (~> 1.1)
       simplecov-html (~> 0.11)
@@ -64,10 +70,9 @@ PLATFORMS
 
 DEPENDENCIES
   async (~> 2.6)
-  minitest
-  mocha
   pgmq-ruby!
   rake
+  rspec
   simplecov
 
 BUNDLED WITH

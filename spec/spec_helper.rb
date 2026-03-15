@@ -4,17 +4,12 @@
 require "simplecov"
 
 SimpleCov.start do
-  add_filter "/test/"
   add_filter "/spec/"
   add_filter "/examples/"
   add_filter "/vendor/"
 
-  minimum_coverage 96.5 if ENV["CI"]
+  minimum_coverage 96.5
 end
-
-require "minitest/autorun"
-require "minitest/spec"
-require "mocha/minitest"
 
 require "pgmq"
 require "json" # Tests need JSON for serialization (user responsibility)
@@ -36,23 +31,25 @@ module JSONHelpers
   end
 end
 
-# Alias context to describe for RSpec-style grouping
-class Minitest::Spec
-  class << self
-    alias_method :context, :describe
-  end
-end
-
 # Support files
 Dir[File.join(__dir__, "support", "**", "*.rb")].each { |f| require f }
 
-# Include helpers in all specs
-class Minitest::Spec
-  include JSONHelpers
-  include DatabaseHelpers
+RSpec.configure do |config|
+  config.disable_monkey_patching!
+
+  # Include JSON helper in all tests
+  config.include JSONHelpers
+
+  config.expect_with :rspec do |c|
+    c.syntax = :expect
+  end
+
+  # Run specs in random order to surface order dependencies
+  config.order = :random
+  Kernel.srand config.seed
 
   # Clean up any test queues after each test
-  after do
+  config.after do
     cleanup_test_queues
   end
 end

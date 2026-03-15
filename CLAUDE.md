@@ -25,13 +25,16 @@ This is **NOT** a full job processing framework. Framework features (instrumenta
 docker compose up -d
 
 # Run all tests
-bundle exec rake test
+bundle exec rspec
 
 # Run specific test file
-bundle exec ruby -Ilib:test test/lib/pgmq/client_test.rb
+bundle exec rspec spec/unit/client_spec.rb
 
-# Run single test by name
-bundle exec ruby -Ilib:test test/lib/pgmq/client_test.rb -n /test_name/
+# Run integration tests only
+bundle exec rspec spec/integration
+
+# Run single test by line number
+bundle exec rspec spec/unit/client_spec.rb:42
 ```
 
 **Important:** PostgreSQL runs on port **5433** locally (see docker-compose.yml) to avoid conflicts with system PostgreSQL. Tests use this port automatically.
@@ -40,7 +43,7 @@ bundle exec ruby -Ilib:test test/lib/pgmq/client_test.rb -n /test_name/
 
 ```bash
 # Run tests
-bundle exec rake test
+bundle exec rspec
 ```
 
 
@@ -224,20 +227,21 @@ end
 
 ### Test Structure
 
-- **Unit tests** (`test/lib/`) - Minitest/spec tests for classes in isolation and with database
-- **Integration tests** (`spec/integration/`) - Standalone example scripts with real PostgreSQL
+- **Unit tests** (`spec/unit/`) - Test classes in isolation, mock database
+- **Integration tests** (`spec/integration/`) - Test full workflow with real PostgreSQL
 
 ### Test Helpers
 
-Located in `test/support/database_helpers.rb`:
+Located in `spec/support/database_helpers.rb`:
 - Database cleanup between tests
 - Connection helpers
 - Common test utilities
 
 ### Coverage Requirements
 
-- Minimum overall coverage: 96.5%
-- SimpleCov configured in `test/test_helper.rb`
+- Minimum overall coverage: 80%
+- Minimum per-file coverage: 70%
+- SimpleCov configured in `spec/spec_helper.rb`
 
 ### Writing Tests
 
@@ -249,7 +253,7 @@ Located in `test/support/database_helpers.rb`:
 
 ## Code Style
 
-- Ruby 3.3+ syntax
+- Ruby 3.2+ syntax
 - Frozen string literals (`# frozen_string_literal: true`)
 - Max line length: 120 characters (except specs/gemspec)
 - YARD documentation for public methods
@@ -258,7 +262,7 @@ Located in `test/support/database_helpers.rb`:
 ## CI/CD
 
 GitHub Actions workflows in `.github/workflows/`:
-- **ci.yml** - Runs minitest on all Ruby versions (3.3, 3.4, 4.0)
+- **ci.yml** - Runs RSpec on all Ruby versions (3.2, 3.3, 3.4, 3.5)
 - **push.yml** - Additional checks on push
 
 ## Dependencies
@@ -268,14 +272,14 @@ GitHub Actions workflows in `.github/workflows/`:
 - `connection_pool` (~> 2.4) - Thread-safe connection pooling
 
 **Development:**
-- `minitest` - Testing framework
-- `mocha` - Mocking library
+- `rspec` - Testing framework
 - `simplecov` - Code coverage
+- `pry` / `pry-byebug` - Debugging tools
 
 
 ## Version Information
 
-- Minimum Ruby: 3.3.0
+- Minimum Ruby: 3.2.0
 - Supported PostgreSQL: 14-18 with PGMQ extension
 - License: LGPL-3.0
 
@@ -298,9 +302,9 @@ GitHub Actions workflows in `.github/workflows/`:
 - `lib/pgmq/queue_metadata.rb` - Queue metadata model
 
 ### Documentation & Testing
-- `test/test_helper.rb` - Minitest configuration + SimpleCov setup
-- `test/lib/` - Minitest/spec unit tests
-- `spec/integration/` - Standalone integration examples with real PostgreSQL
+- `spec/spec_helper.rb` - RSpec configuration + SimpleCov setup
+- `spec/integration/` - Integration tests with real PostgreSQL
+- `spec/unit/` - Unit tests for individual components
 - `DEVELOPMENT.md` - Comprehensive development documentation
 - `README.md` - User-facing documentation with all API examples
 - `CLAUDE.md` - AI assistant guidance (this file)
