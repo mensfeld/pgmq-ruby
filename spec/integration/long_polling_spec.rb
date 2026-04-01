@@ -6,9 +6,7 @@
 # - read_with_poll blocks until a message arrives or timeout expires
 # - More efficient than busy-waiting with repeated read calls
 #
-# Run: bundle exec ruby spec/integration/long_polling_spec.rb
-
-require_relative "support/example_helper"
+# Run: bin/integrations spec/integration/long_polling_spec.rb
 
 ExampleHelper.run_example("Long Polling") do |client, queues, interrupted|
   queue = ExampleHelper.unique_queue_name("polling")

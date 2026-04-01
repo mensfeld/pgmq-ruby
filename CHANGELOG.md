@@ -11,6 +11,7 @@
 ### Infrastructure
 - **[Change]** Migrate test framework from RSpec to Minitest/Spec with Mocha for mocking, aligning with the broader Karafka ecosystem conventions.
 - **[Change]** Replace `rubocop-rspec` with `rubocop-minitest` for test linting.
+- **[Change]** Add `bin/integrations` runner script that centralizes integration spec execution. Specs no longer need `require_relative "support/example_helper"` — the runner injects it via `-r` flag. Run all specs with `bin/integrations` or specific ones with `bin/integrations spec/integration/foo_spec.rb`.
 
 ## 0.5.0 (2026-02-24)
 

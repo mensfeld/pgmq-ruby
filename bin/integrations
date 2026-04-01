@@ -1,0 +1,58 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Integration test runner for PGMQ
+#
+# Runs all integration specs (or specific ones) as isolated subprocesses,
+# automatically loading the example_helper via -r flag.
+#
+# Usage:
+#   bin/integrations                                      # run all specs
+#   bin/integrations spec/integration/archiving_spec.rb   # run specific spec(s)
+
+SPEC_DIR = File.expand_path("../spec/integration", __dir__)
+LOAD_PATH = File.join(SPEC_DIR, "support")
+
+Signal.trap("INT") do
+  puts "\nInterrupted."
+  exit(130)
+end
+
+files = ARGV.empty? ? Dir.glob(File.join(SPEC_DIR, "*_spec.rb")).sort : ARGV.map { |f| File.expand_path(f) }
+
+if files.empty?
+  puts "No spec files found."
+  exit(1)
+end
+
+puts "Running #{files.size} integration spec(s)..."
+puts
+
+failed = []
+
+files.each_with_index do |file, index|
+  name = File.basename(file)
+  puts "[#{index + 1}/#{files.size}] Running #{name}..."
+
+  success = system("bundle", "exec", "ruby", "-I", LOAD_PATH, "-r", "example_helper", file)
+
+  if success.nil?
+    puts "Interrupted."
+    exit(130)
+  elsif !success
+    failed << name
+    puts "FAILED: #{name}"
+  end
+
+  puts
+end
+
+puts "=" * 60
+
+if failed.empty?
+  puts "All #{files.size} integration spec(s) passed."
+else
+  puts "#{failed.size} spec(s) failed:"
+  failed.each { |f| puts "  - #{f}" }
+  exit(1)
+end

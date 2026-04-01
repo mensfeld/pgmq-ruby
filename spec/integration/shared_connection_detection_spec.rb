@@ -6,9 +6,7 @@
 # same PG::Connection to multiple pool slots. This is a deterministic test:
 # hold one connection, then force a second slot creation from another thread.
 #
-# Run: bundle exec ruby spec/integration/shared_connection_detection_spec.rb
-
-require_relative "support/example_helper"
+# Run: bin/integrations spec/integration/shared_connection_detection_spec.rb
 
 ExampleHelper.run_example("Shared Connection Detection") do |_client, _queues, _interrupted|
   shared_conn = PG.connect(ExampleHelper::DB_PARAMS)

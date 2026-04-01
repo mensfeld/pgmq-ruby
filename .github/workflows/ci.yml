@@ -108,7 +108,7 @@ jobs:
           PG_DATABASE: pgmq_test
           PG_USER: postgres
           PG_PASSWORD: postgres
-        run: bundle exec rake examples
+        run: bin/integrations
 
   yard-lint:
     timeout-minutes: 5

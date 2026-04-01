@@ -6,9 +6,7 @@
 # PG::Connection object to multiple pool slots and raises ConfigurationError,
 # preventing thread-safety corruption (nil PG::Result, segfaults, wrong data).
 #
-# Run: bundle exec ruby spec/integration/shared_connection_thread_safety_spec.rb
-
-require_relative "support/example_helper"
+# Run: bin/integrations spec/integration/shared_connection_thread_safety_spec.rb
 
 THREAD_COUNT = 5
 ITERATIONS = 30

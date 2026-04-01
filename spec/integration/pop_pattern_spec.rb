@@ -7,9 +7,7 @@
 # - pop_batch: Atomic batch read+delete
 # - No VT needed - message is immediately deleted
 #
-# Run: bundle exec ruby spec/integration/pop_pattern_spec.rb
-
-require_relative "support/example_helper"
+# Run: bin/integrations spec/integration/pop_pattern_spec.rb
 
 ExampleHelper.run_example("Pop Pattern") do |client, queues, _interrupted|
   queue = ExampleHelper.unique_queue_name("pop")

@@ -7,9 +7,7 @@
 # - Unlogged (create_unlogged): Fast, no WAL, not crash-safe
 # - Partitioned (create_partitioned): For high-volume queues
 #
-# Run: bundle exec ruby spec/integration/queue_types_spec.rb
-
-require_relative "support/example_helper"
+# Run: bin/integrations spec/integration/queue_types_spec.rb
 
 ExampleHelper.run_example("Queue Types") do |client, queues, _interrupted|
   std = ExampleHelper.unique_queue_name("standard")

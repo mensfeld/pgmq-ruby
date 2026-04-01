@@ -7,9 +7,7 @@
 # - read_batch: Read multiple messages at once
 # - delete_batch: Delete multiple messages efficiently
 #
-# Run: bundle exec ruby spec/integration/batch_operations_spec.rb
-
-require_relative "support/example_helper"
+# Run: bin/integrations spec/integration/batch_operations_spec.rb
 
 ExampleHelper.run_example("Batch Operations") do |client, queues, _interrupted|
   queue = ExampleHelper.unique_queue_name("batch")

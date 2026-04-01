@@ -7,9 +7,7 @@
 # - Prevents a single entity from monopolizing workers
 # - Messages are grouped by the first key in their JSON payload
 #
-# Run: bundle exec ruby spec/integration/grouped_round_robin_spec.rb
-
-require_relative "support/example_helper"
+# Run: bin/integrations spec/integration/grouped_round_robin_spec.rb
 
 ExampleHelper.run_example("Grouped Round-Robin Reading") do |client, queues, interrupted|
   queue = ExampleHelper.unique_queue_name("grouped_rr")

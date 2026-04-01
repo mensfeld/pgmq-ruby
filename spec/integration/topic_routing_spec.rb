@@ -7,9 +7,7 @@
 # - produce_topic: Send messages via routing key
 # - Pattern wildcards: * (one word), # (zero or more words)
 #
-# Run: bundle exec ruby spec/integration/topic_routing_spec.rb
-
-require_relative "support/example_helper"
+# Run: bin/integrations spec/integration/topic_routing_spec.rb
 
 ExampleHelper.run_example("Topic Routing (AMQP-like)") do |client, queues, interrupted|
   # Check if PGMQ supports topic routing

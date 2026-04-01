@@ -7,9 +7,7 @@
 # - Dead letter queue (DLQ) pattern
 # - Retry with max attempts
 #
-# Run: bundle exec ruby spec/integration/error_handling_spec.rb
-
-require_relative "support/example_helper"
+# Run: bin/integrations spec/integration/error_handling_spec.rb
 
 ExampleHelper.run_example("Error Handling") do |client, queues, interrupted|
   main = ExampleHelper.unique_queue_name("main")

@@ -7,9 +7,7 @@
 # - Automatic rollback on errors
 # - Essential for read-process-forward patterns
 #
-# Run: bundle exec ruby spec/integration/transactions_spec.rb
-
-require_relative "support/example_helper"
+# Run: bin/integrations spec/integration/transactions_spec.rb
 
 ExampleHelper.run_example("Transactions") do |client, queues, interrupted|
   inbox = ExampleHelper.unique_queue_name("inbox")
