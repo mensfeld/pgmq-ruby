@@ -5,7 +5,6 @@
 # Demonstrates that pgmq-ruby works correctly with Ruby's Fiber Scheduler API,
 # proving true concurrent I/O behavior when used with async/await patterns.
 #
-# Run: bin/integrations spec/integration/fiber_scheduler_spec.rb
 
 require_relative "support/fiber_scheduler_helper"
 

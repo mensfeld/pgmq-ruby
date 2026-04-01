@@ -6,7 +6,6 @@
 # - delete: Permanently removes message
 # - archive: Moves to archive table for audit/analysis
 #
-# Run: bin/integrations spec/integration/archiving_spec.rb
 
 ExampleHelper.run_example("Message Archiving") do |client, queues, interrupted|
   queue = ExampleHelper.unique_queue_name("archive")

@@ -7,7 +7,6 @@
 # - metrics_all: Get metrics for all queues
 # - list_queues: List all queues with metadata
 #
-# Run: bin/integrations spec/integration/queue_metrics_spec.rb
 
 ExampleHelper.run_example("Queue Metrics") do |client, queues, interrupted|
   q1 = ExampleHelper.unique_queue_name("orders")

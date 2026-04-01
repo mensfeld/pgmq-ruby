@@ -7,7 +7,6 @@
 # - read_multi_with_poll: Long-poll across multiple queues
 # - pop_multi: Atomic read+delete from first available queue
 #
-# Run: bin/integrations spec/integration/multi_queue_spec.rb
 
 ExampleHelper.run_example("Multi-Queue Operations") do |client, queues, interrupted|
   q1 = ExampleHelper.unique_queue_name("orders")

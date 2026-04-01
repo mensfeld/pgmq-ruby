@@ -7,7 +7,6 @@
 # - Multiple conditions use AND logic
 # - Works with read, read_batch, and read_with_poll
 #
-# Run: bin/integrations spec/integration/conditional_filtering_spec.rb
 
 ExampleHelper.run_example("Conditional Filtering") do |client, queues, interrupted|
   queue = ExampleHelper.unique_queue_name("filter")

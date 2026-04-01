@@ -6,7 +6,6 @@
 # - produce with delay: Message invisible until delay expires
 # - Use cases: scheduled tasks, retry backoff, rate limiting
 #
-# Run: bin/integrations spec/integration/delayed_messages_spec.rb
 
 ExampleHelper.run_example("Delayed Messages") do |client, queues, interrupted|
   queue = ExampleHelper.unique_queue_name("delayed")

@@ -879,6 +879,12 @@ docker compose up -d
 # Run tests
 bundle exec rake test
 
+# Run all integration specs
+bin/integrations
+
+# Run a specific integration spec
+bin/integrations spec/integration/basic_produce_consume_spec.rb
+
 # Run console
 bundle exec bin/console
 ```

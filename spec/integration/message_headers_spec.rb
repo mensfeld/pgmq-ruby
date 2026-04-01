@@ -6,7 +6,6 @@
 # - Headers are stored separately from payload
 # - Useful for tracing, routing, priority handling
 #
-# Run: bin/integrations spec/integration/message_headers_spec.rb
 
 ExampleHelper.run_example("Message Headers") do |client, queues, _interrupted|
   queue = ExampleHelper.unique_queue_name("headers")
