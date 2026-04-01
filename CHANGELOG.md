@@ -6,7 +6,7 @@
 - **[Breaking]** Drop Ruby 3.2 support. Minimum required Ruby version is now 3.3.0.
 
 ### Connection Management
-- **[Fix]** Detect shared `PG::Connection` across pool slots at creation time. When a callable connection factory returns the same `PG::Connection` object to multiple pool slots, concurrent threads corrupt libpq's internal state, causing nil `PG::Result` (`NoMethodError: undefined method 'ntuples' for nil`), segfaults, or wrong data. The pool now tracks connection identity via `ObjectSpace::WeakKeyMap` and raises `PGMQ::Errors::ConfigurationError` immediately with a descriptive error message. WeakKeyMap entries are automatically cleaned up when connections are GC'd.
+- **[Breaking]** Detect shared `PG::Connection` across pool slots at creation time. When a callable connection factory returns the same `PG::Connection` object to multiple pool slots, concurrent threads corrupt libpq's internal state, causing nil `PG::Result` (`NoMethodError: undefined method 'ntuples' for nil`), segfaults, or wrong data. The pool now tracks connection identity via `ObjectSpace::WeakKeyMap` and raises `PGMQ::Errors::ConfigurationError` immediately with a descriptive error message. WeakKeyMap entries are automatically cleaned up when connections are GC'd. **This change is breaking for configurations that intentionally share a single `PG::Connection` across multiple pool slots. Users must ensure their callable returns a distinct `PG::Connection` per pool slot or configure `pool_size: 1` when reusing a single shared connection.**
 
 ### Infrastructure
 - **[Change]** Migrate test framework from RSpec to Minitest/Spec with Mocha for mocking, aligning with the broader Karafka ecosystem conventions.

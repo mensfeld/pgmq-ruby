@@ -24,33 +24,35 @@ ExampleHelper.run_example("Shared Connection Thread Safety") do |_client, queues
   ok_results = 0
   mutex = Mutex.new
 
-  threads = THREAD_COUNT.times.map do
-    break [] if interrupted.call
+  begin
+    threads = THREAD_COUNT.times.map do
+      break [] if interrupted.call
 
-    Thread.new do
-      ITERATIONS.times do
-        break if interrupted.call
+      Thread.new do
+        ITERATIONS.times do
+          break if interrupted.call
 
-        begin
-          unsafe_client.list_queues
-          mutex.synchronize { ok_results += 1 }
-        rescue PGMQ::Errors::ConfigurationError
-          mutex.synchronize { config_errors += 1 }
-        rescue
-          # Connection errors from corrupted state
+          begin
+            unsafe_client.list_queues
+            mutex.synchronize { ok_results += 1 }
+          rescue PGMQ::Errors::ConfigurationError
+            mutex.synchronize { config_errors += 1 }
+          rescue
+            # Connection errors from corrupted state
+          end
         end
       end
     end
-  end
-  threads.each { |t| t.join(THREAD_TIMEOUT) || t.kill }
+    threads.each { |t| t.join(THREAD_TIMEOUT) || t.kill }
 
-  puts "Unsafe pattern: config_errors=#{config_errors}, ok=#{ok_results}"
-  puts config_errors.positive? ? "  Shared connection detected" : "  Race not triggered this run"
-
-  begin
-    raw_conn.close
-  rescue
-    nil
+    puts "Unsafe pattern: config_errors=#{config_errors}, ok=#{ok_results}"
+    puts config_errors.positive? ? "  Shared connection detected" : "  Race not triggered this run"
+  ensure
+    begin
+      unsafe_client.close
+    rescue
+      nil
+    end
   end
 
   break if interrupted.call

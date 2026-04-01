@@ -170,6 +170,7 @@ module PGMQ
     def create_pool
       params = @conn_params
       seen_connections = ObjectSpace::WeakKeyMap.new
+      seen_mutex = Mutex.new
 
       ConnectionPool.new(size: @pool_size, timeout: @pool_timeout) do
         conn = create_connection(params)
@@ -177,17 +178,21 @@ module PGMQ
         # Detect shared connections: if a callable returns the same PG::Connection
         # object to multiple pool slots, concurrent use will corrupt libpq state
         # (nil results, segfaults, wrong data). Fail fast with a clear message.
-        if conn.is_a?(PG::Connection) && seen_connections.key?(conn)
-          raise PGMQ::Errors::ConfigurationError,
-            "Connection callable returned the same PG::Connection object " \
-            "(object_id: #{conn.object_id}) to multiple pool slots. " \
-            "PG::Connection is NOT thread-safe — concurrent use causes nil results, " \
-            "segfaults, and data corruption. Ensure your callable returns a unique " \
-            "connection per invocation, e.g.: " \
-            "-> { ActiveRecord::Base.connection.raw_connection }"
-        end
+        if conn.is_a?(PG::Connection)
+          seen_mutex.synchronize do
+            if seen_connections.key?(conn)
+              raise PGMQ::Errors::ConfigurationError,
+                "Connection callable returned the same PG::Connection object " \
+                "(object_id: #{conn.object_id}) to multiple pool slots. " \
+                "PG::Connection is NOT thread-safe — concurrent use causes nil results, " \
+                "segfaults, and data corruption. Ensure your callable returns a unique " \
+                "PG::Connection instance on each invocation (for example, by calling " \
+                "PG.connect inside the callable)."
+            end
 
-        seen_connections[conn] = true if conn.is_a?(PG::Connection)
+            seen_connections[conn] = true
+          end
+        end
 
         conn
       end
