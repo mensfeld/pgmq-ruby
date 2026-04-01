@@ -49,7 +49,11 @@ ExampleHelper.run_example("Shared Connection Thread Safety") do |_client, queues
   puts "Unsafe pattern: config_errors=#{config_errors}, ok=#{ok_results}"
   puts config_errors.positive? ? "  Shared connection detected" : "  Race not triggered this run"
 
-  raw_conn.close rescue nil
+  begin
+    raw_conn.close
+  rescue
+    nil
+  end
 
   break if interrupted.call
 

@@ -207,16 +207,20 @@ describe PGMQ::Connection do
           connection.with_connection { |c| c.exec("SELECT 1") }
         rescue PGMQ::Errors::ConfigurationError => e
           errors << e
-        rescue => e
+        rescue
           # Connection errors from corrupted state are also possible
         end
       end
       threads.each(&:join)
 
-      assert errors.any?, "Expected ConfigurationError for shared connection"
+      assert_predicate errors, :any?, "Expected ConfigurationError for shared connection"
       assert_match(/same PG::Connection object/, errors.first.message)
     ensure
-      shared_conn&.close rescue nil
+      begin
+        shared_conn&.close
+      rescue
+        nil
+      end
     end
   end
 

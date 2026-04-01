@@ -50,5 +50,9 @@ ExampleHelper.run_example("Shared Connection Detection") do |_client, _queues, _
 
   safe_client.close
 ensure
-  shared_conn&.close rescue nil
+  begin
+    shared_conn&.close
+  rescue
+    nil
+  end
 end
