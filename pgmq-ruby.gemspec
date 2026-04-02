@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.metadata["documentation_uri"] = "https://github.com/mensfeld/pgmq-ruby#readme"
   spec.metadata["rubygems_mfa_required"] = "true"
 
-  spec.files = Dir['lib/**/*', 'CHANGELOG.md', 'LICENSE', 'README.md', 'pgmq-ruby.gemspec']
+  spec.files = Dir["lib/**/*", "CHANGELOG.md", "LICENSE", "README.md", "pgmq-ruby.gemspec"]
   spec.require_paths = ["lib"]
 
   # Runtime dependencies
