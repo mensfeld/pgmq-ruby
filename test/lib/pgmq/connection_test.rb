@@ -249,6 +249,86 @@ describe PGMQ::Connection do
     end
   end
 
+  describe "connection_lost_error? (private)" do
+    let(:connection) { PGMQ::Connection.new(TEST_DB_PARAMS, pool_size: 1) }
+
+    after { connection.close }
+
+    it "matches the pg-gem 'PQsocket' error raised when the cached socket is gone" do
+      # pg gem raises this (see pg_connection.c) when the libpq socket
+      # descriptor has been closed out from under an open PG::Connection,
+      # which happens when a connection pooler such as PgBouncer closes
+      # the server link on idle/lifetime timeout.
+      error = PG::ConnectionBad.new("PQsocket() can't get socket descriptor")
+
+      assert connection.send(:connection_lost_error?, error)
+    end
+
+    it "still matches the pre-existing server-initiated disconnect messages" do
+      %w[
+        server_closed_the_connection_unexpectedly
+        connection_to_server_was_lost
+        no_connection_to_the_server
+      ].each do |key|
+        message = key.tr("_", " ")
+        error = PG::ConnectionBad.new(message)
+
+        assert connection.send(:connection_lost_error?, error), "expected match for #{message.inspect}"
+      end
+    end
+
+    it "does not match unrelated PG errors" do
+      error = PG::Error.new("duplicate key value violates unique constraint")
+
+      refute connection.send(:connection_lost_error?, error)
+    end
+  end
+
+  describe "verify_connection! (private)" do
+    let(:connection) { PGMQ::Connection.new(TEST_DB_PARAMS, pool_size: 1) }
+
+    after { connection.close }
+
+    it "resets connections that are closed client-side (finished? is true)" do
+      pg_conn = PG.connect(TEST_DB_PARAMS)
+      pg_conn.close
+
+      assert_predicate pg_conn, :finished?
+
+      connection.send(:verify_connection!, pg_conn)
+
+      refute_predicate pg_conn, :finished?, "expected verify_connection! to reset a finished connection"
+      assert_equal "1", pg_conn.exec("SELECT 1").getvalue(0, 0)
+    ensure
+      pg_conn.close if pg_conn && !pg_conn.finished?
+    end
+
+    it "resets connections whose status is CONNECTION_BAD without finished? flipping true" do
+      pg_conn = PG.connect(TEST_DB_PARAMS)
+
+      # Simulate a server-initiated disconnect (PgBouncer idle timeout, admin
+      # kill, TCP RST) where the cached PG::Connection is still alive enough
+      # that finished? returns false but status reports CONNECTION_BAD.
+      # Return CONNECTION_BAD for the first query only so the subsequent
+      # reset (which re-checks status) can succeed.
+      pg_conn.stubs(:status).returns(PG::CONNECTION_BAD, PG::CONNECTION_OK)
+      pg_conn.expects(:reset).once.returns(pg_conn)
+
+      connection.send(:verify_connection!, pg_conn)
+    ensure
+      pg_conn.close if pg_conn && !pg_conn.finished?
+    end
+
+    it "does not touch healthy connections" do
+      pg_conn = PG.connect(TEST_DB_PARAMS)
+      pg_conn.expects(:reset).never
+
+      connection.send(:verify_connection!, pg_conn)
+    ensure
+      pg_conn&.close
+    end
+  end
+
   describe "connection lifecycle" do
     it "closes all connections properly" do
       client = PGMQ::Client.new(@conn_params, pool_size: 3)

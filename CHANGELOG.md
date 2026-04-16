@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Connection Management
+- **[Fix]** `PGMQ::Connection#verify_connection!` now also resets connections whose status is `PG::CONNECTION_BAD`. Previously it only checked `conn.finished?`, which misses connections closed server-side by the database or an intermediate pooler (PgBouncer `server_idle_timeout` / `client_idle_timeout`, admin kill, TCP RST). A pooled connection with a dead socket would survive `verify_connection!` and fail on the next operation with `PQsocket() can't get socket descriptor`.
+- **[Fix]** `PGMQ::Connection#connection_lost_error?` now recognises `"PQsocket() can't get socket descriptor"` (plus `"connection is closed"` / `"connection has been closed"`). This is the exact error the `pg` gem raises from its C extension when the cached libpq socket FD is gone. Without the match, the `auto_reconnect` retry path in `with_connection` skipped this error and producers failed on the first call following a server-side close.
+
 ## 0.6.0 (2026-04-02)
 
 ### Breaking Changes

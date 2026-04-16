@@ -111,29 +111,41 @@ module PGMQ
     # @param error [PG::Error] the error to check
     # @return [Boolean] true if connection was lost
     def connection_lost_error?(error)
-      # Common connection lost errors
+      # Common connection lost errors. Include the pg-gem C-extension message
+      # ("PQsocket() can't get socket descriptor") that is raised when the
+      # cached libpq socket descriptor is gone — e.g. after a server-side
+      # close by a connection pooler such as PgBouncer.
       lost_connection_messages = [
         "server closed the connection",
         "connection not open",
+        "connection is closed",
+        "connection has been closed",
         "no connection to the server",
         "terminating connection",
         "connection to server was lost",
-        "could not receive data from server"
+        "could not receive data from server",
+        "pqsocket() can't get socket descriptor"
       ]
 
-      message = error.message.downcase
+      message = error.message.to_s.downcase
       lost_connection_messages.any? { |pattern| message.include?(pattern) }
     end
 
-    # Verifies a connection is alive and working
+    # Verifies a connection is alive and working.
+    #
+    # Also resets when the connection reports `PG::CONNECTION_BAD`, which
+    # happens when the server (or an intermediate pooler such as PgBouncer)
+    # has closed the socket while the client-side `PG::Connection` object
+    # still exists. `#finished?` alone only catches connections closed
+    # explicitly from the client side.
+    #
     # @param conn [PG::Connection] connection to verify
-    # @raise [PG::Error] if connection is not working
+    # @raise [PG::Error] if the reset itself fails
     def verify_connection!(conn)
-      # Quick check - is connection object in bad state?
-      return unless conn.finished?
+      return conn.reset if conn.finished?
+      return conn.reset if conn.status == PG::CONNECTION_BAD
 
-      # Connection is finished/closed, try to reset it
-      conn.reset
+      nil
     end
 
     # Normalizes various connection parameter formats
