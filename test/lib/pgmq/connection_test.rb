@@ -293,11 +293,11 @@ describe PGMQ::Connection do
       pg_conn = PG.connect(TEST_DB_PARAMS)
       pg_conn.close
 
-      assert pg_conn.finished?
+      assert_predicate pg_conn, :finished?
 
       connection.send(:verify_connection!, pg_conn)
 
-      refute pg_conn.finished?, "expected verify_connection! to reset a finished connection"
+      refute_predicate pg_conn, :finished?, "expected verify_connection! to reset a finished connection"
       assert_equal "1", pg_conn.exec("SELECT 1").getvalue(0, 0)
     ensure
       pg_conn.close if pg_conn && !pg_conn.finished?
