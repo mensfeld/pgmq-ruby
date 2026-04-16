@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.1 (2026-04-16)
 
 ### Connection Management
 - **[Fix]** `PGMQ::Connection#verify_connection!` now also resets connections whose status is `PG::CONNECTION_BAD`. Previously it only checked `conn.finished?`, which misses connections closed server-side by the database or an intermediate pooler (PgBouncer `server_idle_timeout` / `client_idle_timeout`, admin kill, TCP RST). A pooled connection with a dead socket would survive `verify_connection!` and fail on the next operation with `PQsocket() can't get socket descriptor`.
