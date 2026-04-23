@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Connection Management
+- **[Fix]** `PGMQ::Connection#connection_lost_error?` now detects SSL-layer teardown errors (`"PQconsumeInput() SSL error: unexpected eof while reading"`, `"SSL SYSCALL error: EOF detected"`). Observed in production behind a managed Postgres pooler: an idle connection torn down at the SSL layer caused the next enqueue to raise `PGMQ::Errors::ConnectionError` without triggering `with_connection`'s single-retry path, because the message didn't match any of the existing substrings.
+- **[Fix]** `PGMQ::Connection#connection_lost_error?` now also matches by class (`PG::ConnectionBad`, `PG::UnableToSend`) in addition to message substrings. These are dedicated connection-failure classes libpq raises when the socket is dead; class-matching catches future OS/pooler/TLS message variants without waiting for them to hit production.
+
 ## 0.6.1 (2026-04-16)
 
 ### Connection Management

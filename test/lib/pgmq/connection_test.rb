@@ -282,6 +282,44 @@ describe PGMQ::Connection do
 
       refute connection.send(:connection_lost_error?, error)
     end
+
+    it "matches SSL-layer EOF raised when libpq's read returns 0 on a dead socket" do
+      # Observed in production behind a managed Postgres pooler: an idle
+      # connection is torn down at the SSL layer and the next I/O raises
+      # this exact message. Semantically identical to "could not receive
+      # data from server" (which is already covered), just one layer down.
+      error = PG::ConnectionBad.new(
+        "PQconsumeInput() SSL error: unexpected eof while reading"
+      )
+
+      assert connection.send(:connection_lost_error?, error)
+    end
+
+    it "matches SSL SYSCALL teardown errors" do
+      error = PG::ConnectionBad.new(
+        "SSL SYSCALL error: EOF detected"
+      )
+
+      assert connection.send(:connection_lost_error?, error)
+    end
+
+    it "matches PG::ConnectionBad by class, even when the message is opaque" do
+      # libpq doesn't promise a stable message for every pooler/OS/TLS
+      # combination, but it does raise a dedicated class for connection
+      # failures. Class-matching catches future message variants without
+      # growing the string list.
+      error = PG::ConnectionBad.new("")
+
+      assert connection.send(:connection_lost_error?, error)
+    end
+
+    it "matches PG::UnableToSend by class" do
+      # Raised by libpq when the write side of the connection is gone —
+      # another dedicated connection-failure class.
+      error = PG::UnableToSend.new("")
+
+      assert connection.send(:connection_lost_error?, error)
+    end
   end
 
   describe "verify_connection! (private)" do
