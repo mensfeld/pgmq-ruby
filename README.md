@@ -290,10 +290,45 @@ client = PGMQ::Client.new(
 )
 ```
 
+#### Extending the lost-connection error matchers
+
+PGMQ-Ruby ships with a curated list of `PG::Error` messages and classes
+(`PG::ConnectionBad`, `PG::UnableToSend`) that trigger the auto-reconnect
+retry. Different `pg` gem versions, PostgreSQL versions, and connection
+poolers (PgBouncer, Supabase, RDS Proxy, etc.) occasionally surface new
+disconnect signatures. Rather than wait for an upstream patch, you can
+extend the matchers at the call site:
+
+```ruby
+client = PGMQ::Client.new(
+  'postgres://localhost/mydb',
+  # Strings are matched as case-insensitive substrings against the error
+  # message; Regexps are matched against the original message.
+  reconnectable_error_patterns: [
+    "connection reset by peer",
+    /\Abroken pipe\b/i
+  ],
+  # Any Exception subclass is accepted. Subclasses also match.
+  reconnectable_error_classes: [PG::ConnectionRefused]
+)
+```
+
+The built-in defaults are always kept — your patterns and classes are
+appended to them. Configuration errors (e.g. passing an Integer as a
+pattern) raise `PGMQ::Errors::ConfigurationError` immediately at
+construction time so misconfiguration can't silently disable retries.
+
+> **Reserve these options for connection-level failures.** A "reconnectable"
+> error means the socket is dead and a retry on a fresh connection is safe.
+> Do **not** add patterns or classes for query-level errors (deadlocks,
+> constraint violations, statement timeouts) — those will replay your
+> operation against a healthy connection and may cause duplicate work or
+> mask bugs.
+
 **Connection Pool Benefits:**
 - **Thread-safe** - Multiple threads can safely share a single client
 - **Fiber-aware** - Works with Ruby 3.0+ Fiber Scheduler for non-blocking I/O (tested with the `async` gem)
-- **Auto-reconnect** - Recovers from lost connections (configurable)
+- **Auto-reconnect** - Recovers from lost connections (configurable, extendable)
 - **Health checks** - Verifies connections before use to prevent stale connection errors
 - **Monitoring** - Track pool utilization with `client.stats`
 

@@ -47,6 +47,13 @@ module PGMQ
     # @param pool_size [Integer] connection pool size
     # @param pool_timeout [Integer] connection pool timeout in seconds
     # @param auto_reconnect [Boolean] automatically reconnect on connection errors (default: true)
+    # @param reconnectable_error_patterns [Array<String, Regexp>] additional error
+    #   message patterns that mean the connection is dead and a retry on a
+    #   fresh socket is safe. Defaults are always kept. Reserve this for
+    #   connection-level failures — do not add query-level errors here.
+    # @param reconnectable_error_classes [Array<Class>] additional exception
+    #   classes that mean the connection is dead. `PG::ConnectionBad` and
+    #   `PG::UnableToSend` are always matched. Same caveat as above.
     #
     # @example Connection string
     #   client = PGMQ::Client.new('postgres://user:pass@localhost/db')
@@ -59,11 +66,23 @@ module PGMQ
     #
     # @example Disable auto-reconnect
     #   client = PGMQ::Client.new(auto_reconnect: false)
+    #
+    # @example Extend the retry-on-lost-connection list
+    #   client = PGMQ::Client.new(
+    #     'postgres://localhost/db',
+    #     reconnectable_error_patterns: [
+    #       /connection reset by peer/i,
+    #       "broken pipe"
+    #     ],
+    #     reconnectable_error_classes: [PG::ConnectionRefused]
+    #   )
     def initialize(
       conn_params = nil,
       pool_size: Connection::DEFAULT_POOL_SIZE,
       pool_timeout: Connection::DEFAULT_POOL_TIMEOUT,
-      auto_reconnect: true
+      auto_reconnect: true,
+      reconnectable_error_patterns: [],
+      reconnectable_error_classes: []
     )
       @connection = if conn_params.is_a?(Connection)
         conn_params
@@ -72,7 +91,9 @@ module PGMQ
           conn_params,
           pool_size: pool_size,
           pool_timeout: pool_timeout,
-          auto_reconnect: auto_reconnect
+          auto_reconnect: auto_reconnect,
+          reconnectable_error_patterns: reconnectable_error_patterns,
+          reconnectable_error_classes: reconnectable_error_classes
         )
       end
     end
