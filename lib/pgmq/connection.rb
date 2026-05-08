@@ -36,11 +36,10 @@ module PGMQ
       # Thread-safe: reads are lock-free (frozen array swap); writes should
       # be done at boot time before forking workers.
       #
+      # @return [Array<String, Regexp>]
       # @example
       #   PGMQ::Connection.reconnectable_error_patterns << "connection reset by peer"
       #   PGMQ::Connection.reconnectable_error_patterns << /\Abroken pipe\b/i
-      #
-      # @return [Array<String, Regexp>]
       attr_reader :reconnectable_error_patterns
 
       # Additional exception classes that mean the connection is dead.
@@ -49,10 +48,9 @@ module PGMQ
       #
       # Thread-safe: reads are lock-free; writes should be done at boot time.
       #
+      # @return [Array<Class>]
       # @example
       #   PGMQ::Connection.reconnectable_error_classes << PG::ConnectionRefused
-      #
-      # @return [Array<Class>]
       attr_reader :reconnectable_error_classes
 
       # Replaces the extra reconnectable error patterns.
@@ -73,6 +71,14 @@ module PGMQ
 
       private
 
+      # Normalizes user-supplied reconnectable error patterns.
+      #
+      # Strings are downcased once at configuration time so the hot path
+      # (`connection_lost_error?`) only does substring checks. Regexps are
+      # passed through unchanged.
+      #
+      # @param patterns [Array<String, Regexp>, String, Regexp, nil]
+      # @return [Array<String, Regexp>]
       def normalize_patterns(patterns)
         Array(patterns).map do |pattern|
           case pattern
@@ -89,6 +95,10 @@ module PGMQ
         end.freeze
       end
 
+      # Normalizes user-supplied reconnectable error classes.
+      #
+      # @param classes [Array<Class>, Class, nil]
+      # @return [Array<Class>]
       def normalize_classes(classes)
         Array(classes).map do |klass|
           unless klass.is_a?(Class) && klass <= Exception

@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Connection Management
+- **[Feature]** Add class-level configuration for extending reconnectable error detection. `PGMQ::Connection.reconnectable_error_patterns` accepts additional `String` or `Regexp` patterns (strings matched as case-insensitive substrings; regexps against the original message). `PGMQ::Connection.reconnectable_error_classes` accepts additional `Exception` subclasses. This allows users to adapt to new pg gem / PostgreSQL / pooler disconnect signatures without waiting for a gem release.
 - **[Fix]** `PGMQ::Connection#connection_lost_error?` now detects SSL-layer teardown errors (`"PQconsumeInput() SSL error: unexpected eof while reading"`, `"SSL SYSCALL error: EOF detected"`). Observed in production behind a managed Postgres pooler: an idle connection torn down at the SSL layer caused the next enqueue to raise `PGMQ::Errors::ConnectionError` without triggering `with_connection`'s single-retry path, because the message didn't match any of the existing substrings.
 - **[Fix]** `PGMQ::Connection#connection_lost_error?` now also matches by class (`PG::ConnectionBad`, `PG::UnableToSend`) in addition to message substrings. These are dedicated connection-failure classes libpq raises when the socket is dead; class-matching catches future OS/pooler/TLS message variants without waiting for them to hit production.
 
