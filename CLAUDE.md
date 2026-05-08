@@ -80,6 +80,11 @@ bundle exec bin/console
      - Hash parameters: `{ host:, port:, dbname:, user:, password: }`
      - Callables (for Rails): `-> { ActiveRecord::Base.connection.raw_connection }`
    - Auto-reconnect on connection failures (configurable)
+   - Lost-connection matchers are extendable via class-level configuration:
+     `PGMQ::Connection.reconnectable_error_patterns` (Strings/Regexps) and
+     `PGMQ::Connection.reconnectable_error_classes`, so users can adapt to
+     new pg/PostgreSQL/pooler disconnect signatures without waiting for a
+     gem release
    - Connection health checks before use
    - Note: Connection parameters are required - users should manage ENV variables themselves using `ENV.fetch`
 

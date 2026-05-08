@@ -322,6 +322,123 @@ describe PGMQ::Connection do
     end
   end
 
+  describe "class-level reconnectable error configuration" do
+    let(:connection) { PGMQ::Connection.new(TEST_DB_PARAMS, pool_size: 1) }
+
+    before do
+      # Save original class-level settings
+      @original_patterns = PGMQ::Connection.reconnectable_error_patterns
+      @original_classes = PGMQ::Connection.reconnectable_error_classes
+    end
+
+    after do
+      # Restore class-level settings
+      PGMQ::Connection.reconnectable_error_patterns = @original_patterns
+      PGMQ::Connection.reconnectable_error_classes = @original_classes
+      connection.close
+    end
+
+    it "keeps the built-in defaults when no extras are configured" do
+      error = PG::ConnectionBad.new("server closed the connection unexpectedly")
+
+      assert connection.send(:connection_lost_error?, error)
+    end
+
+    it "matches class-level string patterns as case-insensitive substrings" do
+      PGMQ::Connection.reconnectable_error_patterns = ["Connection Reset By Peer"]
+
+      error = PG::Error.new("recv() failed: connection reset by peer")
+
+      assert connection.send(:connection_lost_error?, error)
+    end
+
+    it "matches class-level Regexp patterns against the original message" do
+      PGMQ::Connection.reconnectable_error_patterns = [/\Abroken pipe\b/i]
+
+      error = PG::Error.new("Broken pipe while writing to server")
+
+      assert connection.send(:connection_lost_error?, error)
+    end
+
+    it "still rejects unrelated errors when extra patterns are configured" do
+      PGMQ::Connection.reconnectable_error_patterns = ["broken pipe"]
+
+      error = PG::Error.new("duplicate key value violates unique constraint")
+
+      refute connection.send(:connection_lost_error?, error)
+    end
+
+    it "matches class-level error classes" do
+      stub_class = Class.new(PG::Error)
+      PGMQ::Connection.reconnectable_error_classes = [stub_class]
+
+      error = stub_class.new("anything")
+
+      assert connection.send(:connection_lost_error?, error)
+    end
+
+    it "matches subclasses of class-level error classes" do
+      stub_class = Class.new(PG::Error)
+      child_class = Class.new(stub_class)
+      PGMQ::Connection.reconnectable_error_classes = [stub_class]
+
+      error = child_class.new("anything")
+
+      assert connection.send(:connection_lost_error?, error)
+    end
+
+    it "accepts a single pattern instead of an array" do
+      PGMQ::Connection.reconnectable_error_patterns = "broken pipe"
+
+      error = PG::Error.new("broken pipe")
+
+      assert connection.send(:connection_lost_error?, error)
+    end
+
+    it "raises ConfigurationError for non-String, non-Regexp patterns" do
+      assert_raises(PGMQ::Errors::ConfigurationError) do
+        PGMQ::Connection.reconnectable_error_patterns = [123]
+      end
+    end
+
+    it "raises ConfigurationError for non-Exception classes" do
+      assert_raises(PGMQ::Errors::ConfigurationError) do
+        PGMQ::Connection.reconnectable_error_classes = [String]
+      end
+    end
+
+    it "raises ConfigurationError when classes contains a non-Class value" do
+      assert_raises(PGMQ::Errors::ConfigurationError) do
+        PGMQ::Connection.reconnectable_error_classes = ["PG::Error"]
+      end
+    end
+
+    it "drives the auto_reconnect retry path for class-level patterns" do
+      PGMQ::Connection.reconnectable_error_patterns = ["pretend-pooler-eof"]
+
+      attempts = 0
+      result = connection.with_connection do |conn|
+        attempts += 1
+        raise PG::Error, "pretend-pooler-eof on read" if attempts == 1
+
+        conn.exec("SELECT 1").getvalue(0, 0)
+      end
+
+      assert_equal "1", result
+      assert_equal 2, attempts, "expected one retry after the class-level pattern match"
+    end
+
+    it "reflects runtime changes to class-level settings" do
+      error = PG::Error.new("novel-disconnection-error")
+
+      refute connection.send(:connection_lost_error?, error), "should not match before config"
+
+      PGMQ::Connection.reconnectable_error_patterns = ["novel-disconnection-error"]
+
+      assert connection.send(:connection_lost_error?, error), "should match after config"
+    end
+  end
+
   describe "verify_connection! (private)" do
     let(:connection) { PGMQ::Connection.new(TEST_DB_PARAMS, pool_size: 1) }
 

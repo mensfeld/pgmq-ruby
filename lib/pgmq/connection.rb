@@ -26,6 +26,97 @@ module PGMQ
     # Default connection pool timeout in seconds
     DEFAULT_POOL_TIMEOUT = 5
 
+    class << self
+      # Additional error message patterns (String or Regexp) that mean the
+      # connection is dead and a retry on a fresh socket is safe. Strings are
+      # matched as case-insensitive substrings; Regexps match the original
+      # message. The built-in LOST_CONNECTION_MESSAGES are always checked
+      # first — this list is appended to them.
+      #
+      # Thread-safe: reads are lock-free (frozen array swap); writes should
+      # be done at boot time before forking workers.
+      #
+      # @return [Array<String, Regexp>]
+      # @example
+      #   PGMQ::Connection.reconnectable_error_patterns << "connection reset by peer"
+      #   PGMQ::Connection.reconnectable_error_patterns << /\Abroken pipe\b/i
+      attr_reader :reconnectable_error_patterns
+
+      # Additional exception classes that mean the connection is dead.
+      # `PG::ConnectionBad` and `PG::UnableToSend` are always matched — this
+      # list is appended to them. Subclasses also match.
+      #
+      # Thread-safe: reads are lock-free; writes should be done at boot time.
+      #
+      # @return [Array<Class>]
+      # @example
+      #   PGMQ::Connection.reconnectable_error_classes << PG::ConnectionRefused
+      attr_reader :reconnectable_error_classes
+
+      # Replaces the extra reconnectable error patterns.
+      #
+      # @param patterns [Array<String, Regexp>]
+      # @raise [PGMQ::Errors::ConfigurationError] if any element is invalid
+      def reconnectable_error_patterns=(patterns)
+        @reconnectable_error_patterns = normalize_patterns(patterns)
+      end
+
+      # Replaces the extra reconnectable error classes.
+      #
+      # @param classes [Array<Class>]
+      # @raise [PGMQ::Errors::ConfigurationError] if any element is invalid
+      def reconnectable_error_classes=(classes)
+        @reconnectable_error_classes = normalize_classes(classes)
+      end
+
+      private
+
+      # Normalizes user-supplied reconnectable error patterns.
+      #
+      # Strings are downcased once at configuration time so the hot path
+      # (`connection_lost_error?`) only does substring checks. Regexps are
+      # passed through unchanged.
+      #
+      # @param patterns [Array<String, Regexp>, String, Regexp, nil]
+      # @return [Array<String, Regexp>]
+      def normalize_patterns(patterns)
+        Array(patterns).map do |pattern|
+          case pattern
+          when Regexp
+            pattern
+          when String
+            pattern.downcase
+          else
+            raise(
+              PGMQ::Errors::ConfigurationError,
+              "reconnectable_error_patterns must contain Strings or Regexps, got #{pattern.class}"
+            )
+          end
+        end.freeze
+      end
+
+      # Normalizes user-supplied reconnectable error classes.
+      #
+      # @param classes [Array<Class>, Class, nil]
+      # @return [Array<Class>]
+      def normalize_classes(classes)
+        Array(classes).map do |klass|
+          unless klass.is_a?(Class) && klass <= Exception
+            raise(
+              PGMQ::Errors::ConfigurationError,
+              "reconnectable_error_classes must contain Exception subclasses, got #{klass.inspect}"
+            )
+          end
+
+          klass
+        end.freeze
+      end
+    end
+
+    # Initialize class-level defaults (empty arrays, users append at boot)
+    @reconnectable_error_patterns = [].freeze
+    @reconnectable_error_classes = [].freeze
+
     # @return [ConnectionPool] the connection pool
     attr_reader :pool
 
@@ -129,11 +220,13 @@ module PGMQ
 
     # Checks if the error indicates a lost connection.
     #
-    # Matches in two steps: first by class (`PG::ConnectionBad` /
+    # Matches in three steps: first by class (`PG::ConnectionBad` /
     # `PG::UnableToSend` are dedicated connection-failure classes libpq
-    # raises regardless of message), then by message substring for the
-    # bare `PG::Error` cases where libpq doesn't reach for the specific
-    # subclass.
+    # raises regardless of message, plus any user-supplied classes), then
+    # by built-in message substrings for the bare `PG::Error` cases where
+    # libpq doesn't reach for the specific subclass, and finally by
+    # user-supplied patterns (strings matched as case-insensitive
+    # substrings, Regexps matched against the original message).
     #
     # @param error [PG::Error] the error to check
     # @return [Boolean] true if the connection was lost and a retry on a
@@ -141,8 +234,20 @@ module PGMQ
     def connection_lost_error?(error)
       return true if error.is_a?(PG::ConnectionBad) || error.is_a?(PG::UnableToSend)
 
-      message = error.message.to_s.downcase
-      LOST_CONNECTION_MESSAGES.any? { |pattern| message.include?(pattern) }
+      extra_classes = self.class.reconnectable_error_classes
+      return true if extra_classes.any? { |klass| error.is_a?(klass) }
+
+      original_message = error.message.to_s
+      downcased = original_message.downcase
+
+      return true if LOST_CONNECTION_MESSAGES.any? { |pattern| downcased.include?(pattern) }
+
+      self.class.reconnectable_error_patterns.any? do |pattern|
+        case pattern
+        when Regexp then pattern.match?(original_message)
+        else downcased.include?(pattern)
+        end
+      end
     end
 
     # Verifies a connection is alive and working.
