@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **[Enhancement]** Add Ruby warning category opt-in to test helpers
 
 ## 0.6.2 (2026-05-08)
 

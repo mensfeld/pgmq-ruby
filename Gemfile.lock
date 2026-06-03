@@ -51,6 +51,7 @@ GEM
     simplecov-html (0.13.2)
     simplecov_json_formatter (0.1.4)
     traces (0.18.2)
+    warning (1.6.0)
     zeitwerk (2.8.2)
 
 PLATFORMS
@@ -69,6 +70,7 @@ DEPENDENCIES
   pgmq-ruby!
   rake
   simplecov
+  warning
 
 BUNDLED WITH
    2.7.2
