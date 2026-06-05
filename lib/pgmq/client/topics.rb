@@ -136,11 +136,11 @@ module PGMQ
           encoder = PG::TextEncoder::Array.new
           encoded_messages = encoder.encode(messages)
 
-          if headers && delay.is_a?(Time)
+          if headers && !delay.is_a?(Integer)
             encoded_headers = encoder.encode(headers)
             conn.exec_params(
               "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::jsonb[], $4::timestamptz)",
-              [routing_key, encoded_messages, encoded_headers, delay.utc.iso8601(6)]
+              [routing_key, encoded_messages, encoded_headers, delay.to_time.utc.iso8601(6)]
             )
           elsif headers
             encoded_headers = encoder.encode(headers)
@@ -148,10 +148,10 @@ module PGMQ
               "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::jsonb[], $4::integer)",
               [routing_key, encoded_messages, encoded_headers, delay]
             )
-          elsif delay.is_a?(Time)
+          elsif !delay.is_a?(Integer)
             conn.exec_params(
               "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::timestamptz)",
-              [routing_key, encoded_messages, delay.utc.iso8601(6)]
+              [routing_key, encoded_messages, delay.to_time.utc.iso8601(6)]
             )
           elsif delay > 0
             conn.exec_params(

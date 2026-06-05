@@ -45,20 +45,20 @@ module PGMQ
         validate_queue_name!(queue_name)
 
         result = with_connection do |conn|
-          if headers && delay.is_a?(Time)
+          if headers && !delay.is_a?(Integer)
             conn.exec_params(
               "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::jsonb, $4::timestamptz)",
-              [queue_name, message, headers, delay.utc.iso8601(6)]
+              [queue_name, message, headers, delay.to_time.utc.iso8601(6)]
             )
           elsif headers
             conn.exec_params(
               "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::jsonb, $4::integer)",
               [queue_name, message, headers, delay]
             )
-          elsif delay.is_a?(Time)
+          elsif !delay.is_a?(Integer)
             conn.exec_params(
               "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::timestamptz)",
-              [queue_name, message, delay.utc.iso8601(6)]
+              [queue_name, message, delay.to_time.utc.iso8601(6)]
             )
           else
             conn.exec_params(
@@ -116,11 +116,11 @@ module PGMQ
           encoder = PG::TextEncoder::Array.new
           encoded_messages = encoder.encode(messages)
 
-          if headers && delay.is_a?(Time)
+          if headers && !delay.is_a?(Integer)
             encoded_headers = encoder.encode(headers)
             conn.exec_params(
               "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::jsonb[], $4::timestamptz)",
-              [queue_name, encoded_messages, encoded_headers, delay.utc.iso8601(6)]
+              [queue_name, encoded_messages, encoded_headers, delay.to_time.utc.iso8601(6)]
             )
           elsif headers
             encoded_headers = encoder.encode(headers)
@@ -128,10 +128,10 @@ module PGMQ
               "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::jsonb[], $4::integer)",
               [queue_name, encoded_messages, encoded_headers, delay]
             )
-          elsif delay.is_a?(Time)
+          elsif !delay.is_a?(Integer)
             conn.exec_params(
               "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::timestamptz)",
-              [queue_name, encoded_messages, delay.utc.iso8601(6)]
+              [queue_name, encoded_messages, delay.to_time.utc.iso8601(6)]
             )
           else
             conn.exec_params(

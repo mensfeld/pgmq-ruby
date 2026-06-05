@@ -40,7 +40,7 @@ describe PGMQ::Client::Producer do
     end
 
     it "sends message with absolute timestamp delay (Time)" do
-      future = Time.now + 3
+      future = Time.now + 2
 
       msg_id = @client.produce(@queue_name, to_json_msg({ ts: "delayed" }), delay: future)
 
@@ -52,7 +52,7 @@ describe PGMQ::Client::Producer do
       assert_nil msg
 
       # Wait past the timestamp
-      sleep 3.5
+      sleep 2.5
 
       msg = @client.read(@queue_name, vt: 30)
 
@@ -115,7 +115,7 @@ describe PGMQ::Client::Producer do
       it "sends a message with headers and absolute timestamp delay (Time)" do
         message = to_json_msg({ order_id: 999 })
         headers = to_json_msg({ correlation_id: "req-ts" })
-        future = Time.now + 3
+        future = Time.now + 2
 
         msg_id = @client.produce(@queue_name, message, headers: headers, delay: future)
 
@@ -125,7 +125,7 @@ describe PGMQ::Client::Producer do
 
         assert_nil msg
 
-        sleep 3.5
+        sleep 2.5
 
         msg = @client.read(@queue_name, vt: 30)
 
@@ -221,7 +221,7 @@ describe PGMQ::Client::Producer do
 
     it "sends batch with absolute timestamp delay (Time)" do
       messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
-      future = Time.now + 3
+      future = Time.now + 2
 
       @client.produce_batch(@queue_name, messages, delay: future)
 
@@ -231,7 +231,7 @@ describe PGMQ::Client::Producer do
       assert_nil msg
 
       # Wait past the timestamp
-      sleep 3.5
+      sleep 2.5
 
       read_messages = @client.read_batch(@queue_name, vt: 30, qty: 2)
 
@@ -330,7 +330,7 @@ describe PGMQ::Client::Producer do
           to_json_msg({ correlation_id: "ts-1" }),
           to_json_msg({ correlation_id: "ts-2" })
         ]
-        future = Time.now + 3
+        future = Time.now + 2
 
         @client.produce_batch(@queue_name, messages, headers: headers, delay: future)
 
@@ -338,7 +338,7 @@ describe PGMQ::Client::Producer do
 
         assert_nil msg
 
-        sleep 3.5
+        sleep 2.5
 
         read_messages = @client.read_batch(@queue_name, vt: 30, qty: 2)
 
