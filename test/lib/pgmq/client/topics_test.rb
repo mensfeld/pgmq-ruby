@@ -117,7 +117,7 @@ describe PGMQ::Client::Topics do
       assert_equal "abc123", JSON.parse(msg.headers)["trace_id"]
     end
 
-    it "supports delay" do
+    it "supports integer delay" do
       @client.produce_topic("orders.new", to_json_msg({ delayed: true }), delay: 2)
 
       # Message should not be visible immediately
@@ -130,6 +130,7 @@ describe PGMQ::Client::Topics do
 
       refute_nil msg
     end
+
   end
 
   describe "#produce_batch_topic" do
@@ -164,6 +165,42 @@ describe PGMQ::Client::Topics do
           headers: [to_json_msg({ h: 1 })])
       end
       assert_match(/headers array length/, e.message)
+    end
+
+    it "supports absolute timestamp delay (Time)" do
+      future = Time.now + 3
+      @client.produce_batch_topic("orders.new",
+        [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })],
+        delay: future)
+
+      msg = @client.read(@queue_name, vt: 30)
+
+      assert_nil msg
+
+      sleep 3.5
+
+      read_messages = @client.read_batch(@queue_name, vt: 30, qty: 2)
+
+      assert_equal 2, read_messages.size
+    end
+
+    it "supports headers with absolute timestamp delay (Time)" do
+      future = Time.now + 3
+      @client.produce_batch_topic("orders.new",
+        [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })],
+        headers: [to_json_msg({ h: "a" }), to_json_msg({ h: "b" })],
+        delay: future)
+
+      msg = @client.read(@queue_name, vt: 30)
+
+      assert_nil msg
+
+      sleep 3.5
+
+      read_messages = @client.read_batch(@queue_name, vt: 30, qty: 2)
+
+      assert_equal 2, read_messages.size
+      read_messages.each { |m| refute_nil m.headers }
     end
   end
 

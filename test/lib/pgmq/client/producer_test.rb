@@ -19,7 +19,7 @@ describe PGMQ::Client::Producer do
       assert_equal({ "order_id" => 123, "status" => "pending" }, JSON.parse(msg.message))
     end
 
-    it "sends message with delay" do
+    it "sends message with integer delay" do
       msg_id = @client.produce(@queue_name, to_json_msg({ test: "data" }), delay: 2)
 
       assert_kind_of String, msg_id
@@ -39,6 +39,38 @@ describe PGMQ::Client::Producer do
       assert_equal({ "test" => "data" }, JSON.parse(msg.message))
     end
 
+    it "sends message with absolute timestamp delay (Time)" do
+      future = Time.now + 3
+
+      msg_id = @client.produce(@queue_name, to_json_msg({ ts: "delayed" }), delay: future)
+
+      assert_kind_of String, msg_id
+
+      # Message should not be visible yet
+      msg = @client.read(@queue_name, vt: 30)
+
+      assert_nil msg
+
+      # Wait past the timestamp
+      sleep 3.5
+
+      msg = @client.read(@queue_name, vt: 30)
+
+      refute_nil msg
+      assert_equal({ "ts" => "delayed" }, JSON.parse(msg.message))
+    end
+
+    it "sends message immediately when timestamp delay is in the past" do
+      past = Time.now - 10
+
+      @client.produce(@queue_name, to_json_msg({ ts: "past" }), delay: past)
+
+      msg = @client.read(@queue_name, vt: 30)
+
+      refute_nil msg
+      assert_equal({ "ts" => "past" }, JSON.parse(msg.message))
+    end
+
     context "with headers" do
       it "sends a message with headers" do
         message = to_json_msg({ order_id: 456 })
@@ -56,7 +88,7 @@ describe PGMQ::Client::Producer do
         assert_equal({ "trace_id" => "abc123", "priority" => "high" }, JSON.parse(msg.headers))
       end
 
-      it "sends a message with headers and delay" do
+      it "sends a message with headers and integer delay" do
         message = to_json_msg({ order_id: 789 })
         headers = to_json_msg({ correlation_id: "req-001" })
 
@@ -78,6 +110,28 @@ describe PGMQ::Client::Producer do
         refute_nil msg
         assert_equal({ "order_id" => 789 }, JSON.parse(msg.message))
         assert_equal({ "correlation_id" => "req-001" }, JSON.parse(msg.headers))
+      end
+
+      it "sends a message with headers and absolute timestamp delay (Time)" do
+        message = to_json_msg({ order_id: 999 })
+        headers = to_json_msg({ correlation_id: "req-ts" })
+        future = Time.now + 3
+
+        msg_id = @client.produce(@queue_name, message, headers: headers, delay: future)
+
+        assert_kind_of String, msg_id
+
+        msg = @client.read(@queue_name, vt: 30)
+
+        assert_nil msg
+
+        sleep 3.5
+
+        msg = @client.read(@queue_name, vt: 30)
+
+        refute_nil msg
+        assert_equal({ "order_id" => 999 }, JSON.parse(msg.message))
+        assert_equal({ "correlation_id" => "req-ts" }, JSON.parse(msg.headers))
       end
 
       it "sends a message with complex nested headers" do
@@ -146,7 +200,7 @@ describe PGMQ::Client::Producer do
       assert_equal [], msg_ids
     end
 
-    it "sends batch with delay" do
+    it "sends batch with integer delay" do
       messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
 
       @client.produce_batch(@queue_name, messages, delay: 2)
@@ -160,6 +214,36 @@ describe PGMQ::Client::Producer do
       sleep 2.5
 
       # Now messages should be visible
+      read_messages = @client.read_batch(@queue_name, vt: 30, qty: 2)
+
+      assert_equal 2, read_messages.size
+    end
+
+    it "sends batch with absolute timestamp delay (Time)" do
+      messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
+      future = Time.now + 3
+
+      @client.produce_batch(@queue_name, messages, delay: future)
+
+      # Messages should not be visible yet
+      msg = @client.read(@queue_name, vt: 30)
+
+      assert_nil msg
+
+      # Wait past the timestamp
+      sleep 3.5
+
+      read_messages = @client.read_batch(@queue_name, vt: 30, qty: 2)
+
+      assert_equal 2, read_messages.size
+    end
+
+    it "sends batch immediately when timestamp delay is in the past" do
+      messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
+      past = Time.now - 10
+
+      @client.produce_batch(@queue_name, messages, delay: past)
+
       read_messages = @client.read_batch(@queue_name, vt: 30, qty: 2)
 
       assert_equal 2, read_messages.size
@@ -205,7 +289,7 @@ describe PGMQ::Client::Producer do
         end
       end
 
-      it "sends batch with headers and delay" do
+      it "sends batch with headers and integer delay" do
         messages = [
           to_json_msg({ id: 1 }),
           to_json_msg({ id: 2 })
@@ -234,6 +318,36 @@ describe PGMQ::Client::Producer do
           parsed_headers = JSON.parse(msg.headers)
 
           assert_match(/corr-\d/, parsed_headers["correlation_id"])
+        end
+      end
+
+      it "sends batch with headers and absolute timestamp delay (Time)" do
+        messages = [
+          to_json_msg({ id: 1 }),
+          to_json_msg({ id: 2 })
+        ]
+        headers = [
+          to_json_msg({ correlation_id: "ts-1" }),
+          to_json_msg({ correlation_id: "ts-2" })
+        ]
+        future = Time.now + 3
+
+        @client.produce_batch(@queue_name, messages, headers: headers, delay: future)
+
+        msg = @client.read(@queue_name, vt: 30)
+
+        assert_nil msg
+
+        sleep 3.5
+
+        read_messages = @client.read_batch(@queue_name, vt: 30, qty: 2)
+
+        assert_equal 2, read_messages.size
+        read_messages.each do |msg|
+          refute_nil msg.headers
+          parsed_headers = JSON.parse(msg.headers)
+
+          assert_match(/ts-\d/, parsed_headers["correlation_id"])
         end
       end
 

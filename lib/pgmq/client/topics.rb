@@ -114,7 +114,8 @@ module PGMQ
       # @param routing_key [String] dot-separated routing key
       # @param messages [Array<String>] array of message payloads as JSON strings
       # @param headers [Array<String>, nil] optional array of headers as JSON strings
-      # @param delay [Integer] delay in seconds before messages become visible
+      # @param delay [Integer, Time] delay in seconds before messages become visible, or an absolute
+      #   Time at which the messages become visible (PGMQ v1.10.0+)
       # @return [Array<Hash>] array of hashes with :queue_name and :msg_id
       #
       # @example Batch topic send
@@ -135,11 +136,22 @@ module PGMQ
           encoder = PG::TextEncoder::Array.new
           encoded_messages = encoder.encode(messages)
 
-          if headers
+          if headers && delay.is_a?(Time)
+            encoded_headers = encoder.encode(headers)
+            conn.exec_params(
+              "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::jsonb[], $4::timestamptz)",
+              [routing_key, encoded_messages, encoded_headers, delay.utc.iso8601(6)]
+            )
+          elsif headers
             encoded_headers = encoder.encode(headers)
             conn.exec_params(
               "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::jsonb[], $4::integer)",
               [routing_key, encoded_messages, encoded_headers, delay]
+            )
+          elsif delay.is_a?(Time)
+            conn.exec_params(
+              "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::timestamptz)",
+              [routing_key, encoded_messages, delay.utc.iso8601(6)]
             )
           elsif delay > 0
             conn.exec_params(
