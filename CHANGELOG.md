@@ -1,7 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 (Unreleased)
+
+### Message Operations
 - **[Enhancement]** Add Ruby warning category opt-in to test helpers
+- **[Feature]** `produce`, `produce_batch`, and `produce_batch_topic` now accept an absolute `Time`
+  object for the `delay:` parameter in addition to an integer number of seconds. This mirrors the
+  existing `set_vt` behaviour and maps to the `timestamptz` overloads added in PGMQ v1.10.0.
+  Pass `delay: Time.now + 3600` to schedule a message to become visible at a specific wall-clock
+  time. Note: `produce_topic` does not support `Time` delay because the upstream `pgmq.send_topic`
+  SQL function does not yet have a `timestamptz` overload.
 
 ## 0.6.2 (2026-05-08)
 
