@@ -320,6 +320,7 @@ describe PGMQ::Client::Consumer do
 
       assert_equal 3, messages.size
       user_ids = messages.map { |m| JSON.parse(m.message)["user_id"] }
+
       assert_includes user_ids, "user1"
       assert_includes user_ids, "user2"
     end
@@ -425,7 +426,7 @@ describe PGMQ::Client::Consumer do
       refute_empty messages
       assert_operator elapsed, :>=, 0.5
       assert_operator elapsed, :<, 3.0
-      assert_equal true, JSON.parse(messages.first.message)["arrived"]
+      assert JSON.parse(messages.first.message)["arrived"]
     end
 
     it "returns PGMQ::Message objects" do
@@ -471,6 +472,7 @@ describe PGMQ::Client::Consumer do
 
       assert_equal 2, messages.size
       user_ids = messages.map { |m| JSON.parse(m.message)["user_id"] }
+
       assert_equal ["user1", "user1"], user_ids
     end
 
@@ -514,7 +516,7 @@ describe PGMQ::Client::Consumer do
     end
   end
 
-describe "#read_grouped_rr" do
+  describe "#read_grouped_rr" do
     it "reads messages in round-robin order across groups" do
       # Send messages from different "users" (grouped by first key value)
       @client.produce(@queue_name, to_json_msg({ user_id: "user1", seq: 1 }))
