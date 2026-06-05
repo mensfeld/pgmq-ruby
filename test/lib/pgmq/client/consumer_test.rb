@@ -234,7 +234,287 @@ describe PGMQ::Client::Consumer do
     end
   end
 
-  describe "#read_grouped_rr" do
+  describe "#read_grouped" do
+    it "returns an empty array for an empty queue" do
+      assert_equal [], @client.read_grouped(@queue_name, vt: 30, qty: 5)
+    end
+
+    it "returns PGMQ::Message objects" do
+      @client.produce(@queue_name, to_json_msg({ user_id: "u1", seq: 1 }))
+
+      messages = @client.read_grouped(@queue_name, vt: 30, qty: 1)
+
+      assert_equal 1, messages.size
+      assert_kind_of PGMQ::Message, messages.first
+    end
+
+    it "returns all expected message fields" do
+      @client.produce(@queue_name, to_json_msg({ user_id: "u1", val: 42 }))
+
+      msg = @client.read_grouped(@queue_name, vt: 30, qty: 1).first
+
+      assert_respond_to msg, :msg_id
+      assert_respond_to msg, :message
+      assert_respond_to msg, :read_ct
+      assert_respond_to msg, :enqueued_at
+      assert_respond_to msg, :vt
+      assert_equal({ "user_id" => "u1", "val" => 42 }, JSON.parse(msg.message))
+    end
+
+    it "respects the qty limit" do
+      5.times { |i| @client.produce(@queue_name, to_json_msg({ user_id: "u1", seq: i })) }
+
+      messages = @client.read_grouped(@queue_name, vt: 30, qty: 3)
+
+      assert_equal 3, messages.size
+    end
+
+    it "reads fewer messages than qty when queue has less" do
+      2.times { |i| @client.produce(@queue_name, to_json_msg({ user_id: "u1", seq: i })) }
+
+      messages = @client.read_grouped(@queue_name, vt: 30, qty: 10)
+
+      assert_equal 2, messages.size
+    end
+
+    it "respects visibility timeout — message hidden during vt" do
+      @client.produce(@queue_name, to_json_msg({ user_id: "u1" }))
+
+      first = @client.read_grouped(@queue_name, vt: 2, qty: 1)
+
+      assert_equal 1, first.size
+
+      second = @client.read_grouped(@queue_name, vt: 2, qty: 1)
+
+      assert_empty second
+
+      sleep 2.5
+
+      third = @client.read_grouped(@queue_name, vt: 30, qty: 1)
+
+      assert_equal 1, third.size
+      assert_equal first.first.msg_id, third.first.msg_id
+    end
+
+    it "drains the oldest group first (SQS-style throughput ordering)" do
+      # user1 has 3 messages, user2 has 1 — requesting qty: 3 should drain user1 first
+      @client.produce(@queue_name, to_json_msg({ user_id: "user1", seq: 1 }))
+      @client.produce(@queue_name, to_json_msg({ user_id: "user1", seq: 2 }))
+      @client.produce(@queue_name, to_json_msg({ user_id: "user1", seq: 3 }))
+      @client.produce(@queue_name, to_json_msg({ user_id: "user2", seq: 1 }))
+
+      messages = @client.read_grouped(@queue_name, vt: 30, qty: 3)
+
+      assert_equal 3, messages.size
+      user_ids = messages.map { |m| JSON.parse(m.message)["user_id"] }
+      # All 3 should be from user1 — oldest group drained first
+      assert_equal ["user1"] * 3, user_ids
+    end
+
+    it "reads from next group once the first is exhausted" do
+      @client.produce(@queue_name, to_json_msg({ user_id: "user1", seq: 1 }))
+      @client.produce(@queue_name, to_json_msg({ user_id: "user2", seq: 1 }))
+      @client.produce(@queue_name, to_json_msg({ user_id: "user2", seq: 2 }))
+
+      messages = @client.read_grouped(@queue_name, vt: 30, qty: 3)
+
+      assert_equal 3, messages.size
+      user_ids = messages.map { |m| JSON.parse(m.message)["user_id"] }
+      assert_includes user_ids, "user1"
+      assert_includes user_ids, "user2"
+    end
+
+    it "handles a single-group queue" do
+      3.times { |i| @client.produce(@queue_name, to_json_msg({ tenant: "acme", seq: i })) }
+
+      messages = @client.read_grouped(@queue_name, vt: 30, qty: 3)
+
+      assert_equal 3, messages.size
+      messages.each { |m| assert_equal "acme", JSON.parse(m.message)["tenant"] }
+    end
+
+    it "handles many groups with qty smaller than total messages" do
+      %w[a b c d e].each do |user|
+        2.times { |i| @client.produce(@queue_name, to_json_msg({ user_id: user, seq: i })) }
+      end
+
+      messages = @client.read_grouped(@queue_name, vt: 30, qty: 4)
+
+      assert_equal 4, messages.size
+      messages.each { |m| assert_kind_of PGMQ::Message, m }
+    end
+
+    it "validates the queue name" do
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) do
+        @client.read_grouped("invalid queue!", vt: 30, qty: 1)
+      end
+    end
+
+    it "increments read_ct on subsequent reads after vt expires" do
+      @client.produce(@queue_name, to_json_msg({ user_id: "u1" }))
+
+      first = @client.read_grouped(@queue_name, vt: 2, qty: 1).first
+
+      assert_equal "1", first.read_ct
+
+      sleep 2.5
+
+      second = @client.read_grouped(@queue_name, vt: 30, qty: 1).first
+
+      assert_equal "2", second.read_ct
+    end
+
+    it "uses DEFAULT_VT when vt not specified" do
+      @client.produce(@queue_name, to_json_msg({ user_id: "u1" }))
+
+      messages = @client.read_grouped(@queue_name, qty: 1)
+
+      assert_equal 1, messages.size
+    end
+  end
+
+  describe "#read_grouped_with_poll" do
+    it "returns an empty array when queue stays empty within timeout" do
+      start_time = Time.now
+      messages = @client.read_grouped_with_poll(
+        @queue_name,
+        vt: 30,
+        qty: 1,
+        max_poll_seconds: 1,
+        poll_interval_ms: 100
+      )
+      elapsed = Time.now - start_time
+
+      assert_empty messages
+      assert_operator elapsed, :>=, 1
+    end
+
+    it "returns immediately when messages already exist" do
+      @client.produce(@queue_name, to_json_msg({ user_id: "u1" }))
+
+      start_time = Time.now
+      messages = @client.read_grouped_with_poll(
+        @queue_name,
+        vt: 30,
+        qty: 1,
+        max_poll_seconds: 5,
+        poll_interval_ms: 100
+      )
+      elapsed = Time.now - start_time
+
+      assert_equal 1, messages.size
+      assert_operator elapsed, :<, 1.0
+    end
+
+    it "waits for a message that arrives during polling" do
+      Thread.new do
+        sleep 0.5
+        @client.produce(@queue_name, to_json_msg({ user_id: "u1", arrived: true }))
+      end
+
+      start_time = Time.now
+      messages = @client.read_grouped_with_poll(
+        @queue_name,
+        vt: 30,
+        qty: 1,
+        max_poll_seconds: 3,
+        poll_interval_ms: 100
+      )
+      elapsed = Time.now - start_time
+
+      refute_empty messages
+      assert_operator elapsed, :>=, 0.5
+      assert_operator elapsed, :<, 3.0
+      assert_equal true, JSON.parse(messages.first.message)["arrived"]
+    end
+
+    it "returns PGMQ::Message objects" do
+      @client.produce(@queue_name, to_json_msg({ user_id: "u1" }))
+
+      messages = @client.read_grouped_with_poll(
+        @queue_name,
+        vt: 30,
+        qty: 1,
+        max_poll_seconds: 2,
+        poll_interval_ms: 100
+      )
+
+      assert_kind_of PGMQ::Message, messages.first
+    end
+
+    it "respects the qty limit" do
+      5.times { |i| @client.produce(@queue_name, to_json_msg({ user_id: "u1", seq: i })) }
+
+      messages = @client.read_grouped_with_poll(
+        @queue_name,
+        vt: 30,
+        qty: 3,
+        max_poll_seconds: 2,
+        poll_interval_ms: 50
+      )
+
+      assert_equal 3, messages.size
+    end
+
+    it "drains the oldest group first (same SQS-style semantics as read_grouped)" do
+      @client.produce(@queue_name, to_json_msg({ user_id: "user1", seq: 1 }))
+      @client.produce(@queue_name, to_json_msg({ user_id: "user1", seq: 2 }))
+      @client.produce(@queue_name, to_json_msg({ user_id: "user2", seq: 1 }))
+
+      messages = @client.read_grouped_with_poll(
+        @queue_name,
+        vt: 30,
+        qty: 2,
+        max_poll_seconds: 2,
+        poll_interval_ms: 50
+      )
+
+      assert_equal 2, messages.size
+      user_ids = messages.map { |m| JSON.parse(m.message)["user_id"] }
+      assert_equal ["user1", "user1"], user_ids
+    end
+
+    it "uses default poll parameters" do
+      @client.produce(@queue_name, to_json_msg({ user_id: "u1" }))
+
+      messages = @client.read_grouped_with_poll(@queue_name)
+
+      assert_equal 1, messages.size
+    end
+
+    it "validates the queue name" do
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) do
+        @client.read_grouped_with_poll("bad name!", vt: 30, qty: 1)
+      end
+    end
+
+    it "respects visibility timeout on polled messages" do
+      @client.produce(@queue_name, to_json_msg({ user_id: "u1" }))
+
+      first = @client.read_grouped_with_poll(
+        @queue_name, vt: 2, qty: 1, max_poll_seconds: 2, poll_interval_ms: 50
+      )
+
+      assert_equal 1, first.size
+
+      second = @client.read_grouped_with_poll(
+        @queue_name, vt: 2, qty: 1, max_poll_seconds: 1, poll_interval_ms: 50
+      )
+
+      assert_empty second
+
+      sleep 2.5
+
+      third = @client.read_grouped_with_poll(
+        @queue_name, vt: 30, qty: 1, max_poll_seconds: 2, poll_interval_ms: 50
+      )
+
+      assert_equal 1, third.size
+      assert_equal first.first.msg_id, third.first.msg_id
+    end
+  end
+
+describe "#read_grouped_rr" do
     it "reads messages in round-robin order across groups" do
       # Send messages from different "users" (grouped by first key value)
       @client.produce(@queue_name, to_json_msg({ user_id: "user1", seq: 1 }))

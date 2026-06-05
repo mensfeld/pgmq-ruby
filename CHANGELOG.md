@@ -4,6 +4,16 @@
 
 ### Message Operations
 - **[Enhancement]** Add Ruby warning category opt-in to test helpers
+- **[Feature]** Add SQS-style grouped reading:
+  - `read_grouped(queue_name, vt:, qty:)` — reads messages grouped by the first JSON key,
+    filling the batch from the oldest group first (throughput-optimised). Contrast with
+    `read_grouped_rr` which interleaves groups fairly.
+  - `read_grouped_with_poll(queue_name, vt:, qty:, max_poll_seconds:, poll_interval_ms:)` —
+    same strategy with long-polling support.
+
+  Use `read_grouped` when maximising throughput matters more than fairness across groups
+  (e.g. a single tenant has a burst of work). Use `read_grouped_rr` when you need to
+  prevent any one group from monopolising workers.
 - **[Feature]** `produce`, `produce_batch`, and `produce_batch_topic` now accept an absolute `Time`
   object for the `delay:` parameter in addition to an integer number of seconds. This mirrors the
   existing `set_vt` behaviour and maps to the `timestamptz` overloads added in PGMQ v1.10.0.
