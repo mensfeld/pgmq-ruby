@@ -12,8 +12,9 @@ module PGMQ
       # @param queue_name [String] name of the queue
       # @param message [String] message as JSON string (for PostgreSQL JSONB)
       # @param headers [String, nil] optional headers as JSON string (for metadata, routing, tracing)
-      # @param delay [Integer, Time] delay in seconds before message becomes visible, or an absolute
-      #   Time at which the message becomes visible (PGMQ v1.10.0+)
+      # @param delay [Numeric, Time] delay in seconds before message becomes visible (integer or float),
+      #   or an absolute Time at which the message becomes visible, including ActiveSupport::TimeWithZone
+      #   (PGMQ v1.10.0+)
       # @return [String] message ID as string
       #
       # @example Basic produce
@@ -45,7 +46,7 @@ module PGMQ
         validate_queue_name!(queue_name)
 
         result = with_connection do |conn|
-          if headers && !delay.is_a?(Integer)
+          if headers && !delay.is_a?(Numeric)
             conn.exec_params(
               "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::jsonb, $4::timestamptz)",
               [queue_name, message, headers, delay.to_time.utc.iso8601(6)]
@@ -55,7 +56,7 @@ module PGMQ
               "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::jsonb, $4::integer)",
               [queue_name, message, headers, delay]
             )
-          elsif !delay.is_a?(Integer)
+          elsif !delay.is_a?(Numeric)
             conn.exec_params(
               "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::timestamptz)",
               [queue_name, message, delay.to_time.utc.iso8601(6)]
@@ -76,8 +77,9 @@ module PGMQ
       # @param queue_name [String] name of the queue
       # @param messages [Array<String>] array of message payloads as JSON strings
       # @param headers [Array<String>, nil] optional array of headers as JSON strings (must match messages length)
-      # @param delay [Integer, Time] delay in seconds before messages become visible, or an absolute
-      #   Time at which the messages become visible (PGMQ v1.10.0+)
+      # @param delay [Numeric, Time] delay in seconds before messages become visible (integer or float),
+      #   or an absolute Time at which the messages become visible, including ActiveSupport::TimeWithZone
+      #   (PGMQ v1.10.0+)
       # @return [Array<String>] array of message IDs
       # @raise [ArgumentError] if headers array length doesn't match messages length
       #
@@ -116,7 +118,7 @@ module PGMQ
           encoder = PG::TextEncoder::Array.new
           encoded_messages = encoder.encode(messages)
 
-          if headers && !delay.is_a?(Integer)
+          if headers && !delay.is_a?(Numeric)
             encoded_headers = encoder.encode(headers)
             conn.exec_params(
               "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::jsonb[], $4::timestamptz)",
@@ -128,7 +130,7 @@ module PGMQ
               "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::jsonb[], $4::integer)",
               [queue_name, encoded_messages, encoded_headers, delay]
             )
-          elsif !delay.is_a?(Integer)
+          elsif !delay.is_a?(Numeric)
             conn.exec_params(
               "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::timestamptz)",
               [queue_name, encoded_messages, delay.to_time.utc.iso8601(6)]
