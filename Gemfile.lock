@@ -26,8 +26,8 @@ GEM
     fiber-local (1.1.0)
       fiber-storage
     fiber-storage (1.0.1)
-    io-event (1.16.0)
-    json (2.19.5)
+    io-event (1.16.1)
+    json (2.19.7)
     metrics (0.15.0)
     minitest (6.0.6)
       drb (~> 2.0)
