@@ -130,7 +130,6 @@ describe PGMQ::Client::Topics do
 
       refute_nil msg
     end
-
   end
 
   describe "#produce_batch_topic" do
