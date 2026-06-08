@@ -227,6 +227,51 @@ module PGMQ
         result.map { |row| Message.new(row) }
       end
 
+      # Reads one message per FIFO group from the head of each group
+      #
+      # Returns exactly one message — the oldest visible message — from each
+      # distinct FIFO group, up to qty groups. Groups are determined by the
+      # `x-pgmq-group` key in the message headers (set via the `headers:` param
+      # on `produce`). Messages without that header key all land in a single
+      # implicit default group, so only one of them is returned per call.
+      #
+      # Unlike `read_grouped` (which groups by the first payload key and drains
+      # one group fully before moving to the next), `read_grouped_head` surfaces
+      # the leading edge of every group in one call — useful for detecting
+      # head-of-line stalls or building per-group progress dashboards.
+      #
+      # @note Requires PGMQ v1.11.1+.
+      #
+      # @param queue_name [String] name of the queue
+      # @param vt [Integer] visibility timeout in seconds
+      # @param qty [Integer] maximum number of groups to sample
+      # @return [Array<PGMQ::Message>] one message per group, up to qty
+      #
+      # @example Sample the head of each group
+      #   # Produce with x-pgmq-group headers so each tenant is a separate group
+      #   client.produce("tasks", '{"job":"build"}', headers: '{"x-pgmq-group":"tenant_a"}')
+      #   client.produce("tasks", '{"job":"test"}',  headers: '{"x-pgmq-group":"tenant_b"}')
+      #   messages = client.read_grouped_head("tasks", vt: 30, qty: 10)
+      #   # Returns: one message from tenant_a and one from tenant_b
+      #
+      # @example Monitor for stuck groups
+      #   heads = client.read_grouped_head("jobs", vt: 30, qty: 100)
+      #   heads.each do |msg|
+      #     alert_if_stuck(msg) if msg.enqueued_at < Time.now - 3600
+      #   end
+      def read_grouped_head(queue_name, vt: DEFAULT_VT, qty: 1)
+        validate_queue_name!(queue_name)
+
+        result = with_connection do |conn|
+          conn.exec_params(
+            "SELECT * FROM pgmq.read_grouped_head($1::text, $2::integer, $3::integer)",
+            [queue_name, vt, qty]
+          )
+        end
+
+        result.map { |row| Message.new(row) }
+      end
+
       # Reads messages using grouped round-robin ordering
       #
       # Messages are grouped by the first key in their JSON payload and returned

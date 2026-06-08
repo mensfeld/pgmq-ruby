@@ -516,6 +516,123 @@ describe PGMQ::Client::Consumer do
     end
   end
 
+  describe "#read_grouped_head" do
+    # Groups are determined by the x-pgmq-group key in message headers.
+    # Messages without that header all land in a single implicit default group.
+    def group_header(name)
+      { "x-pgmq-group" => name }.to_json
+    end
+
+    it "returns an empty array for an empty queue" do
+      assert_equal [], @client.read_grouped_head(@queue_name, vt: 30, qty: 5)
+    end
+
+    it "returns PGMQ::Message objects" do
+      @client.produce(@queue_name, to_json_msg({ seq: 1 }), headers: group_header("g1"))
+
+      messages = @client.read_grouped_head(@queue_name, vt: 30, qty: 1)
+
+      assert_equal 1, messages.size
+      assert_kind_of PGMQ::Message, messages.first
+    end
+
+    it "returns all expected message fields" do
+      @client.produce(@queue_name, to_json_msg({ val: 99 }), headers: group_header("g1"))
+
+      msg = @client.read_grouped_head(@queue_name, vt: 30, qty: 1).first
+
+      assert_respond_to msg, :msg_id
+      assert_respond_to msg, :message
+      assert_respond_to msg, :read_ct
+      assert_respond_to msg, :enqueued_at
+      assert_respond_to msg, :vt
+      assert_equal({ "val" => 99 }, JSON.parse(msg.message))
+    end
+
+    it "returns exactly one message per x-pgmq-group header group" do
+      # group1 has 3 messages, group2 has 2 — should get one from each
+      3.times { |i| @client.produce(@queue_name, to_json_msg({ seq: i }), headers: group_header("group1")) }
+      2.times { |i| @client.produce(@queue_name, to_json_msg({ seq: i }), headers: group_header("group2")) }
+
+      messages = @client.read_grouped_head(@queue_name, vt: 30, qty: 10)
+
+      assert_equal 2, messages.size
+    end
+
+    it "respects the qty limit — caps the number of groups sampled" do
+      %w[a b c d e].each do |g|
+        2.times { |i| @client.produce(@queue_name, to_json_msg({ seq: i }), headers: group_header(g)) }
+      end
+
+      messages = @client.read_grouped_head(@queue_name, vt: 30, qty: 3)
+
+      assert_equal 3, messages.size
+    end
+
+    it "reads fewer than qty when fewer groups exist" do
+      @client.produce(@queue_name, to_json_msg({ seq: 0 }), headers: group_header("ga"))
+      @client.produce(@queue_name, to_json_msg({ seq: 0 }), headers: group_header("gb"))
+
+      messages = @client.read_grouped_head(@queue_name, vt: 30, qty: 10)
+
+      assert_equal 2, messages.size
+    end
+
+    it "returns the head (oldest) message from each group" do
+      @client.produce(@queue_name, to_json_msg({ seq: 1 }), headers: group_header("g1"))
+      @client.produce(@queue_name, to_json_msg({ seq: 2 }), headers: group_header("g1"))
+
+      messages = @client.read_grouped_head(@queue_name, vt: 30, qty: 5)
+
+      # Only one message per group, and it must be the oldest (seq: 1)
+      assert_equal 1, messages.size
+      assert_equal 1, JSON.parse(messages.first.message)["seq"]
+    end
+
+    it "messages without x-pgmq-group header all share one default group" do
+      # Without headers, all messages land in the implicit default group
+      3.times { |i| @client.produce(@queue_name, to_json_msg({ seq: i })) }
+
+      messages = @client.read_grouped_head(@queue_name, vt: 30, qty: 10)
+
+      # All in the same default group — only 1 returned
+      assert_equal 1, messages.size
+    end
+
+    it "respects visibility timeout — message hidden during vt" do
+      @client.produce(@queue_name, to_json_msg({ seq: 1 }), headers: group_header("g1"))
+
+      first = @client.read_grouped_head(@queue_name, vt: 2, qty: 1)
+
+      assert_equal 1, first.size
+
+      second = @client.read_grouped_head(@queue_name, vt: 2, qty: 1)
+
+      assert_empty second
+
+      sleep 2.5
+
+      third = @client.read_grouped_head(@queue_name, vt: 30, qty: 1)
+
+      assert_equal 1, third.size
+      assert_equal first.first.msg_id, third.first.msg_id
+    end
+
+    it "validates the queue name" do
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) do
+        @client.read_grouped_head("bad queue!", vt: 30, qty: 1)
+      end
+    end
+
+    it "uses DEFAULT_VT when vt not specified" do
+      @client.produce(@queue_name, to_json_msg({ seq: 1 }), headers: group_header("g1"))
+
+      messages = @client.read_grouped_head(@queue_name, qty: 1)
+
+      assert_equal 1, messages.size
+    end
+  end
+
   describe "#read_grouped_rr" do
     it "reads messages in round-robin order across groups" do
       # Send messages from different "users" (grouped by first key value)
