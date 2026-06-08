@@ -28,7 +28,7 @@ PGMQ-Ruby is a Ruby client for PGMQ (PostgreSQL Message Queue). It provides dire
   - [Queue Management](#queue-management)
   - [Sending Messages](#sending-messages)
   - [Reading Messages](#reading-messages)
-  - [Grouped Round-Robin Reading](#grouped-round-robin-reading)
+  - [Grouped Reading](#grouped-reading)
   - [Message Lifecycle](#message-lifecycle)
   - [Monitoring](#monitoring)
   - [Transaction Support](#transaction-support)
@@ -49,8 +49,11 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | **Reading** | `read` | Read single message with visibility timeout | ✅ |
 | | `read_batch` | Read multiple messages with visibility timeout | ✅ |
 | | `read_with_poll` | Long-polling for efficient message consumption | ✅ |
+| | `read_grouped` | SQS-style throughput-first grouped reading | ✅ |
+| | `read_grouped_with_poll` | Throughput-first grouped reading with long-polling | ✅ |
 | | `read_grouped_rr` | Round-robin reading across message groups | ✅ |
 | | `read_grouped_rr_with_poll` | Round-robin with long-polling | ✅ |
+| | `read_grouped_head` | One message per FIFO group from the head of each group | ✅ |
 | | `pop` | Atomic read + delete operation | ✅ |
 | | `pop_batch` | Atomic batch read + delete operation | ✅ |
 | **Deleting/Archiving** | `delete` | Delete single message | ✅ |
@@ -443,6 +446,18 @@ msg = client.pop("queue_name")
 # Pop batch (atomic read + delete for multiple messages)
 messages = client.pop_batch("queue_name", 10)
 
+# SQS-style grouped reading (throughput-first: drains oldest group before moving on)
+# Messages grouped by first key in their JSON payload
+messages = client.read_grouped("queue_name", vt: 30, qty: 10)
+
+# Throughput-first grouped reading with long-polling
+messages = client.read_grouped_with_poll("queue_name",
+  vt: 30,
+  qty: 10,
+  max_poll_seconds: 5,
+  poll_interval_ms: 100
+)
+
 # Grouped round-robin reading (fair processing across entities)
 # Messages are grouped by the first key in their JSON payload
 messages = client.read_grouped_rr("queue_name", vt: 30, qty: 10)
@@ -454,38 +469,82 @@ messages = client.read_grouped_rr_with_poll("queue_name",
   max_poll_seconds: 5,
   poll_interval_ms: 100
 )
+
+# Read one message per FIFO group from the head of each group
+# Groups are set via x-pgmq-group header (requires PGMQ v1.11.1+)
+client.produce("queue_name", '{"job":"a"}', headers: '{"x-pgmq-group":"tenant_a"}')
+client.produce("queue_name", '{"job":"b"}', headers: '{"x-pgmq-group":"tenant_b"}')
+messages = client.read_grouped_head("queue_name", vt: 30, qty: 10)
+# => one message from tenant_a and one from tenant_b
 ```
 
-#### Grouped Round-Robin Reading
+#### Grouped Reading
 
-When processing messages from multiple entities (users, orders, tenants), regular FIFO ordering can cause starvation - one entity with many messages can monopolize workers.
+PGMQ provides three grouped-reading strategies for processing messages from multiple entities (users, tenants, orders). All three group by the **first key** in the JSON payload (except `read_grouped_head`, which uses the `x-pgmq-group` message header).
 
-Grouped round-robin ensures fair processing by interleaving messages from different groups:
+##### Throughput-First (`read_grouped` / `read_grouped_with_poll`)
+
+Drains the oldest group completely before moving to the next. Best when maximising throughput matters more than fairness:
 
 ```ruby
-# Queue contains messages for different users:
-# user_a: 5 messages, user_b: 2 messages, user_c: 1 message
+# Queue: user_a has 3 messages, user_b has 1
+messages = client.read_grouped("tasks", vt: 30, qty: 3)
+# => [user_a_1, user_a_2, user_a_3]  — drains user_a first
 
-# Regular read would process all user_a messages first (unfair)
-messages = client.read_batch("tasks", vt: 30, qty: 8)
-# => [user_a_1, user_a_2, user_a_3, user_a_4, user_a_5, user_b_1, user_b_2, user_c_1]
+# With long-polling (waits up to max_poll_seconds if queue is empty)
+messages = client.read_grouped_with_poll("tasks",
+  vt: 30,
+  qty: 10,
+  max_poll_seconds: 5,
+  poll_interval_ms: 100
+)
+```
 
-# Grouped round-robin ensures fair distribution
+##### Round-Robin (`read_grouped_rr` / `read_grouped_rr_with_poll`)
+
+Interleaves one message per group on each pass. Best for fairness — prevents any single entity from monopolising workers:
+
+```ruby
+# Queue: user_a: 5 messages, user_b: 2, user_c: 1
 messages = client.read_grouped_rr("tasks", vt: 30, qty: 8)
 # => [user_a_1, user_b_1, user_c_1, user_a_2, user_b_2, user_a_3, user_a_4, user_a_5]
+
+# With long-polling
+messages = client.read_grouped_rr_with_poll("tasks",
+  vt: 30,
+  qty: 10,
+  max_poll_seconds: 5,
+  poll_interval_ms: 100
+)
 ```
 
-**How it works:**
-- Messages are grouped by the **first key** in their JSON payload
-- The first key should be your grouping identifier (e.g., `user_id`, `tenant_id`, `order_id`)
-- PGMQ rotates through groups, taking one message from each before repeating
-
-**Message format for grouping:**
+**Message format for payload-based grouping** (used by `read_grouped` and `read_grouped_rr`):
 ```ruby
-# Good - user_id is first key, used for grouping
+# user_id is first key — PGMQ uses it as the group identifier
 client.produce("tasks", '{"user_id":"user_a","task":"process"}')
+```
 
-# The grouping key should come first in your JSON
+##### Head-of-Group (`read_grouped_head`) — PGMQ v1.11.1+
+
+Returns the oldest visible message from each FIFO group, up to `qty` groups. Groups are identified by the `x-pgmq-group` key in the message **headers**. Messages without that header all share one implicit default group.
+
+Useful for detecting head-of-line stalls or building per-group progress dashboards — one call surfaces the leading edge of every group simultaneously:
+
+```ruby
+# Produce with x-pgmq-group headers
+client.produce("jobs", '{"task":"build"}', headers: '{"x-pgmq-group":"tenant_a"}')
+client.produce("jobs", '{"task":"build"}', headers: '{"x-pgmq-group":"tenant_a"}')
+client.produce("jobs", '{"task":"test"}',  headers: '{"x-pgmq-group":"tenant_b"}')
+
+# Returns one message per group (oldest from each)
+messages = client.read_grouped_head("jobs", vt: 30, qty: 100)
+# => [tenant_a oldest msg, tenant_b oldest msg]
+
+# Check for stuck groups
+messages.each do |msg|
+  group = JSON.parse(msg.headers)["x-pgmq-group"]
+  puts "#{group} head enqueued at #{msg.enqueued_at}"
+end
 ```
 
 #### Conditional Message Filtering
