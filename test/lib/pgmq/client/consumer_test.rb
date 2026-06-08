@@ -546,7 +546,11 @@ describe PGMQ::Client::Consumer do
       assert_respond_to msg, :read_ct
       assert_respond_to msg, :enqueued_at
       assert_respond_to msg, :vt
+      assert_respond_to msg, :last_read_at
+      assert_respond_to msg, :headers
       assert_equal({ "val" => 99 }, JSON.parse(msg.message))
+      # x-pgmq-group header must survive the round-trip
+      assert_equal "g1", JSON.parse(msg.headers)["x-pgmq-group"]
     end
 
     it "returns exactly one message per x-pgmq-group header group" do
@@ -555,8 +559,10 @@ describe PGMQ::Client::Consumer do
       2.times { |i| @client.produce(@queue_name, to_json_msg({ seq: i }), headers: group_header("group2")) }
 
       messages = @client.read_grouped_head(@queue_name, vt: 30, qty: 10)
+      groups = messages.map { |m| JSON.parse(m.headers)["x-pgmq-group"] }
 
       assert_equal 2, messages.size
+      assert_equal %w[group1 group2].sort, groups.sort
     end
 
     it "respects the qty limit — caps the number of groups sampled" do
@@ -565,8 +571,10 @@ describe PGMQ::Client::Consumer do
       end
 
       messages = @client.read_grouped_head(@queue_name, vt: 30, qty: 3)
+      groups = messages.map { |m| JSON.parse(m.headers)["x-pgmq-group"] }
 
       assert_equal 3, messages.size
+      assert_equal 3, groups.uniq.size
     end
 
     it "reads fewer than qty when fewer groups exist" do
@@ -574,8 +582,10 @@ describe PGMQ::Client::Consumer do
       @client.produce(@queue_name, to_json_msg({ seq: 0 }), headers: group_header("gb"))
 
       messages = @client.read_grouped_head(@queue_name, vt: 30, qty: 10)
+      groups = messages.map { |m| JSON.parse(m.headers)["x-pgmq-group"] }
 
       assert_equal 2, messages.size
+      assert_equal %w[ga gb].sort, groups.sort
     end
 
     it "returns the head (oldest) message from each group" do
