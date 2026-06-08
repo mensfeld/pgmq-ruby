@@ -151,6 +151,82 @@ module PGMQ
         result.map { |row| Message.new(row) }
       end
 
+      # Reads messages using SQS-style grouped ordering (throughput-optimised)
+      #
+      # Messages are grouped by the first key in their JSON payload. Unlike
+      # round-robin, this strategy fills the requested batch from the oldest
+      # group first, then moves on to the next group only when the first is
+      # exhausted. Maximises throughput for bursty workloads at the cost of
+      # fairness across groups.
+      #
+      # @param queue_name [String] name of the queue
+      # @param vt [Integer] visibility timeout in seconds
+      # @param qty [Integer] number of messages to read
+      # @return [Array<PGMQ::Message>] array of messages, oldest group first
+      #
+      # @example Throughput-first batch processing
+      #   # Queue contains: user1_msg1, user1_msg2, user2_msg1
+      #   messages = client.read_grouped("tasks", vt: 30, qty: 3)
+      #   # Returns: user1_msg1, user1_msg2, user2_msg1  (drains user1 first)
+      #
+      # @example High-volume processing where fairness is not required
+      #   loop do
+      #     messages = client.read_grouped("jobs", vt: 30, qty: 20)
+      #     break if messages.empty?
+      #     messages.each { |msg| process(msg) }
+      #   end
+      def read_grouped(queue_name, vt: DEFAULT_VT, qty: 1)
+        validate_queue_name!(queue_name)
+
+        result = with_connection do |conn|
+          conn.exec_params(
+            "SELECT * FROM pgmq.read_grouped($1::text, $2::integer, $3::integer)",
+            [queue_name, vt, qty]
+          )
+        end
+
+        result.map { |row| Message.new(row) }
+      end
+
+      # Reads messages using SQS-style grouped ordering with long-polling support
+      #
+      # Combines SQS-style throughput-first grouped ordering with long-polling.
+      # Blocks up to max_poll_seconds if the queue is empty, returning as soon
+      # as any message arrives.
+      #
+      # @param queue_name [String] name of the queue
+      # @param vt [Integer] visibility timeout in seconds
+      # @param qty [Integer] number of messages to read
+      # @param max_poll_seconds [Integer] maximum time to poll in seconds
+      # @param poll_interval_ms [Integer] interval between polls in milliseconds
+      # @return [Array<PGMQ::Message>] array of messages
+      #
+      # @example Poll with throughput-first grouped ordering
+      #   messages = client.read_grouped_with_poll("jobs",
+      #     vt: 30,
+      #     qty: 10,
+      #     max_poll_seconds: 5,
+      #     poll_interval_ms: 100
+      #   )
+      def read_grouped_with_poll(
+        queue_name,
+        vt: DEFAULT_VT,
+        qty: 1,
+        max_poll_seconds: 5,
+        poll_interval_ms: 100
+      )
+        validate_queue_name!(queue_name)
+
+        result = with_connection do |conn|
+          conn.exec_params(
+            "SELECT * FROM pgmq.read_grouped_with_poll($1::text, $2::integer, $3::integer, $4::integer, $5::integer)",
+            [queue_name, vt, qty, max_poll_seconds, poll_interval_ms]
+          )
+        end
+
+        result.map { |row| Message.new(row) }
+      end
+
       # Reads messages using grouped round-robin ordering
       #
       # Messages are grouped by the first key in their JSON payload and returned
