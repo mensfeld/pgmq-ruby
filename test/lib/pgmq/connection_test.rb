@@ -314,7 +314,7 @@ describe PGMQ::Connection do
     end
 
     it "matches PG::UnableToSend by class" do
-      # Raised by libpq when the write side of the connection is gone —
+      # Raised by libpq when the write side of the connection is gone -
       # another dedicated connection-failure class.
       error = PG::UnableToSend.new("")
 

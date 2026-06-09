@@ -277,7 +277,7 @@ describe PGMQ::Client::Consumer do
       assert_equal 2, messages.size
     end
 
-    it "respects visibility timeout — message hidden during vt" do
+    it "respects visibility timeout - message hidden during vt" do
       @client.produce(@queue_name, to_json_msg({ user_id: "u1" }))
 
       first = @client.read_grouped(@queue_name, vt: 2, qty: 1)
@@ -297,7 +297,7 @@ describe PGMQ::Client::Consumer do
     end
 
     it "drains the oldest group first (SQS-style throughput ordering)" do
-      # user1 has 3 messages, user2 has 1 — requesting qty: 3 should drain user1 first
+      # user1 has 3 messages, user2 has 1 - requesting qty: 3 should drain user1 first
       @client.produce(@queue_name, to_json_msg({ user_id: "user1", seq: 1 }))
       @client.produce(@queue_name, to_json_msg({ user_id: "user1", seq: 2 }))
       @client.produce(@queue_name, to_json_msg({ user_id: "user1", seq: 3 }))
@@ -307,7 +307,7 @@ describe PGMQ::Client::Consumer do
 
       assert_equal 3, messages.size
       user_ids = messages.map { |m| JSON.parse(m.message)["user_id"] }
-      # All 3 should be from user1 — oldest group drained first
+      # All 3 should be from user1 - oldest group drained first
       assert_equal ["user1"] * 3, user_ids
     end
 
@@ -554,7 +554,7 @@ describe PGMQ::Client::Consumer do
     end
 
     it "returns exactly one message per x-pgmq-group header group" do
-      # group1 has 3 messages, group2 has 2 — should get one from each
+      # group1 has 3 messages, group2 has 2 - should get one from each
       3.times { |i| @client.produce(@queue_name, to_json_msg({ seq: i }), headers: group_header("group1")) }
       2.times { |i| @client.produce(@queue_name, to_json_msg({ seq: i }), headers: group_header("group2")) }
 
@@ -565,7 +565,7 @@ describe PGMQ::Client::Consumer do
       assert_equal %w[group1 group2].sort, groups.sort
     end
 
-    it "respects the qty limit — caps the number of groups sampled" do
+    it "respects the qty limit - caps the number of groups sampled" do
       %w[a b c d e].each do |g|
         2.times { |i| @client.produce(@queue_name, to_json_msg({ seq: i }), headers: group_header(g)) }
       end
@@ -605,11 +605,11 @@ describe PGMQ::Client::Consumer do
 
       messages = @client.read_grouped_head(@queue_name, vt: 30, qty: 10)
 
-      # All in the same default group — only 1 returned
+      # All in the same default group - only 1 returned
       assert_equal 1, messages.size
     end
 
-    it "respects visibility timeout — message hidden during vt" do
+    it "respects visibility timeout - message hidden during vt" do
       @client.produce(@queue_name, to_json_msg({ seq: 1 }), headers: group_header("g1"))
 
       first = @client.read_grouped_head(@queue_name, vt: 2, qty: 1)

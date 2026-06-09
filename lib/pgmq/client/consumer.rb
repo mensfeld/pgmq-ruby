@@ -229,7 +229,7 @@ module PGMQ
 
       # Reads one message per FIFO group from the head of each group
       #
-      # Returns exactly one message — the oldest visible message — from each
+      # Returns exactly one message - the oldest visible message - from each
       # distinct FIFO group, up to qty groups. Groups are determined by the
       # `x-pgmq-group` key in the message headers (set via the `headers:` param
       # on `produce`). Messages without that header key all land in a single
@@ -237,7 +237,7 @@ module PGMQ
       #
       # Unlike `read_grouped` (which groups by the first payload key and drains
       # one group fully before moving to the next), `read_grouped_head` surfaces
-      # the leading edge of every group in one call — useful for detecting
+      # the leading edge of every group in one call - useful for detecting
       # head-of-line stalls or building per-group progress dashboards.
       #
       # @note Requires PGMQ v1.11.1+.
