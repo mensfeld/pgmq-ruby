@@ -54,6 +54,57 @@ module PGMQ
         nil
       end
 
+      # Converts a standard queue's archive table to a pg_partman-managed partitioned table
+      #
+      # Provides a migration path for queues originally created with `create` or `create_unlogged` whose archive tables
+      # have grown large enough to benefit from partitioning. The queue message table is not affected - only the archive
+      # table (`pgmq.a_<queue_name>`) is converted.
+      #
+      # The operation renames the existing archive table to `pgmq.a_<queue_name>_old`, creates a new partitioned table
+      # with the same schema, and hands it over to pg_partman for lifecycle management. **Existing archived rows are
+      # left in the `_old` table and must be migrated manually** if visibility in the new partitioned archive is needed.
+      # If the archive table is already partitioned the function returns without error (idempotent). If the archive
+      # table does not exist it also returns without error.
+      #
+      # @note Requires the `pg_partman` PostgreSQL extension. If pg_partman is not installed and the archive table
+      #   exists, the call raises `PGMQ::Errors::ConnectionError`. If the archive table does not exist the call
+      #   succeeds (returns nil) without touching pg_partman, so no extension is needed in that case.
+      #
+      # @param queue_name [String] name of the queue whose archive table to convert
+      # @param partition_interval [String] partition interval passed to pg_partman (default: "10000" rows or a time
+      #   expression such as "daily" / "1 month")
+      # @param retention_interval [String] retention interval passed to pg_partman (default: "100000")
+      # @param leading_partition [Integer] number of leading partitions pg_partman should pre-create (default: 10)
+      # @return [void]
+      # @raise [PGMQ::Errors::InvalidQueueNameError] if queue name is invalid
+      # @raise [PGMQ::Errors::ConnectionError] if the database operation fails (e.g. pg_partman not installed)
+      #
+      # @example Convert with default partitioning (row-count based)
+      #   client.convert_archive_partitioned("orders")
+      #
+      # @example Convert with time-based daily partitioning
+      #   client.convert_archive_partitioned("orders",
+      #     partition_interval: "daily",
+      #     retention_interval: "30 days"
+      #   )
+      def convert_archive_partitioned(
+        queue_name,
+        partition_interval: "10000",
+        retention_interval: "100000",
+        leading_partition: 10
+      )
+        validate_queue_name!(queue_name)
+
+        with_connection do |conn|
+          conn.exec_params(
+            "SELECT pgmq.convert_archive_partitioned($1::text, $2::text, $3::text, $4::integer)",
+            [queue_name, partition_interval, retention_interval, leading_partition]
+          )
+        end
+
+        nil
+      end
+
       # Disables PostgreSQL NOTIFY for a queue
       #
       # @param queue_name [String] name of the queue

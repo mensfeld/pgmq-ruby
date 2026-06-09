@@ -57,4 +57,100 @@ describe PGMQ::Client::Maintenance do
       end
     end
   end
+
+  describe "#convert_archive_partitioned" do
+    def pg_partman_available?(client)
+      result = client.instance_eval do
+        with_connection do |conn|
+          conn.exec("SELECT 1 FROM pg_extension WHERE extname = 'pg_partman' LIMIT 1")
+        end
+      end
+      result.ntuples.positive?
+    rescue
+      false
+    end
+
+    it "raises error for invalid queue name" do
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) do
+        @client.convert_archive_partitioned("123invalid")
+      end
+    end
+
+    it "returns nil when archive table does not exist (early return before pg_partman is touched)" do
+      # pgmq checks table existence first; a missing archive table returns without error regardless
+      # of whether pg_partman is installed - this verifies that early-return path
+      result = @client.convert_archive_partitioned("nonexistent_queue_xyz")
+
+      assert_nil result
+    end
+
+    it "raises ConnectionError when archive table exists but pg_partman is not installed" do
+      skip "pg_partman is installed" if pg_partman_available?(@client)
+
+      msg_id = @client.produce(@queue_name, to_json_msg({ x: 1 }))
+      @client.archive(@queue_name, msg_id)
+
+      assert_raises(PGMQ::Errors::ConnectionError) do
+        @client.convert_archive_partitioned(@queue_name)
+      end
+    end
+
+    it "converts archive table and it becomes partitioned" do
+      skip "pg_partman not installed" unless pg_partman_available?(@client)
+
+      msg_id = @client.produce(@queue_name, to_json_msg({ x: 1 }))
+      @client.archive(@queue_name, msg_id)
+
+      @client.convert_archive_partitioned(@queue_name)
+
+      queue = @queue_name
+      is_partitioned = @client.instance_eval do
+        with_connection do |conn|
+          result = conn.exec_params(
+            "SELECT relkind FROM pg_class " \
+            "JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace " \
+            "WHERE nspname = 'pgmq' AND relname = $1",
+            ["a_#{queue}"]
+          )
+          result.ntuples.positive? && result[0]["relkind"] == "p"
+        end
+      end
+
+      assert is_partitioned, "archive table should be partitioned (relkind='p') after conversion"
+    end
+
+    it "converts archive table with custom partition and retention intervals" do
+      skip "pg_partman not installed" unless pg_partman_available?(@client)
+
+      @client.convert_archive_partitioned(@queue_name,
+        partition_interval: "daily",
+        retention_interval: "30 days",
+        leading_partition: 5)
+
+      queue = @queue_name
+      is_partitioned = @client.instance_eval do
+        with_connection do |conn|
+          result = conn.exec_params(
+            "SELECT relkind FROM pg_class " \
+            "JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace " \
+            "WHERE nspname = 'pgmq' AND relname = $1",
+            ["a_#{queue}"]
+          )
+          result.ntuples.positive? && result[0]["relkind"] == "p"
+        end
+      end
+
+      assert is_partitioned
+    end
+
+    it "is idempotent when archive table is already partitioned" do
+      skip "pg_partman not installed" unless pg_partman_available?(@client)
+
+      @client.convert_archive_partitioned(@queue_name)
+
+      result = @client.convert_archive_partitioned(@queue_name)
+
+      assert_nil result
+    end
+  end
 end

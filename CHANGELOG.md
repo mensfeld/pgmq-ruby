@@ -2,6 +2,13 @@
 
 ## 0.7.0 (Unreleased)
 
+### Queue Maintenance
+- **[Feature]** Add `convert_archive_partitioned(queue_name, partition_interval:, retention_interval:,
+  leading_partition:)` - converts a standard queue's archive table to a pg_partman-managed partitioned table.
+  Provides a migration path for queues originally created with `create` or `create_unlogged` whose archive tables
+  have grown large enough to benefit from partitioning. Idempotent: returns without error if the archive table is
+  already partitioned or does not exist. Requires the `pg_partman` PostgreSQL extension.
+
 ### Queue Management
 - **[Feature]** Add `create_fifo_index(queue_name)` - creates the FIFO index on a queue's underlying table required
   for correct ordering and acceptable performance with grouped read operations (`read_grouped`, `read_grouped_rr`,
