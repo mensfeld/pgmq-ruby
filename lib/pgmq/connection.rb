@@ -31,7 +31,7 @@ module PGMQ
       # connection is dead and a retry on a fresh socket is safe. Strings are
       # matched as case-insensitive substrings; Regexps match the original
       # message. The built-in LOST_CONNECTION_MESSAGES are always checked
-      # first — this list is appended to them.
+      # first - this list is appended to them.
       #
       # Thread-safe: reads are lock-free (frozen array swap); writes should
       # be done at boot time before forking workers.
@@ -43,7 +43,7 @@ module PGMQ
       attr_reader :reconnectable_error_patterns
 
       # Additional exception classes that mean the connection is dead.
-      # `PG::ConnectionBad` and `PG::UnableToSend` are always matched — this
+      # `PG::ConnectionBad` and `PG::UnableToSend` are always matched - this
       # list is appended to them. Subclasses also match.
       #
       # Thread-safe: reads are lock-free; writes should be done at boot time.
@@ -315,7 +315,7 @@ module PGMQ
               raise PGMQ::Errors::ConfigurationError,
                 "Connection callable returned the same PG::Connection object " \
                 "(object_id: #{conn.object_id}) to multiple pool slots. " \
-                "PG::Connection is NOT thread-safe — concurrent use causes nil results, " \
+                "PG::Connection is NOT thread-safe - concurrent use causes nil results, " \
                 "segfaults, and data corruption. Ensure your callable returns a unique " \
                 "PG::Connection instance on each invocation (for example, by calling " \
                 "PG.connect inside the callable)."

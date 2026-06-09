@@ -4,6 +4,13 @@
 
 ### Message Operations
 - **[Enhancement]** Add Ruby warning category opt-in to test helpers
+- **[Feature]** Add `read_grouped_head(queue_name, vt:, qty:)` — reads exactly one message (the
+  oldest visible) from each distinct FIFO group, up to `qty` groups. Groups are identified by the
+  `x-pgmq-group` key in message headers (set via `headers:` on `produce`); messages without that
+  header all share one implicit default group. Unlike `read_grouped` (which groups by the first
+  payload key and drains one group fully before moving on), `read_grouped_head` surfaces the
+  leading edge of every group in a single call — ideal for detecting head-of-line stalls or
+  building per-group progress dashboards. Requires PGMQ v1.11.1+.
 - **[Feature]** Add SQS-style grouped reading:
   - `read_grouped(queue_name, vt:, qty:)` — reads messages grouped by the first JSON key,
     filling the batch from the oldest group first (throughput-optimised). Contrast with
