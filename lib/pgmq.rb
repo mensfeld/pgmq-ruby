@@ -12,9 +12,8 @@ loader.eager_load
 
 # PGMQ - Low-level Ruby client for Postgres Message Queue
 #
-# This is a low-level library providing direct access to PGMQ operations.
-# For higher-level abstractions, job processing, and framework integrations,
-# see pgmq-framework (similar to how rdkafka-ruby relates to Karafka).
+# This is a low-level library providing direct access to PGMQ operations. For higher-level abstractions, job processing,
+# and framework integrations, see pgmq-framework (similar to how rdkafka-ruby relates to Karafka).
 #
 # @example Basic usage
 #   require 'pgmq'

@@ -4,13 +4,13 @@ module PGMQ
   class Client
     # Multi-queue operations
     #
-    # This module handles efficient operations across multiple queues using single
-    # database queries with UNION ALL for optimal performance.
+    # This module handles efficient operations across multiple queues using single database queries with UNION ALL for
+    # optimal performance.
     module MultiQueue
       # Reads from multiple queues in a single query
       #
-      # This is the most efficient way to monitor multiple queues with a single
-      # database connection. Uses UNION ALL to read from all queues in one query.
+      # This is the most efficient way to monitor multiple queues with a single database connection. Uses UNION ALL to
+      # read from all queues in one query.
       #
       # @param queue_names [Array<String>] array of queue names to read from
       # @param vt [Integer] visibility timeout in seconds
@@ -53,8 +53,7 @@ module PGMQ
         # Validate all queue names (prevents SQL injection)
         queue_names.each { |qn| validate_queue_name!(qn) }
 
-        # Build UNION ALL query for all queues
-        # Note: Queue names are validated, so this is safe from SQL injection
+        # Build UNION ALL query for all queues. Note: Queue names are validated, so this is safe from SQL injection.
         union_queries = queue_names.map do |queue_name|
           # Escape single quotes in queue name (though validation should prevent this)
           escaped_name = queue_name.gsub("'", "''")
@@ -76,9 +75,8 @@ module PGMQ
 
       # Reads from multiple queues with long-polling (waits for messages)
       #
-      # Efficiently polls multiple queues waiting for the first available message.
-      # This uses a single connection with periodic polling until a message arrives
-      # or the timeout is reached.
+      # Efficiently polls multiple queues waiting for the first available message. This uses a single connection with
+      # periodic polling until a message arrives or the timeout is reached.
       #
       # @param queue_names [Array<String>] array of queue names to poll
       # @param vt [Integer] visibility timeout in seconds
@@ -144,8 +142,8 @@ module PGMQ
 
       # Pops a message from multiple queues (atomic read + delete)
       #
-      # Efficiently gets and immediately deletes the first available message from
-      # any of the specified queues. Uses a single query with UNION ALL.
+      # Efficiently gets and immediately deletes the first available message from any of the specified queues. Uses a
+      # single query with UNION ALL.
       #
       # @param queue_names [Array<String>] array of queue names
       # @return [PGMQ::Message, nil] message with queue_name attribute, or nil if no messages

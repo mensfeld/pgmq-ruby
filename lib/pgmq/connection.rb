@@ -27,14 +27,11 @@ module PGMQ
     DEFAULT_POOL_TIMEOUT = 5
 
     class << self
-      # Additional error message patterns (String or Regexp) that mean the
-      # connection is dead and a retry on a fresh socket is safe. Strings are
-      # matched as case-insensitive substrings; Regexps match the original
-      # message. The built-in LOST_CONNECTION_MESSAGES are always checked
-      # first - this list is appended to them.
+      # Additional error message patterns (String or Regexp) that mean the connection is dead and a retry on a fresh
+      # socket is safe. Strings are matched as case-insensitive substrings; Regexps match the original message. The
+      # built-in LOST_CONNECTION_MESSAGES are always checked first - this list is appended to them.
       #
-      # Thread-safe: reads are lock-free (frozen array swap); writes should
-      # be done at boot time before forking workers.
+      # Thread-safe: reads are lock-free (frozen array swap); writes should be done at boot time before forking workers.
       #
       # @return [Array<String, Regexp>]
       # @example
@@ -42,9 +39,8 @@ module PGMQ
       #   PGMQ::Connection.reconnectable_error_patterns << /\Abroken pipe\b/i
       attr_reader :reconnectable_error_patterns
 
-      # Additional exception classes that mean the connection is dead.
-      # `PG::ConnectionBad` and `PG::UnableToSend` are always matched - this
-      # list is appended to them. Subclasses also match.
+      # Additional exception classes that mean the connection is dead. `PG::ConnectionBad` and `PG::UnableToSend` are
+      # always matched - this list is appended to them. Subclasses also match.
       #
       # Thread-safe: reads are lock-free; writes should be done at boot time.
       #
@@ -73,9 +69,8 @@ module PGMQ
 
       # Normalizes user-supplied reconnectable error patterns.
       #
-      # Strings are downcased once at configuration time so the hot path
-      # (`connection_lost_error?`) only does substring checks. Regexps are
-      # passed through unchanged.
+      # Strings are downcased once at configuration time so the hot path (`connection_lost_error?`) only does substring
+      # checks. Regexps are passed through unchanged.
       #
       # @param patterns [Array<String, Regexp>, String, Regexp, nil]
       # @return [Array<String, Regexp>]
@@ -198,11 +193,9 @@ module PGMQ
 
     private
 
-    # Messages libpq raises when the server/pooler has already torn down the
-    # socket. The list has grown organically with each pooler/TLS variant we
-    # see in the wild; the class check below catches future variants that
-    # libpq raises as `PG::ConnectionBad` or `PG::UnableToSend` without
-    # waiting for a new message to hit production.
+    # Messages libpq raises when the server/pooler has already torn down the socket. The list has grown organically with
+    # each pooler/TLS variant we see in the wild; the class check below catches future variants that libpq raises as
+    # `PG::ConnectionBad` or `PG::UnableToSend` without waiting for a new message to hit production.
     LOST_CONNECTION_MESSAGES = [
       "server closed the connection",
       "connection not open",
@@ -220,13 +213,10 @@ module PGMQ
 
     # Checks if the error indicates a lost connection.
     #
-    # Matches in three steps: first by class (`PG::ConnectionBad` /
-    # `PG::UnableToSend` are dedicated connection-failure classes libpq
-    # raises regardless of message, plus any user-supplied classes), then
-    # by built-in message substrings for the bare `PG::Error` cases where
-    # libpq doesn't reach for the specific subclass, and finally by
-    # user-supplied patterns (strings matched as case-insensitive
-    # substrings, Regexps matched against the original message).
+    # Matches in three steps: first by class (`PG::ConnectionBad` / `PG::UnableToSend` are dedicated connection-failure
+    # classes libpq raises regardless of message, plus any user-supplied classes), then by built-in message substrings
+    # for the bare `PG::Error` cases where libpq doesn't reach for the specific subclass, and finally by user-supplied
+    # patterns (strings matched as case-insensitive substrings, Regexps matched against the original message).
     #
     # @param error [PG::Error] the error to check
     # @return [Boolean] true if the connection was lost and a retry on a
@@ -252,11 +242,9 @@ module PGMQ
 
     # Verifies a connection is alive and working.
     #
-    # Also resets when the connection reports `PG::CONNECTION_BAD`, which
-    # happens when the server (or an intermediate pooler such as PgBouncer)
-    # has closed the socket while the client-side `PG::Connection` object
-    # still exists. `#finished?` alone only catches connections closed
-    # explicitly from the client side.
+    # Also resets when the connection reports `PG::CONNECTION_BAD`, which happens when the server (or an intermediate
+    # pooler such as PgBouncer) has closed the socket while the client-side `PG::Connection` object still exists.
+    # `#finished?` alone only catches connections closed explicitly from the client side.
     #
     # @param conn [PG::Connection] connection to verify
     # @raise [PG::Error] if the reset itself fails
@@ -306,9 +294,8 @@ module PGMQ
       ConnectionPool.new(size: @pool_size, timeout: @pool_timeout) do
         conn = create_connection(params)
 
-        # Detect shared connections: if a callable returns the same PG::Connection
-        # object to multiple pool slots, concurrent use will corrupt libpq state
-        # (nil results, segfaults, wrong data). Fail fast with a clear message.
+        # Detect shared connections: if a callable returns the same PG::Connection object to multiple pool slots,
+        # concurrent use will corrupt libpq state (nil results, segfaults, wrong data). Fail fast with a clear message.
         if conn.is_a?(PG::Connection)
           seen_mutex.synchronize do
             if seen_connections.key?(conn)
@@ -338,10 +325,10 @@ module PGMQ
       # If we have a callable (e.g., for Rails), call it to get the connection
       return params.call if params.respond_to?(:call)
 
-      # Create new connection from parameters
-      # Low-level library: return all values as strings from PostgreSQL
-      # No automatic type conversion - let higher-level frameworks handle parsing
-      # conn.type_map_for_results intentionally NOT set
+      # Create new connection from parameters.
+      # Low-level library: return all values as strings from PostgreSQL.
+      # No automatic type conversion - let higher-level frameworks handle parsing.
+      # conn.type_map_for_results intentionally NOT set.
       PG.connect(params[:conninfo] || params)
     rescue PG::Error => e
       raise PGMQ::Errors::ConnectionError, "Failed to connect to database: #{e.message}"

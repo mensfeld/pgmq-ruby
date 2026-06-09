@@ -4,8 +4,8 @@ module PGMQ
   class Client
     # Topic routing operations (AMQP-like patterns)
     #
-    # This module provides AMQP-style topic routing for PGMQ, allowing messages
-    # to be routed to multiple queues based on pattern matching.
+    # This module provides AMQP-style topic routing for PGMQ, allowing messages to be routed to multiple queues based on
+    # pattern matching.
     #
     # Topic patterns support wildcards:
     # - `*` matches exactly one word between dots (e.g., `orders.*` matches `orders.new`)
@@ -15,8 +15,7 @@ module PGMQ
     module Topics
       # Binds a topic pattern to a queue
       #
-      # Messages sent with routing keys matching this pattern will be delivered
-      # to the specified queue.
+      # Messages sent with routing keys matching this pattern will be delivered to the specified queue.
       #
       # @param pattern [String] topic pattern with optional wildcards (* or #)
       # @param queue_name [String] name of the queue to bind
@@ -66,8 +65,7 @@ module PGMQ
 
       # Sends a message via topic routing
       #
-      # The message will be delivered to all queues whose bound patterns match
-      # the routing key.
+      # The message will be delivered to all queues whose bound patterns match the routing key.
       #
       # @param routing_key [String] dot-separated routing key (e.g., "orders.new.priority")
       # @param message [String] message as JSON string
@@ -108,8 +106,7 @@ module PGMQ
 
       # Sends multiple messages via topic routing
       #
-      # All messages will be delivered to all queues whose bound patterns match
-      # the routing key.
+      # All messages will be delivered to all queues whose bound patterns match the routing key.
       #
       # @param routing_key [String] dot-separated routing key
       # @param messages [Array<String>] array of message payloads as JSON strings
@@ -230,8 +227,8 @@ module PGMQ
 
       # Validates a routing key
       #
-      # Routing keys are dot-separated words (no wildcards allowed).
-      # Returns false for invalid routing keys (PGMQ raises an error for invalid keys).
+      # Routing keys are dot-separated words (no wildcards allowed). Returns false for invalid routing keys (PGMQ raises
+      # an error for invalid keys).
       #
       # @param routing_key [String] routing key to validate
       # @return [Boolean] true if valid, false if invalid

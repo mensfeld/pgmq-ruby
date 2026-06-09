@@ -4,8 +4,8 @@ module PGMQ
   class Client
     # Message producing operations
     #
-    # This module handles producing messages to queues, both individual messages
-    # and batches. Users must serialize messages to JSON strings themselves.
+    # This module handles producing messages to queues, both individual messages and batches. Users must serialize
+    # messages to JSON strings themselves.
     module Producer
       # Produces a message to a queue
       #

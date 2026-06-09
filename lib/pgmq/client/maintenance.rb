@@ -4,8 +4,7 @@ module PGMQ
   class Client
     # Queue maintenance operations
     #
-    # This module handles queue maintenance tasks such as purging messages
-    # and detaching archive tables.
+    # This module handles queue maintenance tasks such as purging messages and detaching archive tables.
     module Maintenance
       # Purges all messages from a queue
       #
@@ -27,9 +26,8 @@ module PGMQ
 
       # Enables PostgreSQL NOTIFY when messages are inserted into a queue
       #
-      # When enabled, PostgreSQL will send a NOTIFY event on message insert,
-      # allowing clients to use LISTEN instead of polling. The throttle interval
-      # prevents notification storms during high-volume inserts.
+      # When enabled, PostgreSQL will send a NOTIFY event on message insert, allowing clients to use LISTEN instead of
+      # polling. The throttle interval prevents notification storms during high-volume inserts.
       #
       # @param queue_name [String] name of the queue
       # @param throttle_interval_ms [Integer] minimum ms between notifications (default: 250)

@@ -4,8 +4,8 @@ module PGMQ
   class Client
     # Message lifecycle operations (pop, delete, archive, visibility timeout)
     #
-    # This module handles message state transitions including popping (atomic read+delete),
-    # deleting, archiving, and updating visibility timeouts.
+    # This module handles message state transitions including popping (atomic read+delete), deleting, archiving, and
+    # updating visibility timeouts.
     module MessageLifecycle
       # Pops a message (atomic read + delete)
       #
@@ -104,8 +104,8 @@ module PGMQ
 
       # Deletes specific messages from multiple queues in a single transaction
       #
-      # Efficiently deletes messages across different queues atomically.
-      # Useful when processing related messages from different queues.
+      # Efficiently deletes messages across different queues atomically. Useful when processing related messages from
+      # different queues.
       #
       # @param deletions [Hash] hash of queue_name => array of msg_ids
       # @return [Hash] hash of queue_name => array of deleted msg_ids
@@ -307,9 +307,8 @@ module PGMQ
 
       # Updates visibility timeout for messages across multiple queues in a single transaction
       #
-      # Efficiently updates visibility timeouts across different queues atomically.
-      # Useful when processing related messages from different queues and needing
-      # to extend their visibility timeouts together.
+      # Efficiently updates visibility timeouts across different queues atomically. Useful when processing related
+      # messages from different queues and needing to extend their visibility timeouts together.
       #
       # Supports two modes:
       # - Integer offset (seconds from now): `vt: 60` - messages visible in 60 seconds

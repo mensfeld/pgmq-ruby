@@ -4,18 +4,18 @@
 
 ### Message Operations
 - **[Enhancement]** Add Ruby warning category opt-in to test helpers
-- **[Feature]** Add `read_grouped_head(queue_name, vt:, qty:)` — reads exactly one message (the
+- **[Feature]** Add `read_grouped_head(queue_name, vt:, qty:)` - reads exactly one message (the
   oldest visible) from each distinct FIFO group, up to `qty` groups. Groups are identified by the
   `x-pgmq-group` key in message headers (set via `headers:` on `produce`); messages without that
   header all share one implicit default group. Unlike `read_grouped` (which groups by the first
   payload key and drains one group fully before moving on), `read_grouped_head` surfaces the
-  leading edge of every group in a single call — ideal for detecting head-of-line stalls or
+  leading edge of every group in a single call - ideal for detecting head-of-line stalls or
   building per-group progress dashboards. Requires PGMQ v1.11.1+.
 - **[Feature]** Add SQS-style grouped reading:
-  - `read_grouped(queue_name, vt:, qty:)` — reads messages grouped by the first JSON key,
+  - `read_grouped(queue_name, vt:, qty:)` - reads messages grouped by the first JSON key,
     filling the batch from the oldest group first (throughput-optimised). Contrast with
     `read_grouped_rr` which interleaves groups fairly.
-  - `read_grouped_with_poll(queue_name, vt:, qty:, max_poll_seconds:, poll_interval_ms:)` —
+  - `read_grouped_with_poll(queue_name, vt:, qty:, max_poll_seconds:, poll_interval_ms:)` -
     same strategy with long-polling support.
 
   Use `read_grouped` when maximising throughput matters more than fairness across groups
@@ -52,7 +52,7 @@
 ### Infrastructure
 - **[Change]** Migrate test framework from RSpec to Minitest/Spec with Mocha for mocking, aligning with the broader Karafka ecosystem conventions.
 - **[Change]** Replace `rubocop-rspec` with `rubocop-minitest` for test linting.
-- **[Change]** Add `bin/integrations` runner script that centralizes integration spec execution. Specs no longer need `require_relative "support/example_helper"` — the runner injects it via `-r` flag. Run all specs with `bin/integrations` or specific ones with `bin/integrations spec/integration/foo_spec.rb`.
+- **[Change]** Add `bin/integrations` runner script that centralizes integration spec execution. Specs no longer need `require_relative "support/example_helper"` - the runner injects it via `-r` flag. Run all specs with `bin/integrations` or specific ones with `bin/integrations spec/integration/foo_spec.rb`.
 
 ## 0.5.0 (2026-02-24)
 
