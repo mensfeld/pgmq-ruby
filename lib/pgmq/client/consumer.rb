@@ -4,8 +4,8 @@ module PGMQ
   class Client
     # Single-queue message reading operations
     #
-    # This module handles reading messages from a single queue, including basic reads,
-    # batch reads, and long-polling for efficient message consumption.
+    # This module handles reading messages from a single queue, including basic reads, batch reads, and long-polling for
+    # efficient message consumption.
     module Consumer
       # Reads a message from the queue
       #
@@ -153,11 +153,9 @@ module PGMQ
 
       # Reads messages using SQS-style grouped ordering (throughput-optimised)
       #
-      # Messages are grouped by the first key in their JSON payload. Unlike
-      # round-robin, this strategy fills the requested batch from the oldest
-      # group first, then moves on to the next group only when the first is
-      # exhausted. Maximises throughput for bursty workloads at the cost of
-      # fairness across groups.
+      # Messages are grouped by the first key in their JSON payload. Unlike round-robin, this strategy fills the
+      # requested batch from the oldest group first, then moves on to the next group only when the first is exhausted.
+      # Maximises throughput for bursty workloads at the cost of fairness across groups.
       #
       # @param queue_name [String] name of the queue
       # @param vt [Integer] visibility timeout in seconds
@@ -190,9 +188,8 @@ module PGMQ
 
       # Reads messages using SQS-style grouped ordering with long-polling support
       #
-      # Combines SQS-style throughput-first grouped ordering with long-polling.
-      # Blocks up to max_poll_seconds if the queue is empty, returning as soon
-      # as any message arrives.
+      # Combines SQS-style throughput-first grouped ordering with long-polling. Blocks up to max_poll_seconds if the
+      # queue is empty, returning as soon as any message arrives.
       #
       # @param queue_name [String] name of the queue
       # @param vt [Integer] visibility timeout in seconds
@@ -229,15 +226,13 @@ module PGMQ
 
       # Reads one message per FIFO group from the head of each group
       #
-      # Returns exactly one message - the oldest visible message - from each
-      # distinct FIFO group, up to qty groups. Groups are determined by the
-      # `x-pgmq-group` key in the message headers (set via the `headers:` param
-      # on `produce`). Messages without that header key all land in a single
-      # implicit default group, so only one of them is returned per call.
+      # Returns exactly one message - the oldest visible message - from each distinct FIFO group, up to qty groups.
+      # Groups are determined by the `x-pgmq-group` key in the message headers (set via the `headers:` param on
+      # `produce`). Messages without that header key all land in a single implicit default group, so only one of them is
+      # returned per call.
       #
-      # Unlike `read_grouped` (which groups by the first payload key and drains
-      # one group fully before moving to the next), `read_grouped_head` surfaces
-      # the leading edge of every group in one call - useful for detecting
+      # Unlike `read_grouped` (which groups by the first payload key and drains one group fully before moving to the
+      # next), `read_grouped_head` surfaces the leading edge of every group in one call - useful for detecting
       # head-of-line stalls or building per-group progress dashboards.
       #
       # @note Requires PGMQ v1.11.1+.
@@ -274,9 +269,8 @@ module PGMQ
 
       # Reads messages using grouped round-robin ordering
       #
-      # Messages are grouped by the first key in their JSON payload and returned
-      # in round-robin order across groups. This ensures fair processing when
-      # messages from different entities (users, orders, etc.) are in the queue.
+      # Messages are grouped by the first key in their JSON payload and returned in round-robin order across groups.
+      # This ensures fair processing when messages from different entities (users, orders, etc.) are in the queue.
       #
       # @param queue_name [String] name of the queue
       # @param vt [Integer] visibility timeout in seconds
@@ -309,8 +303,7 @@ module PGMQ
 
       # Reads messages using grouped round-robin with long-polling support
       #
-      # Combines grouped round-robin ordering with long-polling for efficient
-      # and fair message consumption.
+      # Combines grouped round-robin ordering with long-polling for efficient and fair message consumption.
       #
       # @param queue_name [String] name of the queue
       # @param vt [Integer] visibility timeout in seconds

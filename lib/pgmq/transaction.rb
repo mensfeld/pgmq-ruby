@@ -3,12 +3,11 @@
 module PGMQ
   # Low-level transaction support for PGMQ operations
   #
-  # Provides atomic execution of PGMQ operations within PostgreSQL transactions.
-  # Transactions are a database primitive - this is a thin wrapper around
-  # PostgreSQL's native transaction support.
+  # Provides atomic execution of PGMQ operations within PostgreSQL transactions. Transactions are a database primitive -
+  # this is a thin wrapper around PostgreSQL's native transaction support.
   #
-  # This is analogous to rdkafka-ruby providing Kafka transaction support -
-  # it's a protocol/database feature, not a framework abstraction.
+  # This is analogous to rdkafka-ruby providing Kafka transaction support - it's a protocol/database feature, not a
+  # framework abstraction.
   #
   # @example Atomic multi-queue operations
   #   client.transaction do |txn|
@@ -24,8 +23,8 @@ module PGMQ
   module Transaction
     # Executes PGMQ operations atomically within a database transaction
     #
-    # Obtains a connection from the pool, starts a transaction, and yields
-    # a client that uses that transaction for all operations.
+    # Obtains a connection from the pool, starts a transaction, and yields a client that uses that transaction for all
+    # operations.
     #
     # @yield [PGMQ::Client] transactional client using the same connection
     # @return [Object] result of the block

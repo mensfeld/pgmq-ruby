@@ -4,8 +4,8 @@ module PGMQ
   class Client
     # Queue management operations (create, drop, list)
     #
-    # This module handles all queue lifecycle operations including creating queues
-    # (standard, partitioned, unlogged), dropping queues, and listing existing queues.
+    # This module handles all queue lifecycle operations including creating queues (standard, partitioned, unlogged),
+    # dropping queues, and listing existing queues.
     module QueueManagement
       # Creates a new queue
       #

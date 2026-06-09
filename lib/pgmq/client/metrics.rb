@@ -4,8 +4,7 @@ module PGMQ
   class Client
     # Queue metrics and monitoring
     #
-    # This module handles retrieving queue metrics such as queue length,
-    # message age, and total message counts.
+    # This module handles retrieving queue metrics such as queue length, message age, and total message counts.
     module Metrics
       # Gets metrics for a specific queue
       #

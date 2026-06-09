@@ -315,7 +315,7 @@ PGMQ::Connection.reconnectable_error_patterns = [
 PGMQ::Connection.reconnectable_error_classes = [PG::ConnectionRefused]
 ```
 
-The built-in defaults are always kept — your patterns and classes are
+The built-in defaults are always kept - your patterns and classes are
 appended to them. Configuration errors (e.g. passing an Integer as a
 pattern) raise `PGMQ::Errors::ConfigurationError` immediately so
 misconfiguration can't silently disable retries.
@@ -323,7 +323,7 @@ misconfiguration can't silently disable retries.
 > **Reserve these options for connection-level failures.** A "reconnectable"
 > error means the socket is dead and a retry on a fresh connection is safe.
 > Do **not** add patterns or classes for query-level errors (deadlocks,
-> constraint violations, statement timeouts) — those will replay your
+> constraint violations, statement timeouts) - those will replay your
 > operation against a healthy connection and may cause duplicate work or
 > mask bugs.
 
@@ -489,7 +489,7 @@ Drains the oldest group completely before moving to the next. Best when maximisi
 ```ruby
 # Queue: user_a has 3 messages, user_b has 1
 messages = client.read_grouped("tasks", vt: 30, qty: 3)
-# => [user_a_1, user_a_2, user_a_3]  — drains user_a first
+# => [user_a_1, user_a_2, user_a_3]  - drains user_a first
 
 # With long-polling (waits up to max_poll_seconds if queue is empty)
 messages = client.read_grouped_with_poll("tasks",
@@ -502,7 +502,7 @@ messages = client.read_grouped_with_poll("tasks",
 
 ##### Round-Robin (`read_grouped_rr` / `read_grouped_rr_with_poll`)
 
-Interleaves one message per group on each pass. Best for fairness — prevents any single entity from monopolising workers:
+Interleaves one message per group on each pass. Best for fairness - prevents any single entity from monopolising workers:
 
 ```ruby
 # Queue: user_a: 5 messages, user_b: 2, user_c: 1
@@ -520,15 +520,15 @@ messages = client.read_grouped_rr_with_poll("tasks",
 
 **Message format for payload-based grouping** (used by `read_grouped` and `read_grouped_rr`):
 ```ruby
-# user_id is first key — PGMQ uses it as the group identifier
+# user_id is first key - PGMQ uses it as the group identifier
 client.produce("tasks", '{"user_id":"user_a","task":"process"}')
 ```
 
-##### Head-of-Group (`read_grouped_head`) — PGMQ v1.11.1+
+##### Head-of-Group (`read_grouped_head`) - PGMQ v1.11.1+
 
 Returns the oldest visible message from each FIFO group, up to `qty` groups. Groups are identified by the `x-pgmq-group` key in the message **headers**. Messages without that header all share one implicit default group.
 
-Useful for detecting head-of-line stalls or building per-group progress dashboards — one call surfaces the leading edge of every group simultaneously:
+Useful for detecting head-of-line stalls or building per-group progress dashboards - one call surfaces the leading edge of every group simultaneously:
 
 ```ruby
 # Produce with x-pgmq-group headers

@@ -3,8 +3,8 @@
 module PGMQ
   # Represents a message read from a PGMQ queue
   #
-  # Returns raw values from PostgreSQL without transformation.
-  # Higher-level frameworks should handle parsing, deserialization, etc.
+  # Returns raw values from PostgreSQL without transformation. Higher-level frameworks should handle parsing,
+  # deserialization, etc.
   #
   # @example Reading a message (raw values)
   #   msg = client.read("my_queue", vt: 30)
@@ -24,9 +24,8 @@ module PGMQ
       # @param row [Hash] database row from PG result
       # @return [Message]
       def new(row, **)
-        # Return raw values as-is from PostgreSQL
-        # No parsing, no deserialization, no transformation
-        # The pg gem returns JSONB as String by default
+        # Return raw values as-is from PostgreSQL. No parsing, no deserialization, no transformation.
+        # The pg gem returns JSONB as String by default.
         super(
           msg_id: row["msg_id"],
           read_ct: row["read_ct"],

@@ -3,8 +3,8 @@
 module PGMQ
   # Low-level client for interacting with PGMQ (Postgres Message Queue)
   #
-  # This is a thin wrapper around PGMQ SQL functions. For higher-level
-  # abstractions (job processing, retries, Rails integration), use pgmq-framework.
+  # This is a thin wrapper around PGMQ SQL functions. For higher-level abstractions (job processing, retries, Rails
+  # integration), use pgmq-framework.
   #
   # @example Basic usage
   #   client = PGMQ::Client.new(
@@ -114,9 +114,8 @@ module PGMQ
         )
       end
 
-      # PGMQ creates tables with prefixes (pgmq.q_<name>, pgmq.a_<name>)
-      # PostgreSQL has a 63-character limit for identifiers, but PGMQ enforces 48
-      # to account for prefixes and potential suffixes
+      # PGMQ creates tables with prefixes (pgmq.q_<name>, pgmq.a_<name>). PostgreSQL has a 63-character limit for
+      # identifiers, but PGMQ enforces 48 to account for prefixes and potential suffixes.
       if queue_name.to_s.length >= 48
         raise(
           Errors::InvalidQueueNameError,
@@ -125,8 +124,7 @@ module PGMQ
         )
       end
 
-      # PostgreSQL identifier rules: start with letter or underscore,
-      # contain only letters, digits, underscores
+      # PostgreSQL identifier rules: start with letter or underscore, contain only letters, digits, underscores
       return if queue_name.to_s.match?(/\A[a-zA-Z_][a-zA-Z0-9_]*\z/)
 
       raise(
