@@ -64,6 +64,8 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | **Queue Management** | `create` | Create standard queue | ✅ |
 | | `create_partitioned` | Create partitioned queue (requires pg_partman) | ✅ |
 | | `create_unlogged` | Create unlogged queue (faster, no crash recovery) | ✅ |
+| | `create_fifo_index` | Create FIFO index required for grouped reads | ✅ |
+| | `create_fifo_indexes_all` | Create FIFO indexes on all existing queues | ✅ |
 | | `drop_queue` | Delete queue and all messages | ✅ |
 | **Topic Routing** | `bind_topic` | Bind topic pattern to queue (AMQP-like) | ✅ |
 | | `unbind_topic` | Remove topic binding | ✅ |
@@ -355,6 +357,13 @@ client.create_unlogged("queue_name")  # => true/false
 
 # Drop queue (returns true if dropped, false if didn't exist)
 client.drop_queue("queue_name")  # => true/false
+
+# Create the FIFO index required for grouped reads (read_grouped, read_grouped_rr, read_grouped_head)
+# Idempotent - safe to call on a queue that already has the index
+client.create_fifo_index("queue_name")
+
+# Create FIFO indexes for all existing queues at once (useful for migrating an existing deployment)
+client.create_fifo_indexes_all
 
 # List all queues
 queues = client.list_queues

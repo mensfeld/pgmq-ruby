@@ -2,6 +2,13 @@
 
 ## 0.7.0 (Unreleased)
 
+### Queue Management
+- **[Feature]** Add `create_fifo_index(queue_name)` - creates the FIFO index on a queue's underlying table required
+  for correct ordering and acceptable performance with grouped read operations (`read_grouped`, `read_grouped_rr`,
+  `read_grouped_head`). The operation is idempotent.
+- **[Feature]** Add `create_fifo_indexes_all` - convenience wrapper that creates FIFO indexes on every queue
+  registered in `pgmq.meta`. Useful for one-time migrations when adding grouped reads to an existing deployment.
+
 ### Message Operations
 - **[Enhancement]** Add Ruby warning category opt-in to test helpers
 - **[Feature]** Add `read_grouped_head(queue_name, vt:, qty:)` - reads exactly one message (the

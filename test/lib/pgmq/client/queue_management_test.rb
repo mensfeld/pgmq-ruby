@@ -201,4 +201,55 @@ describe PGMQ::Client::QueueManagement do
       @client.drop_queue(queue2)
     end
   end
+
+  describe "#create_fifo_index" do
+    it "creates the FIFO index on a queue and returns nil" do
+      @client.create(@queue_name)
+
+      result = @client.create_fifo_index(@queue_name)
+
+      assert_nil result
+    end
+
+    it "is idempotent - calling twice does not raise" do
+      @client.create(@queue_name)
+      @client.create_fifo_index(@queue_name)
+
+      result = @client.create_fifo_index(@queue_name)
+
+      assert_nil result
+    end
+
+    it "raises for invalid queue name" do
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) do
+        @client.create_fifo_index("123invalid")
+      end
+    end
+  end
+
+  describe "#create_fifo_indexes_all" do
+    it "creates FIFO indexes for all queues and returns nil" do
+      queue1 = unique_queue_name("fifo1")
+      queue2 = unique_queue_name("fifo2")
+
+      @client.create(queue1)
+      @client.create(queue2)
+
+      result = @client.create_fifo_indexes_all
+
+      assert_nil result
+
+      @client.drop_queue(queue1)
+      @client.drop_queue(queue2)
+    end
+
+    it "is idempotent - calling twice does not raise" do
+      @client.create(@queue_name)
+      @client.create_fifo_indexes_all
+
+      result = @client.create_fifo_indexes_all
+
+      assert_nil result
+    end
+  end
 end
