@@ -94,6 +94,49 @@ module PGMQ
         result[0]["drop_queue"] == "t"
       end
 
+      # Creates the FIFO index on a queue's table required for grouped reads
+      #
+      # Grouped read operations (`read_grouped`, `read_grouped_rr`, `read_grouped_head`) rely on this index for correct
+      # ordering and acceptable query performance. Without it, grouped reads will work but may be slow or return
+      # incorrect ordering at scale. The operation is idempotent - calling it on a queue that already has the index is
+      # safe.
+      #
+      # @param queue_name [String] name of the queue
+      # @return [void]
+      # @raise [PGMQ::Errors::InvalidQueueNameError] if queue name is invalid
+      # @raise [PGMQ::Errors::ConnectionError] if database operation fails
+      #
+      # @example
+      #   client.create("tasks")
+      #   client.create_fifo_index("tasks")
+      def create_fifo_index(queue_name)
+        validate_queue_name!(queue_name)
+
+        with_connection do |conn|
+          conn.exec_params("SELECT pgmq.create_fifo_index($1::text)", [queue_name])
+        end
+
+        nil
+      end
+
+      # Creates FIFO indexes on all existing queues
+      #
+      # Convenience wrapper that calls `create_fifo_index` for every queue registered in `pgmq.meta`. Useful for
+      # one-time migrations when adding grouped reads to an existing deployment. The operation is idempotent.
+      #
+      # @return [void]
+      # @raise [PGMQ::Errors::ConnectionError] if database operation fails
+      #
+      # @example Migrate an existing deployment to use grouped reads
+      #   client.create_fifo_indexes_all
+      def create_fifo_indexes_all
+        with_connection do |conn|
+          conn.exec("SELECT pgmq.create_fifo_indexes_all()")
+        end
+
+        nil
+      end
+
       # Lists all queues
       #
       # @return [Array<PGMQ::QueueMetadata>] array of queue metadata objects
