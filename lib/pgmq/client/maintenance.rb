@@ -60,11 +60,15 @@ module PGMQ
       # have grown large enough to benefit from partitioning. The queue message table is not affected - only the archive
       # table (`pgmq.a_<queue_name>`) is converted.
       #
-      # The operation renames the existing archive table, creates a new partitioned table with the same schema, and
-      # hands it over to pg_partman for lifecycle management. If the archive table is already partitioned the function
-      # returns without error (idempotent). If the archive table does not exist it also returns without error.
+      # The operation renames the existing archive table to `pgmq.a_<queue_name>_old`, creates a new partitioned table
+      # with the same schema, and hands it over to pg_partman for lifecycle management. **Existing archived rows are
+      # left in the `_old` table and must be migrated manually** if visibility in the new partitioned archive is needed.
+      # If the archive table is already partitioned the function returns without error (idempotent). If the archive
+      # table does not exist it also returns without error.
       #
-      # @note Requires the `pg_partman` PostgreSQL extension.
+      # @note Requires the `pg_partman` PostgreSQL extension. If pg_partman is not installed and the archive table
+      #   exists, the call raises `PGMQ::Errors::ConnectionError`. If the archive table does not exist the call
+      #   succeeds (returns nil) without touching pg_partman, so no extension is needed in that case.
       #
       # @param queue_name [String] name of the queue whose archive table to convert
       # @param partition_interval [String] partition interval passed to pg_partman (default: "10000" rows or a time
