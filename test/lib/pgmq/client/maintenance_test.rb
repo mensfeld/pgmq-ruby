@@ -57,4 +57,57 @@ describe PGMQ::Client::Maintenance do
       end
     end
   end
+
+  describe "#convert_archive_partitioned" do
+    def pg_partman_available?(client)
+      result = client.instance_eval do
+        with_connection do |conn|
+          conn.exec("SELECT 1 FROM pg_extension WHERE extname = 'pg_partman' LIMIT 1")
+        end
+      end
+      result.ntuples.positive?
+    rescue
+      false
+    end
+
+    it "raises error for invalid queue name" do
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) do
+        @client.convert_archive_partitioned("123invalid")
+      end
+    end
+
+    it "returns nil when archive table does not exist (queue never created)" do
+      result = @client.convert_archive_partitioned("nonexistent_queue_xyz")
+
+      assert_nil result
+    end
+
+    it "converts archive table with default parameters and returns nil" do
+      skip "pg_partman not installed" unless pg_partman_available?(@client)
+
+      result = @client.convert_archive_partitioned(@queue_name)
+
+      assert_nil result
+    end
+
+    it "converts archive table with custom partition and retention intervals" do
+      skip "pg_partman not installed" unless pg_partman_available?(@client)
+
+      result = @client.convert_archive_partitioned(@queue_name,
+        partition_interval: "daily",
+        retention_interval: "30 days",
+        leading_partition: 5)
+
+      assert_nil result
+    end
+
+    it "is idempotent when archive table is already partitioned" do
+      skip "pg_partman not installed" unless pg_partman_available?(@client)
+
+      @client.convert_archive_partitioned(@queue_name)
+      result = @client.convert_archive_partitioned(@queue_name)
+
+      assert_nil result
+    end
+  end
 end

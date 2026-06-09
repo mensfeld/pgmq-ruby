@@ -61,6 +61,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | `archive` | Archive single message for long-term storage | ✅ |
 | | `archive_batch` | Archive multiple messages | ✅ |
 | | `purge_queue` | Remove all messages from queue | ✅ |
+| | `convert_archive_partitioned` | Convert archive table to pg_partman-managed partitions | ✅ |
 | **Queue Management** | `create` | Create standard queue | ✅ |
 | | `create_partitioned` | Create partitioned queue (requires pg_partman) | ✅ |
 | | `create_unlogged` | Create unlogged queue (faster, no crash recovery) | ✅ |
@@ -639,6 +640,17 @@ client.set_vt_multi({
 
 # Purge all messages
 count = client.purge_queue("queue_name")
+
+# Convert a standard queue's archive table to pg_partman-managed partitions (requires pg_partman)
+# Useful for queues created with `create`/`create_unlogged` whose archives have grown large.
+# Idempotent - safe to call if the archive is already partitioned or doesn't exist yet.
+client.convert_archive_partitioned("queue_name")
+
+# Custom partition/retention intervals (same syntax as create_partitioned)
+client.convert_archive_partitioned("queue_name",
+  partition_interval: "daily",
+  retention_interval: "30 days"
+)
 
 # Enable PostgreSQL NOTIFY for a queue (for LISTEN-based consumers)
 client.enable_notify_insert("queue_name", throttle_interval_ms: 250)
