@@ -134,7 +134,7 @@ module PGMQ
       # burn idle time.
       #
       # The optional block receives `channel`, `backend_pid`, and `payload` when a notification arrives.
-      # The return value mirrors `PG::Connection#wait_for_notify`: the notification payload string on success,
+      # The return value mirrors `PG::Connection#wait_for_notify`: the channel name string on success,
       # or `nil` on timeout.
       #
       # @note Orchestration (retry loop, reconnect-on-drop, graceful shutdown) is the caller's responsibility.
@@ -142,7 +142,7 @@ module PGMQ
       #
       # @param queue_name [String] name of the queue (must have notifications enabled via {#enable_notify_insert})
       # @param timeout [Numeric, nil] seconds to wait; `nil` blocks indefinitely
-      # @return [String, nil] notification payload, or `nil` if the timeout expired
+      # @return [String, nil] notification channel name, or `nil` if the timeout expired
       #
       # @example Basic usage (wake up when a message arrives, then read it)
       #   client.enable_notify_insert("orders")

@@ -115,6 +115,7 @@ describe PGMQ::Client::Maintenance do
       # Connection should be returned to pool and UNLISTEN should have fired;
       # a subsequent call must not hang or error
       result = @client.wait_for_notify(queue_name, timeout: 0.1)
+
       assert_nil result
     end
 

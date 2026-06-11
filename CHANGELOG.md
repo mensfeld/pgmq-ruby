@@ -4,7 +4,7 @@
 
 ### Queue Maintenance
 - **[Feature]** Add `wait_for_notify(queue_name, timeout: nil)` — thin wrapper around PostgreSQL `LISTEN/NOTIFY`
-  for event-driven message consumption. Blocks until the queue's NOTIFY channel (`pgmq_<queue>`) fires or the
+  for event-driven message consumption. Blocks until the queue's NOTIFY channel (`pgmq.q_<queue>.INSERT`) fires or the
   timeout expires, then issues `UNLISTEN` and returns the connection to the pool. Unlike `read_with_poll`, which
   holds a connection open inside a PL/pgSQL loop for the full poll window, `wait_for_notify` releases the
   connection the moment the notification arrives — more efficient under low message rates. Requires

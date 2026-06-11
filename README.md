@@ -455,15 +455,14 @@ msg = client.read_with_poll("queue_name",
 # Step 1: enable server-side NOTIFY trigger once (idempotent)
 client.enable_notify_insert("queue_name")
 
-# Step 2: consumer loop — wake up on notification, then read
+# Step 2: consumer loop — wake up on notification, then drain all available messages.
+# With throttling (default 250ms), a burst of inserts fires only one NOTIFY.
+# Always use read_batch after waking up to avoid leaving messages stranded.
 loop do
   next unless client.wait_for_notify("queue_name", timeout: 5)
 
-  msg = client.read("queue_name", vt: 30)
-  next unless msg
-
-  process(msg)
-  client.delete("queue_name", msg.msg_id)
+  msgs = client.read_batch("queue_name", vt: 30, qty: 10)
+  msgs.each { |m| process(m); client.delete("queue_name", m.msg_id) }
 end
 
 # Pop (atomic read + delete)

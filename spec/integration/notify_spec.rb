@@ -24,7 +24,7 @@ ExampleHelper.run_example("LISTEN/NOTIFY") do |client, queues, interrupted|
   start = Time.now
   result = client.wait_for_notify(queue, timeout: 1)
   elapsed = (Time.now - start).round(1)
-  puts "Empty queue wait: #{result.nil? ? 'timed out' : 'notified'} after #{elapsed}s"
+  puts "Empty queue wait: #{result.nil? ? "timed out" : "notified"} after #{elapsed}s"
 
   break if interrupted.call
 
@@ -35,7 +35,7 @@ ExampleHelper.run_example("LISTEN/NOTIFY") do |client, queues, interrupted|
   end
 
   start = Time.now
-  result = client.wait_for_notify(queue, timeout: 5) do |channel, _pid, _payload|
+  client.wait_for_notify(queue, timeout: 5) do |channel, _pid, _payload|
     puts "Notified on channel: #{channel}"
   end
   elapsed = (Time.now - start).round(2)
