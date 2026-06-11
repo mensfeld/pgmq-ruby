@@ -105,6 +105,26 @@ module PGMQ
         nil
       end
 
+      # Lists all queues that have a NOTIFY trigger enabled, with their throttle configuration
+      #
+      # Returns one {PGMQ::NotifyThrottle} per queue that has had {#enable_notify_insert} called on it.
+      # Useful for auditing notification configuration across all queues at once.
+      #
+      # @return [Array<PGMQ::NotifyThrottle>] throttle configs (empty array if none configured)
+      #
+      # @example
+      #   throttles = client.list_notify_insert_throttles
+      #   throttles.each do |t|
+      #     puts "#{t.queue_name}: #{t.throttle_interval_ms}ms"
+      #   end
+      def list_notify_insert_throttles
+        result = with_connection do |conn|
+          conn.exec("SELECT * FROM pgmq.list_notify_insert_throttles()")
+        end
+
+        result.map { |row| PGMQ::NotifyThrottle.new(row) }
+      end
+
       # Updates the throttle interval for an already-enabled NOTIFY trigger
       #
       # Changes how frequently PostgreSQL is allowed to fire a NOTIFY event on message insert, without
