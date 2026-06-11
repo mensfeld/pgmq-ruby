@@ -82,6 +82,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | `metrics_all` | Get metrics for all queues | ✅ |
 | | `enable_notify_insert` | Enable PostgreSQL NOTIFY on insert | ✅ |
 | | `disable_notify_insert` | Disable notifications | ✅ |
+| | `wait_for_notify` | Block until a NOTIFY arrives on the queue's channel | ✅ |
 | **Ruby Enhancements** | Transaction Support | Atomic operations via `client.transaction do \|txn\|` | ✅ |
 | | Conditional Filtering | Server-side JSONB filtering with `conditional:` | ✅ |
 | | Multi-Queue Ops | Read/pop/delete/archive from multiple queues | ✅ |
@@ -450,6 +451,21 @@ msg = client.read_with_poll("queue_name",
   poll_interval_ms: 100
 )
 
+# Event-driven consumption via LISTEN/NOTIFY (more efficient than long-polling at low message rates)
+# Step 1: enable server-side NOTIFY trigger once (idempotent)
+client.enable_notify_insert("queue_name")
+
+# Step 2: consumer loop — wake up on notification, then read
+loop do
+  next unless client.wait_for_notify("queue_name", timeout: 5)
+
+  msg = client.read("queue_name", vt: 30)
+  next unless msg
+
+  process(msg)
+  client.delete("queue_name", msg.msg_id)
+end
+
 # Pop (atomic read + delete)
 msg = client.pop("queue_name")
 
@@ -657,6 +673,15 @@ client.enable_notify_insert("queue_name", throttle_interval_ms: 250)
 
 # Disable notifications
 client.disable_notify_insert("queue_name")
+
+# Block until a NOTIFY arrives on the queue's channel (or timeout expires)
+# Returns the payload string on notification, nil on timeout
+client.wait_for_notify("queue_name", timeout: 5)
+
+# Block form — inspect notification metadata
+client.wait_for_notify("queue_name", timeout: 5) do |channel, pid, payload|
+  puts "Notified on #{channel} by backend #{pid}"
+end
 ```
 
 ### Monitoring
