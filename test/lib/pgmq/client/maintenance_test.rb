@@ -45,6 +45,58 @@ describe PGMQ::Client::Maintenance do
     end
   end
 
+  describe "#list_notify_insert_throttles" do
+    it "returns an empty array when no queues have notifications enabled" do
+      result = @client.list_notify_insert_throttles
+
+      assert_instance_of Array, result
+      assert result.none? { |t| t.queue_name == @queue_name }
+    end
+
+    it "includes the queue after enable_notify_insert is called" do
+      @client.enable_notify_insert(@queue_name, throttle_interval_ms: 500)
+
+      result = @client.list_notify_insert_throttles
+      throttle = result.find { |t| t.queue_name == @queue_name }
+
+      refute_nil throttle
+      assert_equal "500", throttle.throttle_interval_ms
+    ensure
+      @client.disable_notify_insert(@queue_name)
+    end
+
+    it "reflects updated throttle interval after update_notify_insert" do
+      @client.enable_notify_insert(@queue_name, throttle_interval_ms: 500)
+      @client.update_notify_insert(@queue_name, throttle_interval_ms: 100)
+
+      result = @client.list_notify_insert_throttles
+      throttle = result.find { |t| t.queue_name == @queue_name }
+
+      assert_equal "100", throttle.throttle_interval_ms
+    ensure
+      @client.disable_notify_insert(@queue_name)
+    end
+
+    it "returns NotifyThrottle instances" do
+      @client.enable_notify_insert(@queue_name)
+
+      result = @client.list_notify_insert_throttles
+
+      assert result.all? { |t| t.is_a?(PGMQ::NotifyThrottle) }
+    ensure
+      @client.disable_notify_insert(@queue_name)
+    end
+
+    it "no longer includes queue after disable_notify_insert" do
+      @client.enable_notify_insert(@queue_name)
+      @client.disable_notify_insert(@queue_name)
+
+      result = @client.list_notify_insert_throttles
+
+      assert result.none? { |t| t.queue_name == @queue_name }
+    end
+  end
+
   describe "#update_notify_insert" do
     it "updates the throttle interval on an enabled notification trigger" do
       @client.enable_notify_insert(@queue_name, throttle_interval_ms: 500)

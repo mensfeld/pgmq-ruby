@@ -83,6 +83,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | `enable_notify_insert` | Enable PostgreSQL NOTIFY on insert | ✅ |
 | | `update_notify_insert` | Update throttle interval on an existing NOTIFY trigger | ✅ |
 | | `disable_notify_insert` | Disable notifications | ✅ |
+| | `list_notify_insert_throttles` | List all queues with NOTIFY enabled and their throttle config | ✅ |
 | | `wait_for_notify` | Block until a NOTIFY arrives on the queue's channel | ✅ |
 | **Ruby Enhancements** | Transaction Support | Atomic operations via `client.transaction do \|txn\|` | ✅ |
 | | Conditional Filtering | Server-side JSONB filtering with `conditional:` | ✅ |
@@ -673,6 +674,12 @@ client.enable_notify_insert("queue_name", throttle_interval_ms: 250)
 
 # Update the throttle interval without disabling/re-enabling the trigger
 client.update_notify_insert("queue_name", throttle_interval_ms: 100)
+
+# List all queues with NOTIFY enabled and their current throttle configuration
+throttles = client.list_notify_insert_throttles
+throttles.each do |t|
+  puts "#{t.queue_name}: #{t.throttle_interval_ms}ms (last notified: #{t.last_notified_at})"
+end
 
 # Disable notifications
 client.disable_notify_insert("queue_name")
