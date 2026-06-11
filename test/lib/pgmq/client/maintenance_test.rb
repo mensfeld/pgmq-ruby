@@ -45,6 +45,24 @@ describe PGMQ::Client::Maintenance do
     end
   end
 
+  describe "#update_notify_insert" do
+    it "updates the throttle interval on an enabled notification trigger" do
+      @client.enable_notify_insert(@queue_name, throttle_interval_ms: 500)
+      @client.update_notify_insert(@queue_name, throttle_interval_ms: 100)
+    end
+
+    it "accepts zero to remove throttling" do
+      @client.enable_notify_insert(@queue_name)
+      @client.update_notify_insert(@queue_name, throttle_interval_ms: 0)
+    end
+
+    it "raises error for invalid queue name" do
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) do
+        @client.update_notify_insert("123invalid", throttle_interval_ms: 250)
+      end
+    end
+  end
+
   describe "#disable_notify_insert" do
     it "disables notifications on the queue" do
       @client.enable_notify_insert(@queue_name)
