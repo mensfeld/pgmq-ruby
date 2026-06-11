@@ -3,6 +3,9 @@
 ## 0.7.0 (Unreleased)
 
 ### Queue Maintenance
+- **[Feature]** Add `update_notify_insert(queue_name, throttle_interval_ms:)` — updates the NOTIFY
+  throttle interval on an already-enabled trigger without having to disable and re-enable it.
+  Requires PGMQ v1.11.0+.
 - **[Feature]** Add `wait_for_notify(queue_name, timeout: nil)` — thin wrapper around PostgreSQL `LISTEN/NOTIFY`
   for event-driven message consumption. Blocks until the queue's NOTIFY channel (`pgmq.q_<queue>.INSERT`) fires or the
   timeout expires, then issues `UNLISTEN` and returns the connection to the pool. Unlike `read_with_poll`, which

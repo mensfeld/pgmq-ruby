@@ -105,6 +105,34 @@ module PGMQ
         nil
       end
 
+      # Updates the throttle interval for an already-enabled NOTIFY trigger
+      #
+      # Changes how frequently PostgreSQL is allowed to fire a NOTIFY event on message insert, without
+      # having to disable and re-enable the trigger. The queue must already have notifications enabled
+      # via {#enable_notify_insert}.
+      #
+      # @param queue_name [String] name of the queue
+      # @param throttle_interval_ms [Integer] new minimum ms between notifications
+      # @return [void]
+      #
+      # @example Tighten throttle to 100ms during high-throughput ingestion
+      #   client.update_notify_insert("orders", throttle_interval_ms: 100)
+      #
+      # @example Remove throttling entirely
+      #   client.update_notify_insert("orders", throttle_interval_ms: 0)
+      def update_notify_insert(queue_name, throttle_interval_ms:)
+        validate_queue_name!(queue_name)
+
+        with_connection do |conn|
+          conn.exec_params(
+            "SELECT pgmq.update_notify_insert($1::text, $2::integer)",
+            [queue_name, throttle_interval_ms]
+          )
+        end
+
+        nil
+      end
+
       # Disables PostgreSQL NOTIFY for a queue
       #
       # @param queue_name [String] name of the queue
