@@ -3,6 +3,12 @@
 ## 0.7.0 (Unreleased)
 
 ### Queue Maintenance
+- **[Feature]** Add `wait_for_notify(queue_name, timeout: nil)` — thin wrapper around PostgreSQL `LISTEN/NOTIFY`
+  for event-driven message consumption. Blocks until the queue's NOTIFY channel (`pgmq.q_<queue>.INSERT`) fires or the
+  timeout expires, then issues `UNLISTEN` and returns the connection to the pool. Unlike `read_with_poll`, which
+  holds a connection open inside a PL/pgSQL loop for the full poll window, `wait_for_notify` releases the
+  connection the moment the notification arrives — more efficient under low message rates. Requires
+  `enable_notify_insert` to be called first to attach the server-side trigger.
 - **[Feature]** Add `convert_archive_partitioned(queue_name, partition_interval:, retention_interval:,
   leading_partition:)` - converts a standard queue's archive table to a pg_partman-managed partitioned table.
   Provides a migration path for queues originally created with `create` or `create_unlogged` whose archive tables

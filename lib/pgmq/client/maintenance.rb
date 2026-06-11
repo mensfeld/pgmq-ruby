@@ -121,6 +121,58 @@ module PGMQ
 
         nil
       end
+
+      # Blocks until a PostgreSQL NOTIFY arrives on the queue's channel or the timeout expires.
+      #
+      # PGMQ sends notifications on the channel `pgmq.q_<queue_name>.INSERT` whenever a message is inserted (requires
+      # {#enable_notify_insert} to be called first). This method issues `LISTEN`, waits for a notification via the `pg`
+      # gem's `wait_for_notify`, then issues `UNLISTEN` before returning the connection to the pool.
+      #
+      # Compared with {PGMQ::Client::Consumer#read_with_poll}, which holds the connection inside a PL/pgSQL loop for
+      # the full poll window, `wait_for_notify` releases the connection the moment a notification arrives (or the
+      # timeout expires). This makes it more efficient under low message rates where the poll window would otherwise
+      # burn idle time.
+      #
+      # The optional block receives `channel`, `backend_pid`, and `payload` when a notification arrives.
+      # The return value mirrors `PG::Connection#wait_for_notify`: the channel name string on success,
+      # or `nil` on timeout.
+      #
+      # @note Orchestration (retry loop, reconnect-on-drop, graceful shutdown) is the caller's responsibility.
+      #   This method is a thin primitive — it listens once, waits, and returns.
+      #
+      # @param queue_name [String] name of the queue (must have notifications enabled via {#enable_notify_insert})
+      # @param timeout [Numeric, nil] seconds to wait; `nil` blocks indefinitely
+      # @return [String, nil] notification channel name, or `nil` if the timeout expired
+      #
+      # @example Basic usage (wake up when a message arrives, then read it)
+      #   client.enable_notify_insert("orders")
+      #
+      #   loop do
+      #     next unless client.wait_for_notify("orders", timeout: 5)
+      #     msg = client.read("orders", vt: 30)
+      #     process(msg) if msg
+      #   end
+      #
+      # @example Block form (inspect notification metadata)
+      #   client.wait_for_notify("orders", timeout: 5) do |channel, pid, payload|
+      #     puts "Notified on #{channel} by backend #{pid}"
+      #   end
+      def wait_for_notify(queue_name, timeout: nil)
+        validate_queue_name!(queue_name)
+        # PGMQ trigger fires pg_notify('pgmq.q_<queue>.INSERT', NULL)
+        channel = "pgmq.q_#{queue_name}.INSERT"
+
+        with_connection do |conn|
+          conn.exec("LISTEN \"#{channel}\"")
+          begin
+            conn.wait_for_notify(timeout) do |ch, pid, payload|
+              yield ch, pid, payload if block_given?
+            end
+          ensure
+            conn.exec("UNLISTEN \"#{channel}\"")
+          end
+        end
+      end
     end
   end
 end
