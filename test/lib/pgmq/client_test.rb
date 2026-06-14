@@ -36,6 +36,48 @@ describe PGMQ::Client do
     end
   end
 
+  describe "#with_connection" do
+    it "is a public method" do
+      assert_includes PGMQ::Client.public_instance_methods, :with_connection
+    end
+
+    it "yields a raw PG::Connection" do
+      @client.with_connection do |conn|
+        assert_kind_of PG::Connection, conn
+      end
+    end
+
+    it "returns the value of the block" do
+      result = @client.with_connection { |conn| conn.exec("SELECT 42 AS answer")[0]["answer"] }
+
+      assert_equal "42", result
+    end
+
+    it "supports SQL PGMQ does not wrap (custom NOTIFY)" do
+      result = @client.with_connection do |conn|
+        conn.exec_params("SELECT pg_notify($1, $2)", ["pgmq_ruby_test_channel", "ping"])
+      end
+
+      assert_equal 1, result.ntuples
+    end
+
+    it "checks the connection back into the pool after the block" do
+      before = @client.stats[:available]
+
+      @client.with_connection { |conn| conn.exec("SELECT 1") }
+
+      assert_equal before, @client.stats[:available]
+    end
+
+    it "propagates ConnectionError from the underlying pool" do
+      @client.connection.stubs(:with_connection).raises(PGMQ::Errors::ConnectionError, "boom")
+
+      assert_raises(PGMQ::Errors::ConnectionError) do
+        @client.with_connection { |_conn| :never }
+      end
+    end
+  end
+
   describe "#validate_queue_name!" do
     describe "valid queue names" do
       it "accepts simple lowercase names" do

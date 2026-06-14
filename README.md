@@ -299,6 +299,29 @@ client = PGMQ::Client.new(
 )
 ```
 
+#### Running custom SQL on the PGMQ pool
+
+Every PGMQ operation checks out a pooled connection through `client.with_connection`.
+The method is public, so you can run PostgreSQL statements PGMQ does not wrap
+without standing up a second connection pool. The connection is health-checked
+(when `auto_reconnect` is enabled) and returned to the pool when the block exits.
+
+```ruby
+# Fire a custom NOTIFY alongside your queues
+client.with_connection do |conn|
+  conn.exec_params("SELECT pg_notify($1, $2)", ["my_channel", payload])
+end
+
+# Run a monitoring query PGMQ does not wrap
+depth = client.with_connection do |conn|
+  conn.exec("SELECT count(*) FROM pgmq.q_orders")[0]["count"].to_i
+end
+```
+
+You receive the raw `PG::Connection`: results come back as strings (no type
+mapping) and the statement is **not** wrapped in a transaction. Use
+[`client.transaction`](#transaction-support) when you need atomicity.
+
 #### Extending the lost-connection error matchers
 
 PGMQ-Ruby ships with a curated list of `PG::Error` messages and classes
