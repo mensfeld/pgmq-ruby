@@ -403,6 +403,34 @@ client.create("a" * 48)          # ✗ Too long (48+ chars)
 # Raises PGMQ::Errors::InvalidQueueNameError
 ```
 
+**Deriving valid names with `PGMQ::QueueName`**
+
+`PGMQ::Client` always validates the name you pass (via `PGMQ::QueueName.validate!`).
+When the name comes from a friendlier source — a Turbo Stream channel, a slug, or
+untrusted user input — `PGMQ::QueueName` gives you three tiers so you can decide
+how strict to be:
+
+```ruby
+# Tier 1 — assert a name you control is valid (raises otherwise)
+PGMQ::QueueName.valid?("orders")          # => true
+PGMQ::QueueName.validate!("my-queue")     # => raises PGMQ::Errors::InvalidQueueNameError
+
+# Tier 2 — normalize a name meant to be valid but using friendly separators.
+# Hyphens/colons/dots/spaces become underscores; raises if the result still
+# can't be valid (empty, or starts with a digit).
+PGMQ::QueueName.normalize("chat:room-7")  # => "chat_room_7"
+PGMQ::QueueName.normalize("order events") # => "order_events"
+PGMQ::QueueName.normalize("123-go")       # => raises (starts with a digit)
+
+# Tier 3 — sanitize arbitrary, untrusted input. Never raises; always returns a
+# valid name (prefixes leading digits, truncates to length, falls back to "queue").
+PGMQ::QueueName.sanitize("99 Problems!")        # => "q_99_problems"
+PGMQ::QueueName.sanitize("Order-Events:Created") # => "order_events_created"
+PGMQ::QueueName.sanitize("!!!")                  # => "queue"
+
+client.create(PGMQ::QueueName.sanitize(params[:topic]))  # safe for user input
+```
+
 ### Sending Messages
 
 ```ruby
