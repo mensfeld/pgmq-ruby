@@ -299,6 +299,42 @@ client = PGMQ::Client.new(
 )
 ```
 
+#### Running custom SQL on the PGMQ pool
+
+Every PGMQ operation checks out a pooled connection through `client.with_connection`.
+The method is public, so you can run PostgreSQL statements PGMQ does not wrap
+without standing up a second connection pool. The connection is health-checked
+(when `auto_reconnect` is enabled) and returned to the pool when the block exits.
+
+```ruby
+# Fire a custom NOTIFY alongside your queues
+client.with_connection do |conn|
+  conn.exec_params("SELECT pg_notify($1, $2)", ["my_channel", payload])
+end
+
+# Run a monitoring query PGMQ does not wrap
+depth = client.with_connection do |conn|
+  conn.exec("SELECT count(*) FROM pgmq.q_orders")[0]["count"].to_i
+end
+```
+
+You receive the raw `PG::Connection`: results come back as strings (no type
+mapping) and the statement is **not** wrapped in a transaction. Use
+[`client.transaction`](#transaction-support) when you need atomicity.
+
+> **Pool-safety caveats.** You're handed a *pooled* connection, so two rules apply:
+>
+> 1. **Don't keep the connection past the block.** Once the block returns, the
+>    connection goes back to the pool and another thread may check it out.
+>    `PG::Connection` is not thread-safe — using it afterwards can corrupt libpq
+>    state (nil results, wrong data, segfaults).
+> 2. **Clean up session state before the block exits.** The pool does *not* reset
+>    connections on check-in. A `LISTEN`, `SET`, session-level advisory lock
+>    (`pg_advisory_lock`), prepared statement, or temp table you create survives
+>    and leaks to the next pool user. Undo it (`UNLISTEN`, `RESET`,
+>    `pg_advisory_unlock`, …) before returning. For LISTEN/NOTIFY consumption,
+>    prefer `client.wait_for_notify`, which manages `LISTEN`/`UNLISTEN` for you.
+
 #### Extending the lost-connection error matchers
 
 PGMQ-Ruby ships with a curated list of `PG::Error` messages and classes

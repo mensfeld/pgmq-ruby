@@ -93,14 +93,48 @@ module PGMQ
       @connection.stats
     end
 
-    private
-
-    # Executes a block with a database connection
-    # @yield [PG::Connection] database connection
-    # @return [Object] result of the block
+    # Checks out a pooled connection and yields the raw +PG::Connection+ for arbitrary SQL.
+    #
+    # All PGMQ operations run through this method internally, so it carries the same guarantees: a connection is taken
+    # from the pool, health-checked when +auto_reconnect+ is enabled, and a single retry on a fresh connection is
+    # attempted if the checked-out connection turns out to be dead before any SQL is sent (see
+    # {PGMQ::Connection#with_connection}). The connection is returned to the pool when the block exits.
+    #
+    # Exposed so callers can issue PostgreSQL statements PGMQ does not wrap without standing up a second pool: ad-hoc
+    # +NOTIFY+, +LISTEN+, advisory locks, custom monitoring queries, or DDL that lives alongside your queue tables.
+    # Reusing the PGMQ pool keeps connection accounting in one place.
+    #
+    # @yield [PG::Connection] a pooled, health-checked database connection
+    # @return [Object] the return value of the block
+    # @raise [PGMQ::Errors::ConnectionError] if a connection cannot be obtained
+    #
+    # @example Fire a custom NOTIFY on the PGMQ pool
+    #   client.with_connection do |conn|
+    #     conn.exec_params("SELECT pg_notify($1, $2)", ["my_channel", payload])
+    #   end
+    #
+    # @example Run a query PGMQ does not wrap
+    #   depth = client.with_connection do |conn|
+    #     conn.exec("SELECT count(*) FROM pgmq.q_orders")[0]["count"].to_i
+    #   end
+    #
+    # @note You receive the raw +PG::Connection+. PGMQ performs no type mapping (results come back as strings) and does
+    #   not wrap your statement in a transaction. Use {#transaction} when you need atomicity.
+    #
+    # @note Do not retain or use the yielded connection outside the block. Once the block returns, the connection
+    #   goes back to the pool and another thread may check it out; +PG::Connection+ is not thread-safe, so using it
+    #   after the block can corrupt libpq state (nil results, wrong data, segfaults).
+    #
+    # @note The connection is returned to the pool *without* resetting session state. Anything session-scoped you
+    #   create - +LISTEN+, +SET+, a session-level advisory lock (+pg_advisory_lock+), a prepared statement, a temp
+    #   table - survives check-in and leaks to the next pool user. Undo it before the block exits (+UNLISTEN+,
+    #   +RESET+, +pg_advisory_unlock+, etc.). For LISTEN/NOTIFY consumption, prefer {#wait_for_notify}, which manages
+    #   +LISTEN+/+UNLISTEN+ for you.
     def with_connection(&)
       @connection.with_connection(&)
     end
+
+    private
 
     # Validates a queue name
     # @param queue_name [String] queue name to validate
