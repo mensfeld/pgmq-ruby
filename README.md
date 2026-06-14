@@ -395,6 +395,9 @@ client.create_partitioned("queue_name",
 # Create unlogged queue (faster, no crash recovery)
 client.create_unlogged("queue_name")  # => true/false
 
+# Create a queue with autovacuum tuned for PGMQ's read+delete churn (see "Autovacuum Tuning")
+client.create("queue_name", tune_autovacuum: true)
+
 # Drop queue (returns true if dropped, false if didn't exist)
 client.drop_queue("queue_name")  # => true/false
 
@@ -438,6 +441,47 @@ client.create("my.queue")         # ✗ Contains period
 client.create("a" * 48)          # ✗ Too long (48+ chars)
 # Raises PGMQ::Errors::InvalidQueueNameError
 ```
+
+#### Autovacuum Tuning
+
+PGMQ tables churn in a way PostgreSQL's defaults are not tuned for: a hot queue
+inserts, updates (visibility timeout), and deletes rows constantly, so dead
+tuples pile up fast. With the default `autovacuum_vacuum_scale_factor` of `0.2`,
+autovacuum only runs once dead tuples reach 20% of the table — by which point a
+busy queue has bloated its heap and indexes, slowing every read. The archive
+table grows mostly by append, so it benefits from a gentler-but-still-tightened
+setting.
+
+`tune_autovacuum` sets per-table storage parameters via `ALTER TABLE`, so
+autovacuum runs far more often on *these specific tables* without touching
+cluster-wide settings. It is **opt-in** — the gem never mutates storage
+parameters unless you ask.
+
+```ruby
+# Tune an existing queue with PGMQ defaults:
+#   queue table   (pgmq.q_<name>): scale_factor 0.01, threshold 50
+#   archive table (pgmq.a_<name>): scale_factor 0.05, threshold 50
+client.tune_autovacuum("orders")
+
+# Override the queue setting and skip the archive table
+client.tune_autovacuum("orders", scale_factor: 0.005, archive: false)
+
+# Override every parameter
+client.tune_autovacuum("orders",
+  scale_factor: 0.01, threshold: 50,
+  archive_scale_factor: 0.05, archive_threshold: 50)
+
+# Or tune at creation time (true = defaults, or pass a Hash of the options above)
+client.create("orders", tune_autovacuum: true)
+client.create("orders", tune_autovacuum: { scale_factor: 0.005, archive: false })
+client.create_unlogged("fast", tune_autovacuum: true)
+client.create_partitioned("big", partition_interval: "daily",
+  retention_interval: "7 days", tune_autovacuum: true)
+```
+
+> **Partitioned queues:** parameters are set on the partitioned *parent* table.
+> PostgreSQL does not cascade storage parameters to existing partitions, so set
+> them per-partition if you need to retune already-created partitions.
 
 ### Sending Messages
 
