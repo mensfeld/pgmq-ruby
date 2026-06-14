@@ -186,8 +186,10 @@ module PGMQ
       # Applies the +tune_autovacuum:+ creation option on the create connection.
       #
       # Accepts the same shapes the create methods document: +false+/+nil+ (no-op), +true+ (PGMQ-tuned defaults), or a
-      # Hash of overrides forwarded to the same logic {Autovacuum#tune_autovacuum} uses. Runs on the connection that
-      # just created the queue so the ALTER TABLE shares that checkout rather than acquiring a second one.
+      # Hash of overrides. Delegates resolution and the ALTER TABLE statements to {Autovacuum#tune_autovacuum_on}, the
+      # single source of truth shared with {Autovacuum#tune_autovacuum}, so defaults and the archive-skip rule cannot
+      # drift between the two paths. Runs on the connection that just created the queue, so the ALTER TABLE shares that
+      # checkout rather than acquiring a second one.
       #
       # @param conn [PG::Connection] the connection the queue was created on
       # @param queue_name [String] name of the queue
@@ -196,23 +198,7 @@ module PGMQ
       def apply_tune_autovacuum_option(conn, queue_name, option)
         return unless option
 
-        opts = option.is_a?(Hash) ? option : {}
-
-        alter_autovacuum(
-          conn,
-          "q_#{queue_name}",
-          opts.fetch(:scale_factor, Autovacuum::DEFAULT_QUEUE_SCALE_FACTOR),
-          opts.fetch(:threshold, Autovacuum::DEFAULT_QUEUE_THRESHOLD)
-        )
-
-        return if opts[:archive] == false
-
-        alter_autovacuum(
-          conn,
-          "a_#{queue_name}",
-          opts.fetch(:archive_scale_factor, Autovacuum::DEFAULT_ARCHIVE_SCALE_FACTOR),
-          opts.fetch(:archive_threshold, Autovacuum::DEFAULT_ARCHIVE_THRESHOLD)
-        )
+        tune_autovacuum_on(conn, queue_name, option.is_a?(Hash) ? option : {})
       end
     end
   end

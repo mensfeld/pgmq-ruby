@@ -107,6 +107,23 @@ describe PGMQ::Client::Autovacuum do
         @client.tune_autovacuum(@queue_name, scale_factor: "0.01); DROP TABLE pgmq.meta; --")
       end
     end
+
+    it "tunes the correct table for a mixed-case queue name" do
+      # PGMQ folds queue names to lower case for the backing tables, so tune_autovacuum must target the lower-cased
+      # table (pgmq.q_<name>) rather than the mixed-case name verbatim.
+      mixed = "Av_Mixed_#{SecureRandom.hex(4)}"
+      @client.create(mixed)
+
+      begin
+        @client.tune_autovacuum(mixed)
+
+        opts = reloptions("q_#{mixed.downcase}")
+
+        assert_in_delta 0.01, opts["autovacuum_vacuum_scale_factor"].to_f
+      ensure
+        @client.drop_queue(mixed)
+      end
+    end
   end
 
   describe "create with tune_autovacuum option" do

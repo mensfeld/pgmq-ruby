@@ -69,8 +69,15 @@ module PGMQ
         validate_queue_name!(queue_name)
 
         with_connection do |conn|
-          alter_autovacuum(conn, "q_#{queue_name}", scale_factor, threshold)
-          alter_autovacuum(conn, "a_#{queue_name}", archive_scale_factor, archive_threshold) if archive
+          tune_autovacuum_on(
+            conn,
+            queue_name,
+            scale_factor: scale_factor,
+            threshold: threshold,
+            archive: archive,
+            archive_scale_factor: archive_scale_factor,
+            archive_threshold: archive_threshold
+          )
         end
 
         nil
@@ -78,7 +85,41 @@ module PGMQ
 
       private
 
+      # Resolves autovacuum options against the PGMQ-tuned defaults and applies them on an existing connection.
+      #
+      # Single source of truth for both entry points: {#tune_autovacuum} (which passes its keyword arguments through)
+      # and the +tune_autovacuum:+ creation flag (which passes a possibly-empty Hash). Keeping the default resolution
+      # and the archive-skip rule here means the two paths cannot drift - in particular, +archive+ is treated as a
+      # single truthiness test in one place rather than being checked differently per caller.
+      #
+      # @param conn [PG::Connection] the connection to run the ALTER TABLE statements on
+      # @param queue_name [String] name of the queue (already validated)
+      # @param opts [Hash] resolved or partial options; missing keys fall back to the DEFAULT_* constants
+      # @return [void]
+      def tune_autovacuum_on(conn, queue_name, opts = {})
+        alter_autovacuum(
+          conn,
+          "q_#{queue_name}",
+          opts.fetch(:scale_factor, DEFAULT_QUEUE_SCALE_FACTOR),
+          opts.fetch(:threshold, DEFAULT_QUEUE_THRESHOLD)
+        )
+
+        return unless opts.fetch(:archive, true)
+
+        alter_autovacuum(
+          conn,
+          "a_#{queue_name}",
+          opts.fetch(:archive_scale_factor, DEFAULT_ARCHIVE_SCALE_FACTOR),
+          opts.fetch(:archive_threshold, DEFAULT_ARCHIVE_THRESHOLD)
+        )
+      end
+
       # Issues a single ALTER TABLE setting the two autovacuum storage parameters on one pgmq table.
+      #
+      # PGMQ folds queue names to lower case when it creates the backing tables (`pgmq.create('MyQueue')` produces
+      # `pgmq.q_myqueue`), so the table name is lower-cased to match the physical table before it is quoted. Without
+      # this, a mixed-case queue name would build `q_MyQueue`, and +quote_ident+ would preserve that case and target
+      # a non-existent relation.
       #
       # Identifiers cannot be passed as bind parameters, so the table name is quoted with the connection's
       # +quote_ident+. The queue name has already passed {#validate_queue_name!} (strict identifier rules), and the
@@ -90,7 +131,7 @@ module PGMQ
       # @param threshold [Integer] autovacuum_vacuum_threshold
       # @return [void]
       def alter_autovacuum(conn, table, scale_factor, threshold)
-        qualified = "pgmq.#{conn.quote_ident(table)}"
+        qualified = "pgmq.#{conn.quote_ident(table.downcase)}"
 
         conn.exec(
           "ALTER TABLE #{qualified} SET (" \
