@@ -322,6 +322,19 @@ You receive the raw `PG::Connection`: results come back as strings (no type
 mapping) and the statement is **not** wrapped in a transaction. Use
 [`client.transaction`](#transaction-support) when you need atomicity.
 
+> **Pool-safety caveats.** You're handed a *pooled* connection, so two rules apply:
+>
+> 1. **Don't keep the connection past the block.** Once the block returns, the
+>    connection goes back to the pool and another thread may check it out.
+>    `PG::Connection` is not thread-safe — using it afterwards can corrupt libpq
+>    state (nil results, wrong data, segfaults).
+> 2. **Clean up session state before the block exits.** The pool does *not* reset
+>    connections on check-in. A `LISTEN`, `SET`, session-level advisory lock
+>    (`pg_advisory_lock`), prepared statement, or temp table you create survives
+>    and leaks to the next pool user. Undo it (`UNLISTEN`, `RESET`,
+>    `pg_advisory_unlock`, …) before returning. For LISTEN/NOTIFY consumption,
+>    prefer `client.wait_for_notify`, which manages `LISTEN`/`UNLISTEN` for you.
+
 #### Extending the lost-connection error matchers
 
 PGMQ-Ruby ships with a curated list of `PG::Error` messages and classes

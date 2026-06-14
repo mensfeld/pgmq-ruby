@@ -37,8 +37,9 @@ describe PGMQ::Client do
   end
 
   describe "#with_connection" do
-    it "is a public method" do
-      assert_includes PGMQ::Client.public_instance_methods, :with_connection
+    it "can be called publicly without __send__" do
+      # Regression guard: with_connection is part of the public API. A plain call must not raise NoMethodError.
+      assert_kind_of PG::Connection, @client.with_connection { |conn| conn }
     end
 
     it "yields a raw PG::Connection" do
@@ -61,11 +62,18 @@ describe PGMQ::Client do
       assert_equal 1, result.ntuples
     end
 
-    it "checks the connection back into the pool after the block" do
+    it "actually checks a connection out of the pool and returns it after the block" do
       before = @client.stats[:available]
 
-      @client.with_connection { |conn| conn.exec("SELECT 1") }
+      during = nil
+      @client.with_connection do |conn|
+        conn.exec("SELECT 1")
+        during = @client.stats[:available]
+      end
 
+      # Availability must dip while the block holds the connection, proving a real checkout (a no-op
+      # implementation that never checked one out would leave `during == before`), then recover afterwards.
+      assert_equal before - 1, during
       assert_equal before, @client.stats[:available]
     end
 

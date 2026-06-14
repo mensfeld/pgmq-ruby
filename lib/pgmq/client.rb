@@ -120,6 +120,16 @@ module PGMQ
     #
     # @note You receive the raw +PG::Connection+. PGMQ performs no type mapping (results come back as strings) and does
     #   not wrap your statement in a transaction. Use {#transaction} when you need atomicity.
+    #
+    # @note Do not retain or use the yielded connection outside the block. Once the block returns, the connection
+    #   goes back to the pool and another thread may check it out; +PG::Connection+ is not thread-safe, so using it
+    #   after the block can corrupt libpq state (nil results, wrong data, segfaults).
+    #
+    # @note The connection is returned to the pool *without* resetting session state. Anything session-scoped you
+    #   create - +LISTEN+, +SET+, a session-level advisory lock (+pg_advisory_lock+), a prepared statement, a temp
+    #   table - survives check-in and leaks to the next pool user. Undo it before the block exits (+UNLISTEN+,
+    #   +RESET+, +pg_advisory_unlock+, etc.). For LISTEN/NOTIFY consumption, prefer {#wait_for_notify}, which manages
+    #   +LISTEN+/+UNLISTEN+ for you.
     def with_connection(&)
       @connection.with_connection(&)
     end
