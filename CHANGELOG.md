@@ -2,6 +2,20 @@
 
 ## 0.7.0 (Unreleased)
 
+### Queue Naming
+- **[Feature]** Add `PGMQ::QueueName`, a module that is now the single source of truth for queue-name rules and
+  exposes a three-tier API for deriving valid names from less-trusted input:
+  - `PGMQ::QueueName.valid?(name)` / `PGMQ::QueueName.validate!(name)` - the existing strict check (used internally
+    by every `PGMQ::Client` operation); `validate!` returns the name when valid and raises
+    `PGMQ::Errors::InvalidQueueNameError` otherwise.
+  - `PGMQ::QueueName.normalize(name)` - rewrites a name meant to be valid but using friendly separators
+    (hyphens, colons, dots, spaces become underscores), e.g. a Turbo Stream channel `"chat:room-7"` →
+    `"chat_room_7"`. Raises if the result still can't be valid (empty, or starts with a digit).
+  - `PGMQ::QueueName.sanitize(name)` - coerces arbitrary, untrusted input into a valid name on a best-effort basis;
+    never raises for content (lowercases, replaces illegal runs, prefixes leading digits, truncates to the length
+    limit, falls back to `"queue"` when nothing usable remains).
+
+  `PGMQ::Client#validate_queue_name!` now delegates to `PGMQ::QueueName.validate!`; error messages are unchanged.
 ### Connection Management
 - **[Feature]** `PGMQ::Client#with_connection` is now public. Every PGMQ operation already checks
   out a pooled, health-checked connection through this method; exposing it lets callers run
