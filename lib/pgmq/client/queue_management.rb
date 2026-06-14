@@ -194,6 +194,11 @@ module PGMQ
       # @param conn [PG::Connection] the connection the queue was created on
       # @param queue_name [String] name of the queue
       # @param option [Boolean, Hash] the tune_autovacuum option as passed to the create method
+      # @option option [Float] :scale_factor queue table +autovacuum_vacuum_scale_factor+
+      # @option option [Integer] :threshold queue table +autovacuum_vacuum_threshold+
+      # @option option [Boolean] :archive also tune the archive table (default: true)
+      # @option option [Float] :archive_scale_factor archive table +autovacuum_vacuum_scale_factor+
+      # @option option [Integer] :archive_threshold archive table +autovacuum_vacuum_threshold+
       # @return [void]
       def apply_tune_autovacuum_option(conn, queue_name, option)
         return unless option

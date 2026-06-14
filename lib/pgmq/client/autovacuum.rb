@@ -95,6 +95,11 @@ module PGMQ
       # @param conn [PG::Connection] the connection to run the ALTER TABLE statements on
       # @param queue_name [String] name of the queue (already validated)
       # @param opts [Hash] resolved or partial options; missing keys fall back to the DEFAULT_* constants
+      # @option opts [Float] :scale_factor queue table +autovacuum_vacuum_scale_factor+
+      # @option opts [Integer] :threshold queue table +autovacuum_vacuum_threshold+
+      # @option opts [Boolean] :archive also tune the archive table (default: true)
+      # @option opts [Float] :archive_scale_factor archive table +autovacuum_vacuum_scale_factor+
+      # @option opts [Integer] :archive_threshold archive table +autovacuum_vacuum_threshold+
       # @return [void]
       def tune_autovacuum_on(conn, queue_name, opts = {})
         alter_autovacuum(
