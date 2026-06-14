@@ -10,6 +10,9 @@ module PGMQ
       # Creates a new queue
       #
       # @param queue_name [String] name of the queue to create
+      # @param tune_autovacuum [Boolean, Hash] when truthy, tune autovacuum on the new queue's tables after creation.
+      #   Pass +true+ for PGMQ-tuned defaults, or a Hash of options forwarded to {Autovacuum#tune_autovacuum}
+      #   (e.g. +{scale_factor: 0.005, archive: false}+). Defaults to +false+ (no change).
       # @return [Boolean] true if queue was created, false if it already existed
       # @raise [PGMQ::Errors::InvalidQueueNameError] if queue name is invalid
       # @raise [PGMQ::Errors::ConnectionError] if database operation fails
@@ -17,12 +20,16 @@ module PGMQ
       # @example
       #   client.create("orders")  # => true (created)
       #   client.create("orders")  # => false (already exists)
-      def create(queue_name)
+      #
+      # @example Create with tuned autovacuum
+      #   client.create("orders", tune_autovacuum: true)
+      def create(queue_name, tune_autovacuum: false)
         validate_queue_name!(queue_name)
 
         with_connection do |conn|
           existed = queue_exists?(conn, queue_name)
           conn.exec_params("SELECT pgmq.create($1::text)", [queue_name])
+          apply_tune_autovacuum_option(conn, queue_name, tune_autovacuum)
           !existed
         end
       end
@@ -34,6 +41,9 @@ module PGMQ
       # @param queue_name [String] name of the queue
       # @param partition_interval [String] partition interval (e.g., "daily", "10000")
       # @param retention_interval [String] retention interval (e.g., "7 days", "100000")
+      # @param tune_autovacuum [Boolean, Hash] when truthy, tune autovacuum on the new queue's tables after creation.
+      #   Pass +true+ for PGMQ-tuned defaults, or a Hash forwarded to {Autovacuum#tune_autovacuum}. Defaults to
+      #   +false+. Note: storage parameters are set on the partitioned parent and do not cascade to partitions.
       # @return [Boolean] true if queue was created, false if it already existed
       #
       # @example
@@ -44,7 +54,8 @@ module PGMQ
       def create_partitioned(
         queue_name,
         partition_interval: "10000",
-        retention_interval: "100000"
+        retention_interval: "100000",
+        tune_autovacuum: false
       )
         validate_queue_name!(queue_name)
 
@@ -54,6 +65,7 @@ module PGMQ
             "SELECT pgmq.create_partitioned($1::text, $2::text, $3::text)",
             [queue_name, partition_interval, retention_interval]
           )
+          apply_tune_autovacuum_option(conn, queue_name, tune_autovacuum)
           !existed
         end
       end
@@ -61,16 +73,20 @@ module PGMQ
       # Creates an unlogged queue for higher throughput (no crash recovery)
       #
       # @param queue_name [String] name of the queue
+      # @param tune_autovacuum [Boolean, Hash] when truthy, tune autovacuum on the new queue's tables after creation.
+      #   Pass +true+ for PGMQ-tuned defaults, or a Hash forwarded to {Autovacuum#tune_autovacuum}. Defaults to
+      #   +false+.
       # @return [Boolean] true if queue was created, false if it already existed
       #
       # @example
       #   client.create_unlogged("fast_queue")  # => true
-      def create_unlogged(queue_name)
+      def create_unlogged(queue_name, tune_autovacuum: false)
         validate_queue_name!(queue_name)
 
         with_connection do |conn|
           existed = queue_exists?(conn, queue_name)
           conn.exec_params("SELECT pgmq.create_unlogged($1::text)", [queue_name])
+          apply_tune_autovacuum_option(conn, queue_name, tune_autovacuum)
           !existed
         end
       end
@@ -165,6 +181,38 @@ module PGMQ
           [queue_name]
         )
         result.ntuples.positive?
+      end
+
+      # Applies the +tune_autovacuum:+ creation option on the create connection.
+      #
+      # Accepts the same shapes the create methods document: +false+/+nil+ (no-op), +true+ (PGMQ-tuned defaults), or a
+      # Hash of overrides forwarded to the same logic {Autovacuum#tune_autovacuum} uses. Runs on the connection that
+      # just created the queue so the ALTER TABLE shares that checkout rather than acquiring a second one.
+      #
+      # @param conn [PG::Connection] the connection the queue was created on
+      # @param queue_name [String] name of the queue
+      # @param option [Boolean, Hash] the tune_autovacuum option as passed to the create method
+      # @return [void]
+      def apply_tune_autovacuum_option(conn, queue_name, option)
+        return unless option
+
+        opts = option.is_a?(Hash) ? option : {}
+
+        alter_autovacuum(
+          conn,
+          "q_#{queue_name}",
+          opts.fetch(:scale_factor, Autovacuum::DEFAULT_QUEUE_SCALE_FACTOR),
+          opts.fetch(:threshold, Autovacuum::DEFAULT_QUEUE_THRESHOLD)
+        )
+
+        return if opts[:archive] == false
+
+        alter_autovacuum(
+          conn,
+          "a_#{queue_name}",
+          opts.fetch(:archive_scale_factor, Autovacuum::DEFAULT_ARCHIVE_SCALE_FACTOR),
+          opts.fetch(:archive_threshold, Autovacuum::DEFAULT_ARCHIVE_THRESHOLD)
+        )
       end
     end
   end

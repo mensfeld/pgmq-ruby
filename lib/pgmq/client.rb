@@ -34,6 +34,7 @@ module PGMQ
     include Maintenance          # Queue maintenance (purge, notifications)
     include Metrics              # Monitoring and metrics
     include Topics               # Topic routing (AMQP-like patterns, PGMQ v1.11.0+)
+    include Autovacuum           # Autovacuum tuning for queue/archive tables
 
     # Default visibility timeout in seconds
     DEFAULT_VT = 30
