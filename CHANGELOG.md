@@ -16,6 +16,13 @@
     limit, falls back to `"queue"` when nothing usable remains).
 
   `PGMQ::Client#validate_queue_name!` now delegates to `PGMQ::QueueName.validate!`; error messages are unchanged.
+### Connection Management
+- **[Feature]** `PGMQ::Client#with_connection` is now public. Every PGMQ operation already checks
+  out a pooled, health-checked connection through this method; exposing it lets callers run
+  PostgreSQL statements PGMQ does not wrap (ad-hoc `NOTIFY`/`LISTEN`, advisory locks, custom
+  monitoring queries, DDL alongside queue tables) on the same pool instead of standing up a second
+  one. The yielded object is the raw `PG::Connection` (no type mapping, no implicit transaction);
+  use `client.transaction` when atomicity is required.
 
 ### Queue Maintenance
 - **[Feature]** Add `list_notify_insert_throttles` — returns an array of `PGMQ::NotifyThrottle`
@@ -43,6 +50,16 @@
   `read_grouped_head`). The operation is idempotent.
 - **[Feature]** Add `create_fifo_indexes_all` - convenience wrapper that creates FIFO indexes on every queue
   registered in `pgmq.meta`. Useful for one-time migrations when adding grouped reads to an existing deployment.
+- **[Feature]** Add `tune_autovacuum(queue_name, ...)` - sets per-table autovacuum storage parameters on a queue's
+  tables (`pgmq.q_<name>` and, unless `archive: false`, `pgmq.a_<name>`) via `ALTER TABLE`. PGMQ tables churn under
+  constant insert/update/delete, so PostgreSQL's default `autovacuum_vacuum_scale_factor` of 0.2 lets dead tuples
+  and index bloat accumulate before autovacuum runs. Defaults tighten the queue table to `scale_factor 0.01,
+  threshold 50` and the archive to `scale_factor 0.05, threshold 50`; all four are overridable. The numeric values
+  are coerced (`Float`/`Integer`) and the table name is quoted (`quote_ident`) before the `ALTER TABLE`. Opt-in:
+  the gem does not change storage parameters unless asked.
+- **[Feature]** `create`, `create_unlogged`, and `create_partitioned` accept a `tune_autovacuum:` keyword. Pass
+  `true` to apply the tuned defaults to the new queue's tables, or a Hash of the `tune_autovacuum` options. Defaults
+  to `false` (no change), preserving the thin-wrapper behaviour.
 
 ### Message Operations
 - **[Enhancement]** Add Ruby warning category opt-in to test helpers

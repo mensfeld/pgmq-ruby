@@ -299,6 +299,42 @@ client = PGMQ::Client.new(
 )
 ```
 
+#### Running custom SQL on the PGMQ pool
+
+Every PGMQ operation checks out a pooled connection through `client.with_connection`.
+The method is public, so you can run PostgreSQL statements PGMQ does not wrap
+without standing up a second connection pool. The connection is health-checked
+(when `auto_reconnect` is enabled) and returned to the pool when the block exits.
+
+```ruby
+# Fire a custom NOTIFY alongside your queues
+client.with_connection do |conn|
+  conn.exec_params("SELECT pg_notify($1, $2)", ["my_channel", payload])
+end
+
+# Run a monitoring query PGMQ does not wrap
+depth = client.with_connection do |conn|
+  conn.exec("SELECT count(*) FROM pgmq.q_orders")[0]["count"].to_i
+end
+```
+
+You receive the raw `PG::Connection`: results come back as strings (no type
+mapping) and the statement is **not** wrapped in a transaction. Use
+[`client.transaction`](#transaction-support) when you need atomicity.
+
+> **Pool-safety caveats.** You're handed a *pooled* connection, so two rules apply:
+>
+> 1. **Don't keep the connection past the block.** Once the block returns, the
+>    connection goes back to the pool and another thread may check it out.
+>    `PG::Connection` is not thread-safe — using it afterwards can corrupt libpq
+>    state (nil results, wrong data, segfaults).
+> 2. **Clean up session state before the block exits.** The pool does *not* reset
+>    connections on check-in. A `LISTEN`, `SET`, session-level advisory lock
+>    (`pg_advisory_lock`), prepared statement, or temp table you create survives
+>    and leaks to the next pool user. Undo it (`UNLISTEN`, `RESET`,
+>    `pg_advisory_unlock`, …) before returning. For LISTEN/NOTIFY consumption,
+>    prefer `client.wait_for_notify`, which manages `LISTEN`/`UNLISTEN` for you.
+
 #### Extending the lost-connection error matchers
 
 PGMQ-Ruby ships with a curated list of `PG::Error` messages and classes
@@ -358,6 +394,9 @@ client.create_partitioned("queue_name",
 
 # Create unlogged queue (faster, no crash recovery)
 client.create_unlogged("queue_name")  # => true/false
+
+# Create a queue with autovacuum tuned for PGMQ's read+delete churn (see "Autovacuum Tuning")
+client.create("queue_name", tune_autovacuum: true)
 
 # Drop queue (returns true if dropped, false if didn't exist)
 client.drop_queue("queue_name")  # => true/false
@@ -430,6 +469,47 @@ PGMQ::QueueName.sanitize("!!!")                  # => "queue"
 
 client.create(PGMQ::QueueName.sanitize(params[:topic]))  # safe for user input
 ```
+
+#### Autovacuum Tuning
+
+PGMQ tables churn in a way PostgreSQL's defaults are not tuned for: a hot queue
+inserts, updates (visibility timeout), and deletes rows constantly, so dead
+tuples pile up fast. With the default `autovacuum_vacuum_scale_factor` of `0.2`,
+autovacuum only runs once dead tuples reach 20% of the table — by which point a
+busy queue has bloated its heap and indexes, slowing every read. The archive
+table grows mostly by append, so it benefits from a gentler-but-still-tightened
+setting.
+
+`tune_autovacuum` sets per-table storage parameters via `ALTER TABLE`, so
+autovacuum runs far more often on *these specific tables* without touching
+cluster-wide settings. It is **opt-in** — the gem never mutates storage
+parameters unless you ask.
+
+```ruby
+# Tune an existing queue with PGMQ defaults:
+#   queue table   (pgmq.q_<name>): scale_factor 0.01, threshold 50
+#   archive table (pgmq.a_<name>): scale_factor 0.05, threshold 50
+client.tune_autovacuum("orders")
+
+# Override the queue setting and skip the archive table
+client.tune_autovacuum("orders", scale_factor: 0.005, archive: false)
+
+# Override every parameter
+client.tune_autovacuum("orders",
+  scale_factor: 0.01, threshold: 50,
+  archive_scale_factor: 0.05, archive_threshold: 50)
+
+# Or tune at creation time (true = defaults, or pass a Hash of the options above)
+client.create("orders", tune_autovacuum: true)
+client.create("orders", tune_autovacuum: { scale_factor: 0.005, archive: false })
+client.create_unlogged("fast", tune_autovacuum: true)
+client.create_partitioned("big", partition_interval: "daily",
+  retention_interval: "7 days", tune_autovacuum: true)
+```
+
+> **Partitioned queues:** parameters are set on the partitioned *parent* table.
+> PostgreSQL does not cascade storage parameters to existing partitions, so set
+> them per-partition if you need to retune already-created partitions.
 
 ### Sending Messages
 
