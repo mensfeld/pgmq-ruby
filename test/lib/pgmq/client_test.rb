@@ -36,6 +36,56 @@ describe PGMQ::Client do
     end
   end
 
+  describe "#with_connection" do
+    it "can be called publicly without __send__" do
+      # Regression guard: with_connection is part of the public API. A plain call must not raise NoMethodError.
+      assert_kind_of PG::Connection, @client.with_connection { |conn| conn }
+    end
+
+    it "yields a raw PG::Connection" do
+      @client.with_connection do |conn|
+        assert_kind_of PG::Connection, conn
+      end
+    end
+
+    it "returns the value of the block" do
+      result = @client.with_connection { |conn| conn.exec("SELECT 42 AS answer")[0]["answer"] }
+
+      assert_equal "42", result
+    end
+
+    it "supports SQL PGMQ does not wrap (custom NOTIFY)" do
+      result = @client.with_connection do |conn|
+        conn.exec_params("SELECT pg_notify($1, $2)", ["pgmq_ruby_test_channel", "ping"])
+      end
+
+      assert_equal 1, result.ntuples
+    end
+
+    it "actually checks a connection out of the pool and returns it after the block" do
+      before = @client.stats[:available]
+
+      during = nil
+      @client.with_connection do |conn|
+        conn.exec("SELECT 1")
+        during = @client.stats[:available]
+      end
+
+      # Availability must dip while the block holds the connection, proving a real checkout (a no-op
+      # implementation that never checked one out would leave `during == before`), then recover afterwards.
+      assert_equal before - 1, during
+      assert_equal before, @client.stats[:available]
+    end
+
+    it "propagates ConnectionError from the underlying pool" do
+      @client.connection.stubs(:with_connection).raises(PGMQ::Errors::ConnectionError, "boom")
+
+      assert_raises(PGMQ::Errors::ConnectionError) do
+        @client.with_connection { |_conn| :never }
+      end
+    end
+  end
+
   describe "#validate_queue_name!" do
     describe "valid queue names" do
       it "accepts simple lowercase names" do

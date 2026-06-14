@@ -2,6 +2,14 @@
 
 ## 0.7.0 (Unreleased)
 
+### Connection Management
+- **[Feature]** `PGMQ::Client#with_connection` is now public. Every PGMQ operation already checks
+  out a pooled, health-checked connection through this method; exposing it lets callers run
+  PostgreSQL statements PGMQ does not wrap (ad-hoc `NOTIFY`/`LISTEN`, advisory locks, custom
+  monitoring queries, DDL alongside queue tables) on the same pool instead of standing up a second
+  one. The yielded object is the raw `PG::Connection` (no type mapping, no implicit transaction);
+  use `client.transaction` when atomicity is required.
+
 ### Queue Maintenance
 - **[Feature]** Add `list_notify_insert_throttles` — returns an array of `PGMQ::NotifyThrottle`
   objects (one per queue with NOTIFY enabled), each carrying `queue_name`, `throttle_interval_ms`,
