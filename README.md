@@ -479,40 +479,56 @@ client.create(PGMQ::QueueName.sanitize!(params[:topic]))  # raises on junk rathe
 
 #### Autovacuum Tuning
 
-PGMQ tables churn in a way PostgreSQL's defaults are not tuned for: a hot queue
-inserts, updates (visibility timeout), and deletes rows constantly, so dead
-tuples pile up fast. With the default `autovacuum_vacuum_scale_factor` of `0.2`,
-autovacuum only runs once dead tuples reach 20% of the table — by which point a
-busy queue has bloated its heap and indexes, slowing every read. The archive
-table grows mostly by append, so it benefits from a gentler-but-still-tightened
-setting.
+PGMQ tables churn in a way PostgreSQL's defaults are not tuned for. A hot queue
+inserts, updates, and deletes rows constantly: every read UPDATEs `vt`,
+`read_ct`, and `last_read_at`, and every read+archive cycle deletes from the
+queue table and inserts into the archive. Two defaults hurt:
+
+- `autovacuum_vacuum_scale_factor` defaults to `0.2`, so autovacuum only runs
+  once dead tuples reach 20% of the table — by which point a busy queue has
+  bloated its heap and B-tree indexes, slowing every read and lock.
+- `fillfactor` defaults to `100`, so heap pages fill completely. Because `vt` is
+  indexed and changes on every read, those UPDATEs are not HOT-eligible; leaving
+  page headroom reduces page density between vacuum passes.
 
 `tune_autovacuum` sets per-table storage parameters via `ALTER TABLE`, so
-autovacuum runs far more often on *these specific tables* without touching
-cluster-wide settings. It is **opt-in** — the gem never mutates storage
-parameters unless you ask.
+autovacuum runs far more often (and fillfactor reserves churn headroom) on
+*these specific tables* without touching cluster-wide settings. It is **opt-in**
+— the gem never mutates storage parameters unless you ask.
+
+The tuned defaults:
+
+| Parameter | Queue table (`pgmq.q_…`) | Archive table (`pgmq.a_…`) |
+|-----------|--------------------------|----------------------------|
+| `autovacuum_vacuum_scale_factor`  | `0.01` | `0.05` |
+| `autovacuum_vacuum_threshold`     | `50`   | `50`   |
+| `autovacuum_vacuum_cost_delay`    | `2`    | `5`    |
+| `autovacuum_analyze_scale_factor` | `0.05` | `0.05` |
+| `fillfactor`                      | `70`   | — (append-only, not set) |
 
 ```ruby
-# Tune an existing queue with PGMQ defaults:
-#   queue table   (pgmq.q_<name>): scale_factor 0.01, threshold 50
-#   archive table (pgmq.a_<name>): scale_factor 0.05, threshold 50
+# Tune an existing queue with the PGMQ-tuned defaults above
 client.tune_autovacuum("orders")
 
-# Override the queue setting and skip the archive table
-client.tune_autovacuum("orders", scale_factor: 0.005, archive: false)
-
-# Override every parameter
+# Override individual parameters (merged onto the defaults) and skip the archive
 client.tune_autovacuum("orders",
-  scale_factor: 0.01, threshold: 50,
-  archive_scale_factor: 0.05, archive_threshold: 50)
+  queue_settings: { autovacuum_vacuum_scale_factor: 0.005, fillfactor: 80 },
+  archive: false)
 
-# Or tune at creation time (true = defaults, or pass a Hash of the options above)
+# Override an archive parameter only
+client.tune_autovacuum("orders", archive_settings: { autovacuum_vacuum_scale_factor: 0.02 })
+
+# Or tune at creation time (true = defaults, or a Hash of the keywords above)
 client.create("orders", tune_autovacuum: true)
-client.create("orders", tune_autovacuum: { scale_factor: 0.005, archive: false })
+client.create("orders", tune_autovacuum: { queue_settings: { fillfactor: 80 }, archive: false })
 client.create_unlogged("fast", tune_autovacuum: true)
 client.create_partitioned("big", partition_interval: "daily",
   retention_interval: "7 days", tune_autovacuum: true)
 ```
+
+Only parameters you name in `queue_settings:` / `archive_settings:` change; the
+rest keep the tuned defaults. Values are coerced (`Float`/`Integer`) and
+parameter names are allow-listed before they reach the `ALTER TABLE`.
 
 > **Partitioned queues:** parameters are set on the partitioned *parent* table.
 > PostgreSQL does not cascade storage parameters to existing partitions, so set

@@ -186,24 +186,24 @@ module PGMQ
       # Applies the +tune_autovacuum:+ creation option on the create connection.
       #
       # Accepts the same shapes the create methods document: +false+/+nil+ (no-op), +true+ (PGMQ-tuned defaults), or a
-      # Hash of overrides. Delegates resolution and the ALTER TABLE statements to {Autovacuum#tune_autovacuum_on}, the
-      # single source of truth shared with {Autovacuum#tune_autovacuum}, so defaults and the archive-skip rule cannot
-      # drift between the two paths. Runs on the connection that just created the queue, so the ALTER TABLE shares that
-      # checkout rather than acquiring a second one.
+      # Hash of {Autovacuum#tune_autovacuum} keyword options (+queue_settings:+, +archive:+, +archive_settings:+).
+      # Delegates resolution and the ALTER TABLE statements to {Autovacuum#tune_autovacuum_on}, the single source of
+      # truth shared with {Autovacuum#tune_autovacuum}, so defaults and the archive-skip rule cannot drift between the
+      # two paths. Runs on the connection that just created the queue, so the ALTER TABLE shares that checkout rather
+      # than acquiring a second one.
       #
       # @param conn [PG::Connection] the connection the queue was created on
       # @param queue_name [String] name of the queue
       # @param option [Boolean, Hash] the tune_autovacuum option as passed to the create method
-      # @option option [Float] :scale_factor queue table +autovacuum_vacuum_scale_factor+
-      # @option option [Integer] :threshold queue table +autovacuum_vacuum_threshold+
+      # @option option [Hash] :queue_settings queue-table storage params, merged onto the defaults
       # @option option [Boolean] :archive also tune the archive table (default: true)
-      # @option option [Float] :archive_scale_factor archive table +autovacuum_vacuum_scale_factor+
-      # @option option [Integer] :archive_threshold archive table +autovacuum_vacuum_threshold+
+      # @option option [Hash] :archive_settings archive-table storage params, merged onto the defaults
       # @return [void]
       def apply_tune_autovacuum_option(conn, queue_name, option)
         return unless option
 
-        tune_autovacuum_on(conn, queue_name, option.is_a?(Hash) ? option : {})
+        opts = option.is_a?(Hash) ? option.transform_keys(&:to_sym) : {}
+        tune_autovacuum_on(conn, queue_name, **opts)
       end
     end
   end
