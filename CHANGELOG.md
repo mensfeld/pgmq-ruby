@@ -4,16 +4,22 @@
 
 ### Queue Naming
 - **[Feature]** Add `PGMQ::QueueName`, a module that is now the single source of truth for queue-name rules and
-  exposes a three-tier API for deriving valid names from less-trusted input:
+  exposes tiers for deriving valid names from less-trusted input:
   - `PGMQ::QueueName.valid?(name)` / `PGMQ::QueueName.validate!(name)` - the existing strict check (used internally
     by every `PGMQ::Client` operation); `validate!` returns the name when valid and raises
     `PGMQ::Errors::InvalidQueueNameError` otherwise.
-  - `PGMQ::QueueName.normalize(name)` - rewrites a name meant to be valid but using friendly separators
-    (hyphens, colons, dots, spaces become underscores), e.g. a Turbo Stream channel `"chat:room-7"` →
-    `"chat_room_7"`. Raises if the result still can't be valid (empty, or starts with a digit).
-  - `PGMQ::QueueName.sanitize(name)` - coerces arbitrary, untrusted input into a valid name on a best-effort basis;
-    never raises for content (lowercases, replaces illegal runs, prefixes leading digits, truncates to the length
-    limit, falls back to `"queue"` when nothing usable remains).
+  - `PGMQ::QueueName.normalize(name)` - rewrites a name meant to be valid but using friendly separators. Maps
+    hyphens, dots, and colons to underscores, strips any *other* invalid character (so `"a@b"` → `"ab"`, not
+    `"a_b"`), then validates - e.g. a Turbo Stream channel `"chat:room-7"` → `"chat_room_7"`. Raises if the result
+    still can't be valid (empty, or starts with a digit). Colons map to underscores (rather than being stripped) so
+    distinct turbo-rails stream names don't collide on one queue.
+  - `PGMQ::QueueName.sanitize!(name)` - strips every invalid character then validates; raises
+    `InvalidQueueNameError` if nothing valid remains. A SQL-identifier guard for untrusted input: the result is
+    always either a name you know is safe or an exception, never a silent substitute.
+  - `PGMQ::QueueName.sanitize(name)` - the lenient sibling of `sanitize!`: best-effort coercion that never raises for
+    content (lowercases, replaces illegal runs, prefixes leading digits, truncates to the length limit, falls back
+    to `"queue"`). Convenient, but distinct inputs can map to the same name, so prefer `sanitize!` for untrusted
+    input.
 
   `PGMQ::Client#validate_queue_name!` now delegates to `PGMQ::QueueName.validate!`; error messages are unchanged.
 ### Connection Management
