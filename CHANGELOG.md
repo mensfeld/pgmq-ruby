@@ -50,16 +50,20 @@
   `read_grouped_head`). The operation is idempotent.
 - **[Feature]** Add `create_fifo_indexes_all` - convenience wrapper that creates FIFO indexes on every queue
   registered in `pgmq.meta`. Useful for one-time migrations when adding grouped reads to an existing deployment.
-- **[Feature]** Add `tune_autovacuum(queue_name, ...)` - sets per-table autovacuum storage parameters on a queue's
-  tables (`pgmq.q_<name>` and, unless `archive: false`, `pgmq.a_<name>`) via `ALTER TABLE`. PGMQ tables churn under
-  constant insert/update/delete, so PostgreSQL's default `autovacuum_vacuum_scale_factor` of 0.2 lets dead tuples
-  and index bloat accumulate before autovacuum runs. Defaults tighten the queue table to `scale_factor 0.01,
-  threshold 50` and the archive to `scale_factor 0.05, threshold 50`; all four are overridable. The numeric values
-  are coerced (`Float`/`Integer`) and the table name is quoted (`quote_ident`) before the `ALTER TABLE`. Opt-in:
-  the gem does not change storage parameters unless asked.
+- **[Feature]** Add `tune_autovacuum(queue_name, queue_settings:, archive:, archive_settings:)` - sets per-table
+  autovacuum and storage parameters on a queue's tables (`pgmq.q_<name>` and, unless `archive: false`,
+  `pgmq.a_<name>`) via `ALTER TABLE`. PGMQ tables churn under constant insert/update/delete (every read UPDATEs
+  `vt`/`read_ct`/`last_read_at`), so PostgreSQL's defaults (`autovacuum_vacuum_scale_factor` 0.2, `fillfactor` 100)
+  let dead tuples and index/page bloat accumulate before autovacuum runs. The tuned defaults set, on the queue
+  table: `autovacuum_vacuum_scale_factor 0.01`, `autovacuum_vacuum_threshold 50`, `autovacuum_vacuum_cost_delay 2`,
+  `autovacuum_analyze_scale_factor 0.05`, and `fillfactor 70` (the indexed per-read UPDATE is not HOT-eligible, so
+  page headroom helps); and on the archive table the same minus `fillfactor` (append-only) with `cost_delay 5`.
+  Pass `queue_settings:`/`archive_settings:` Hashes to override individual parameters (merged onto the defaults).
+  Parameter names are allow-listed and values coerced (`Float`/`Integer`); the table name is quoted (`quote_ident`)
+  and lower-cased to match PGMQ's table naming. Opt-in: the gem does not change storage parameters unless asked.
 - **[Feature]** `create`, `create_unlogged`, and `create_partitioned` accept a `tune_autovacuum:` keyword. Pass
-  `true` to apply the tuned defaults to the new queue's tables, or a Hash of the `tune_autovacuum` options. Defaults
-  to `false` (no change), preserving the thin-wrapper behaviour.
+  `true` to apply the tuned defaults to the new queue's tables, or a Hash of the `tune_autovacuum` keyword options.
+  Defaults to `false` (no change), preserving the thin-wrapper behaviour.
 
 ### Message Operations
 - **[Enhancement]** Add Ruby warning category opt-in to test helpers
