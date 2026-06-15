@@ -5,21 +5,28 @@ module PGMQ
   #
   # PGMQ interpolates a queue's name into PostgreSQL identifiers (it creates tables named +pgmq.q_<name>+ and
   # +pgmq.a_<name>+), so a name has to be a valid, length-bounded SQL identifier. This module is the single source of
-  # truth for those rules and offers three tiers depending on how much you trust the input:
+  # truth for those rules and offers tiers depending on how much you trust the input:
   #
   # 1. {.validate!} / {.valid?} - assert a name is already valid. Use for names you control. {PGMQ::Client} calls
   #    {.validate!} before every operation.
-  # 2. {.normalize} - lightly rewrite a name that is *meant* to be valid but uses a friendlier separator (hyphens,
-  #    colons, dots, spaces), e.g. a Turbo Stream channel like +"chat:room-7"+. Raises if the result still can't be a
-  #    valid name (empty, or starts with a digit).
-  # 3. {.sanitize} - coerce *arbitrary, untrusted* input into a valid name on a best-effort basis. Never raises for
-  #    content; always returns a usable identifier (falling back to a default when nothing usable remains).
+  # 2. {.normalize} - lightly rewrite a name that is *meant* to be valid but uses a friendlier separator. Maps the
+  #    common stream separators (hyphens, dots, colons) to underscores, strips any other invalid character, then
+  #    validates - so a Turbo Stream channel like +"chat:room-7"+ becomes +"chat_room_7"+. Raises if the result still
+  #    can't be a valid name (empty, or starts with a digit).
+  # 3. {.sanitize!} - coerce *untrusted* input into a valid name by stripping every invalid character, then validate.
+  #    Raises if nothing valid remains. Use this as a SQL-identifier guard: the result is always either a name you
+  #    know is safe, or an exception - never a silent substitute.
+  # 4. {.sanitize} - the lenient sibling of {.sanitize!}: best-effort coercion that *never* raises for content and
+  #    always returns a usable identifier (falling back to a default). Convenient, but see the collision caveat on
+  #    the method - distinct inputs can map to the same name.
   #
   # @example
-  #   PGMQ::QueueName.valid?("orders")          # => true
-  #   PGMQ::QueueName.validate!("my-queue")     # => raises InvalidQueueNameError
-  #   PGMQ::QueueName.normalize("chat:room-7")  # => "chat_room_7"
-  #   PGMQ::QueueName.sanitize("99 Problems!")  # => "q_99_problems"
+  #   PGMQ::QueueName.valid?("orders")           # => true
+  #   PGMQ::QueueName.validate!("my-queue")      # => raises InvalidQueueNameError
+  #   PGMQ::QueueName.normalize("chat:room-7")   # => "chat_room_7"
+  #   PGMQ::QueueName.sanitize!("orders!!")      # => "orders"
+  #   PGMQ::QueueName.sanitize!("!!!")           # => raises InvalidQueueNameError
+  #   PGMQ::QueueName.sanitize("99 Problems!")   # => "q_99_problems"
   module QueueName
     # Maximum queue name length. PGMQ creates tables with prefixes (+q_+, +a_+) and PostgreSQL caps identifiers at 63
     # characters; PGMQ enforces 48 to leave room for those prefixes and suffixes.
@@ -71,35 +78,60 @@ module PGMQ
         "and contain only letters, digits, and underscores"
     end
 
-    # Rewrites a name that is meant to be valid but uses friendlier separators.
+    # Rewrites a name that is meant to be valid but uses friendlier separators, then validates it.
     #
-    # Trims surrounding whitespace, replaces any run of non-identifier characters with a single underscore, and
-    # collapses repeated underscores. This turns names like +"chat:room-7"+ or +"order events"+ into +"chat_room_7"+
-    # / +"order_events"+. The result is then validated, so names that still can't be valid (empty, or starting with a
-    # digit) raise rather than being silently mangled.
+    # Maps the common stream-name separators - hyphens, dots, and colons - to underscores, strips any *other* invalid
+    # character, then collapses repeated underscores and trims them from the ends. So +"chat:room-7"+ becomes
+    # +"chat_room_7"+ and +"order.events"+ becomes +"order_events"+, while a stray +"a@b"+ becomes +"ab"+ (the +@+ is
+    # dropped, not turned into a separator). The result is validated, so names that still can't be valid (empty, or
+    # starting with a digit) raise rather than being silently mangled.
+    #
+    # Colons in particular are the turbo-rails stream-name separator, so they are mapped to a safe character rather
+    # than stripped - otherwise +"a:b"+ and +"ab"+ would collide on the same queue.
     #
     # @param name [String, #to_s] a name using friendly separators
     # @return [String] the normalized, validated queue name
     # @raise [PGMQ::Errors::InvalidQueueNameError] if the normalized result is not a valid queue name
     def normalize(name)
-      normalized = name.to_s.strip
-        .gsub(/[^a-zA-Z0-9_]+/, "_").squeeze("_")
-        .gsub(/\A_+|_+\z/, "")
+      str = name.to_s
+      return validate!(str) if str.match?(PATTERN)
+
+      normalized = str
+        .gsub(/[-.:]/, "_")          # hyphens / dots / colons -> underscores
+        .gsub(/[^a-zA-Z0-9_]/, "")   # strip any remaining invalid character
+        .squeeze("_")                # collapse consecutive underscores
+        .gsub(/\A_+|_+\z/, "")       # trim leading / trailing underscores
 
       validate!(normalized)
     end
 
-    # Coerces arbitrary, untrusted input into a valid queue name on a best-effort basis.
+    # Strips every invalid character from untrusted input, then validates the result.
     #
-    # Unlike {.normalize}, this never raises for content: it lowercases, replaces every illegal character run with an
-    # underscore, strips leading/trailing underscores, prefixes {SANITIZE_PREFIX} when the first surviving character
-    # is not a valid identifier start (e.g. a digit), truncates to fit {MAX_LENGTH}, and falls back to
-    # {SANITIZE_FALLBACK} when nothing usable remains. The return value always satisfies {.valid?}.
-    #
-    # Use for names derived from user input or external systems where you would rather get a deterministic, safe
-    # queue name than an exception.
+    # This is the SQL-identifier guard: it removes anything outside +[A-Za-z0-9_]+ and passes the remainder through
+    # {.validate!}. If nothing valid remains (empty result, leading digit, too long) it raises, so a caller can never
+    # accidentally operate on a different queue than intended. Use this for names from untrusted sources (URL params,
+    # external systems) where a wrong-but-valid name would be worse than an error.
     #
     # @param name [String, #to_s] untrusted input
+    # @return [String] the sanitized, validated queue name
+    # @raise [PGMQ::Errors::InvalidQueueNameError] if nothing valid remains after stripping
+    def sanitize!(name)
+      validate!(name.to_s.gsub(/[^a-zA-Z0-9_]/, ""))
+    end
+
+    # Best-effort coercion of arbitrary input into a valid queue name; the lenient sibling of {.sanitize!}.
+    #
+    # Never raises for content: it lowercases, replaces every illegal character run with an underscore, trims
+    # underscores, prefixes {SANITIZE_PREFIX} when the first surviving character is not a valid identifier start (e.g.
+    # a digit), truncates to fit {MAX_LENGTH}, and falls back to {SANITIZE_FALLBACK} when nothing usable remains. The
+    # return value always satisfies {.valid?}.
+    #
+    # @note Because it coerces rather than rejects, distinct inputs can map to the *same* name (e.g. +"a/b"+ and
+    #   +"a-b"+ both become +"a_b"+; +"!!!"+ and +""+ both become +"queue"+). If your name selects a queue table,
+    #   that means two logically different inputs could share one queue. When that matters - especially for untrusted
+    #   input - prefer {.sanitize!}, which raises instead of substituting.
+    #
+    # @param name [String, #to_s] arbitrary input
     # @return [String] a guaranteed-valid queue name
     def sanitize(name)
       cleaned = name.to_s.downcase
