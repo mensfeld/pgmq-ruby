@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0 (Unreleased)
+## 0.7.0 (2026-06-15)
 
 ### Queue Naming
 - **[Feature]** Add `PGMQ::QueueName`, a module that is now the single source of truth for queue-name rules and
