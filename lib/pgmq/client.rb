@@ -84,6 +84,17 @@ module PGMQ
       @connection.close
     end
 
+    # Drops every pooled connection and rebuilds lazily on the next checkout,
+    # leaving the pool usable (unlike {#close}). Use it to discard a connection
+    # that reports +CONNECTION_OK+ but is actually wedged — e.g. after a
+    # wall-clock timeout interrupted a query mid-flight and left the socket
+    # poisoned so it would re-hang on reuse. See {PGMQ::Connection#reload}.
+    #
+    # @return [void]
+    def reload
+      @connection.reload
+    end
+
     # Returns connection pool statistics
     #
     # @return [Hash] statistics about the connection pool

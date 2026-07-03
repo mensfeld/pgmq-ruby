@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Connection Pool
+- **[Feature]** Add `PGMQ::Connection#reload` (and `PGMQ::Client#reload`, which delegates to it). It drops every
+  connection currently in the pool and lets the pool rebuild fresh ones lazily on the next checkout — unlike `#close`,
+  which shuts the pool down permanently. Use it to recover from a connection that libpq still reports as
+  `CONNECTION_OK` but is in fact wedged, e.g. after a wall-clock `Timeout.timeout` interrupted a query mid-flight and
+  left the socket poisoned so it re-hangs on reuse. `#verify_connection!` cannot catch that case (the connection does
+  not report `CONNECTION_BAD`), so the caller must discard it explicitly; `reload` is the safe, pool-wide way to do so.
+  Connections it drops are closed. Implemented via `ConnectionPool#reload`.
+
 ## 0.7.0 (2026-06-15)
 
 ### Queue Naming

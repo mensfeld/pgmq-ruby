@@ -94,6 +94,69 @@ describe PGMQ::Connection do
     end
   end
 
+  describe "pool reload" do
+    it "keeps the pool usable (unlike close)" do
+      connection = PGMQ::Connection.new(@conn_params, pool_size: 2)
+      connection.with_connection { |conn| conn.exec("SELECT 1") }
+
+      connection.reload
+
+      # A closed pool would raise here; a reloaded pool rebuilds lazily.
+      result = connection.with_connection { |conn| conn.exec("SELECT 1")[0]["?column?"] }
+
+      assert_equal "1", result
+      connection.close
+    end
+
+    it "replaces the pooled backend connections" do
+      connection = PGMQ::Connection.new(@conn_params, pool_size: 1)
+
+      pid_before = connection.with_connection { |conn| conn.exec("SELECT pg_backend_pid()")[0]["pg_backend_pid"] }
+
+      connection.reload
+
+      pid_after = connection.with_connection { |conn| conn.exec("SELECT pg_backend_pid()")[0]["pg_backend_pid"] }
+
+      # A brand-new backend connection after reload has a different backend PID.
+      refute_equal pid_before, pid_after
+      connection.close
+    end
+
+    it "closes the connections it drops" do
+      connection = PGMQ::Connection.new(@conn_params, pool_size: 1)
+
+      dropped = connection.with_connection { |conn| conn }
+      refute dropped.finished?
+
+      connection.reload
+
+      assert dropped.finished?, "reload should close the connection it evicted"
+      connection.close
+    end
+
+    it "reports full availability again after reload" do
+      connection = PGMQ::Connection.new(@conn_params, pool_size: 3)
+      connection.with_connection { |conn| conn.exec("SELECT 1") }
+
+      connection.reload
+
+      assert_equal 3, connection.stats[:available]
+      connection.close
+    end
+
+    it "is exposed on the client and delegates to the connection" do
+      client = PGMQ::Client.new(@conn_params, pool_size: 1)
+
+      client.with_connection { |conn| conn.exec("SELECT 1") }
+      client.reload
+
+      result = client.with_connection { |conn| conn.exec("SELECT 1")[0]["?column?"] }
+
+      assert_equal "1", result
+      client.close
+    end
+  end
+
   describe "connection pool timeout" do
     it "raises error when pool is exhausted" do
       client = PGMQ::Client.new(@conn_params, pool_size: 1, pool_timeout: 0.5)
