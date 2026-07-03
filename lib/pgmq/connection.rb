@@ -190,9 +190,9 @@ module PGMQ
     # must discard it explicitly; +reload+ is the safe, pool-wide way to do so.
     #
     # @return [void]
-    # @example Discard the pool after a read had to be force-interrupted
+    # @example Discard the pool after a query had to be force-interrupted
     #   begin
-    #     Timeout.timeout(5) { client.read("q") }
+    #     Timeout.timeout(5) { connection.with_connection { |conn| conn.exec("SELECT ...") } }
     #   rescue Timeout::Error
     #     connection.reload # drop the possibly-poisoned pooled connections
     #     raise
