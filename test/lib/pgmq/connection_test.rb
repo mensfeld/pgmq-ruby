@@ -126,11 +126,12 @@ describe PGMQ::Connection do
       connection = PGMQ::Connection.new(@conn_params, pool_size: 1)
 
       dropped = connection.with_connection { |conn| conn }
-      refute dropped.finished?
+
+      refute_predicate dropped, :finished?
 
       connection.reload
 
-      assert dropped.finished?, "reload should close the connection it evicted"
+      assert_predicate dropped, :finished?, "reload should close the connection it evicted"
       connection.close
     end
 
