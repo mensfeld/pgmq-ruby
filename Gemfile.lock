@@ -9,14 +9,14 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    async (2.39.0)
+    async (2.41.0)
       console (~> 1.29)
       fiber-annotation
       io-event (~> 1.11)
       metrics (~> 0.12)
       traces (~> 0.18)
     connection_pool (2.5.5)
-    console (1.35.1)
+    console (1.36.0)
       fiber-annotation
       fiber-local (~> 1.1)
       json
@@ -26,8 +26,8 @@ GEM
     fiber-local (1.1.0)
       fiber-storage
     fiber-storage (1.0.1)
-    io-event (1.16.1)
-    json (2.19.7)
+    io-event (1.19.1)
+    json (2.20.0)
     metrics (0.15.0)
     minitest (6.0.6)
       drb (~> 2.0)
