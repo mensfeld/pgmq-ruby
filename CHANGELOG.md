@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.1 (2026-07-09)
 
 ### Connection Pool
 - **[Feature]** Add `PGMQ::Connection#reload` (and `PGMQ::Client#reload`, which delegates to it). It drops every
