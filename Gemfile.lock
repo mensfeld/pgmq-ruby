@@ -20,7 +20,6 @@ GEM
       fiber-annotation
       fiber-local (~> 1.1)
       json
-    docile (1.4.1)
     drb (2.2.3)
     fiber-annotation (0.2.0)
     fiber-local (1.1.0)
@@ -44,12 +43,7 @@ GEM
     prism (1.9.0)
     rake (13.4.2)
     ruby2_keywords (0.0.5)
-    simplecov (0.22.0)
-      docile (~> 1.1)
-      simplecov-html (~> 0.11)
-      simplecov_json_formatter (~> 0.1)
-    simplecov-html (0.13.2)
-    simplecov_json_formatter (0.1.4)
+    simplecov (1.0.0)
     traces (0.18.2)
     warning (1.6.0)
     zeitwerk (2.8.2)
