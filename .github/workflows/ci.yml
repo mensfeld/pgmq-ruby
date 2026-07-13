@@ -17,11 +17,13 @@ jobs:
   tests:
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    continue-on-error: ${{ contains(matrix.ruby, '4.1') }}
     strategy:
       fail-fast: false
       matrix:
         ruby:
-          - '4.0.0'
+          - '4.1'
+          - '4.0'
           - '3.4'
           - '3.3'
         postgres:
@@ -31,7 +33,7 @@ jobs:
           - '17'
           - '18'
         include:
-          - ruby: '3.4'
+          - ruby: '4.0'
             postgres: '18'
             coverage: 'true'
 
@@ -59,7 +61,7 @@ jobs:
         run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends postgresql-client"
 
       - name: Remove Gemfile.lock for Ruby previews
-        if: contains(matrix.ruby, '4.0')
+        if: contains(matrix.ruby, '4.1')
         run: rm -f Gemfile.lock
 
       - name: Set up Ruby

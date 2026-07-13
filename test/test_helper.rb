@@ -24,10 +24,10 @@ end
 require "simplecov"
 
 SimpleCov.start do
-  add_filter "/test/"
-  add_filter "/spec/"
-  add_filter "/examples/"
-  add_filter "/vendor/"
+  skip "/test/"
+  skip "/spec/"
+  skip "/examples/"
+  skip "/vendor/"
 
   minimum_coverage 96.5
 end
