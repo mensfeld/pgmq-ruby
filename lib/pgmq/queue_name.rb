@@ -126,13 +126,12 @@ module PGMQ
     # a digit), truncates to fit {MAX_LENGTH}, and falls back to {SANITIZE_FALLBACK} when nothing usable remains. The
     # return value always satisfies {.valid?}.
     #
+    # @param name [String, #to_s] arbitrary input
+    # @return [String] a guaranteed-valid queue name
     # @note Because it coerces rather than rejects, distinct inputs can map to the *same* name (e.g. +"a/b"+ and
     #   +"a-b"+ both become +"a_b"+; +"!!!"+ and +""+ both become +"queue"+). If your name selects a queue table,
     #   that means two logically different inputs could share one queue. When that matters - especially for untrusted
     #   input - prefer {.sanitize!}, which raises instead of substituting.
-    #
-    # @param name [String, #to_s] arbitrary input
-    # @return [String] a guaranteed-valid queue name
     def sanitize(name)
       cleaned = name.to_s.downcase
         .gsub(/[^a-z0-9_]+/, "_").squeeze("_")
