@@ -178,16 +178,13 @@ module PGMQ
       @pool.shutdown { |conn| conn.close unless conn.finished? }
     end
 
-    # Drops every connection currently in the pool and lets the pool build fresh
-    # ones lazily on the next checkout. Unlike {#close} (which shuts the pool
-    # down permanently), the pool stays usable afterwards.
+    # Drops every connection currently in the pool and lets the pool build fresh ones lazily on the next checkout.
+    # Unlike {#close} (which shuts the pool down permanently), the pool stays usable afterwards.
     #
-    # Use this to recover from a connection that libpq still reports as
-    # +CONNECTION_OK+ but which is in fact wedged — e.g. after a wall-clock
-    # timeout (+Timeout.timeout+) interrupted a query mid-flight, leaving the
-    # socket poisoned so it re-hangs on reuse. {#verify_connection!} cannot catch
-    # that case (the connection does not report +CONNECTION_BAD+), so the caller
-    # must discard it explicitly; +reload+ is the safe, pool-wide way to do so.
+    # Use this to recover from a connection that libpq still reports as +CONNECTION_OK+ but which is in fact wedged —
+    # e.g. after a wall-clock timeout (+Timeout.timeout+) interrupted a query mid-flight, leaving the socket poisoned so
+    # it re-hangs on reuse. {#verify_connection!} cannot catch that case (the connection does not report
+    # +CONNECTION_BAD+), so the caller must discard it explicitly; +reload+ is the safe, pool-wide way to do so.
     #
     # @return [void]
     # @example Discard the pool after a query had to be force-interrupted
