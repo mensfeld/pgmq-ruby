@@ -186,7 +186,7 @@ module PGMQ
       # or `nil` on timeout.
       #
       # @note Orchestration (retry loop, reconnect-on-drop, graceful shutdown) is the caller's responsibility.
-      #   This method is a thin primitive — it listens once, waits, and returns.
+      #   This method is a thin primitive - it listens once, waits, and returns.
       #
       # @param queue_name [String] name of the queue (must have notifications enabled via {#enable_notify_insert})
       # @param timeout [Numeric, nil] seconds to wait; `nil` blocks indefinitely
