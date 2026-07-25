@@ -235,8 +235,6 @@ module PGMQ
       # next), `read_grouped_head` surfaces the leading edge of every group in one call - useful for detecting
       # head-of-line stalls or building per-group progress dashboards.
       #
-      # @note Requires PGMQ v1.11.1+.
-      #
       # @param queue_name [String] name of the queue
       # @param vt [Integer] visibility timeout in seconds
       # @param qty [Integer] maximum number of groups to sample
@@ -254,6 +252,7 @@ module PGMQ
       #   heads.each do |msg|
       #     alert_if_stuck(msg) if msg.enqueued_at < Time.now - 3600
       #   end
+      # @note Requires PGMQ v1.11.1+.
       def read_grouped_head(queue_name, vt: DEFAULT_VT, qty: 1)
         validate_queue_name!(queue_name)
 

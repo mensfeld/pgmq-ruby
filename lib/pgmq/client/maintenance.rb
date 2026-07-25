@@ -66,10 +66,6 @@ module PGMQ
       # If the archive table is already partitioned the function returns without error (idempotent). If the archive
       # table does not exist it also returns without error.
       #
-      # @note Requires the `pg_partman` PostgreSQL extension. If pg_partman is not installed and the archive table
-      #   exists, the call raises `PGMQ::Errors::ConnectionError`. If the archive table does not exist the call
-      #   succeeds (returns nil) without touching pg_partman, so no extension is needed in that case.
-      #
       # @param queue_name [String] name of the queue whose archive table to convert
       # @param partition_interval [String] partition interval passed to pg_partman (default: "10000" rows or a time
       #   expression such as "daily" / "1 month")
@@ -87,6 +83,9 @@ module PGMQ
       #     partition_interval: "daily",
       #     retention_interval: "30 days"
       #   )
+      # @note Requires the `pg_partman` PostgreSQL extension. If pg_partman is not installed and the archive table
+      #   exists, the call raises `PGMQ::Errors::ConnectionError`. If the archive table does not exist the call
+      #   succeeds (returns nil) without touching pg_partman, so no extension is needed in that case.
       def convert_archive_partitioned(
         queue_name,
         partition_interval: "10000",
@@ -185,9 +184,6 @@ module PGMQ
       # The return value mirrors `PG::Connection#wait_for_notify`: the channel name string on success,
       # or `nil` on timeout.
       #
-      # @note Orchestration (retry loop, reconnect-on-drop, graceful shutdown) is the caller's responsibility.
-      #   This method is a thin primitive - it listens once, waits, and returns.
-      #
       # @param queue_name [String] name of the queue (must have notifications enabled via {#enable_notify_insert})
       # @param timeout [Numeric, nil] seconds to wait; `nil` blocks indefinitely
       # @return [String, nil] notification channel name, or `nil` if the timeout expired
@@ -205,6 +201,8 @@ module PGMQ
       #   client.wait_for_notify("orders", timeout: 5) do |channel, pid, payload|
       #     puts "Notified on #{channel} by backend #{pid}"
       #   end
+      # @note Orchestration (retry loop, reconnect-on-drop, graceful shutdown) is the caller's responsibility.
+      #   This method is a thin primitive - it listens once, waits, and returns.
       def wait_for_notify(queue_name, timeout: nil)
         validate_queue_name!(queue_name)
         # PGMQ trigger fires pg_notify('pgmq.q_<queue>.INSERT', NULL)
