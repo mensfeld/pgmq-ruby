@@ -3,6 +3,7 @@
 plugins:
   - rubocop-minitest
   - rubocop-performance
+  - rubocop-thread_safety
 
 inherit_gem:
   standard: config/base.yml
@@ -25,3 +26,20 @@ Layout/LineLength:
 
 Layout/SpaceInsideHashLiteralBraces:
   EnforcedStyle: space
+
+# ThreadSafety
+# Class-level attribute/ivar cops are disabled to match the rest of the karafka
+# standard config (waterdrop/karafka-core); the memoized connection registry uses
+# class instance variables intentionally.
+ThreadSafety/ClassAndModuleAttributes:
+  Enabled: false
+
+ThreadSafety/ClassInstanceVariable:
+  Enabled: false
+
+# NewThread stays enabled for library code (which spawns no threads); tests and
+# specs deliberately start threads to exercise concurrency, so they are excluded.
+ThreadSafety/NewThread:
+  Exclude:
+    - test/**/*
+    - spec/**/*
