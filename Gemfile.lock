@@ -9,7 +9,7 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    async (2.43.0)
+    async (2.44.0)
       console (~> 1.29)
       fiber-annotation
       io-event (~> 1.11)
@@ -24,7 +24,7 @@ GEM
       fiber-storage
     fiber-storage (1.0.1)
     io-event (1.19.4)
-    json (2.21.1)
+    json (2.21.2)
     minitest (6.0.6)
       drb (~> 2.0)
       prism (~> 1.5)
@@ -42,7 +42,7 @@ GEM
     ruby2_keywords (0.0.5)
     simplecov (1.0.3)
     warning (1.6.0)
-    zeitwerk (2.8.2)
+    zeitwerk (2.8.3)
 
 PLATFORMS
   aarch64-linux
