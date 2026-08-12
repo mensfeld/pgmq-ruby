@@ -9,7 +9,7 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    async (2.44.0)
+    async (2.44.1)
       console (~> 1.29)
       fiber-annotation
       io-event (~> 1.11)
