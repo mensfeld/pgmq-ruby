@@ -42,7 +42,7 @@ GEM
     ruby2_keywords (0.0.5)
     simplecov (1.0.3)
     warning (1.6.0)
-    zeitwerk (2.8.2)
+    zeitwerk (2.8.3)
 
 PLATFORMS
   aarch64-linux
