@@ -40,7 +40,7 @@ GEM
     prism (1.9.0)
     rake (13.4.2)
     ruby2_keywords (0.0.5)
-    simplecov (1.0.3)
+    simplecov (1.1.1)
     warning (1.6.0)
     zeitwerk (2.8.3)
 
