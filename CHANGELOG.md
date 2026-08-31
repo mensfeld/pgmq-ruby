@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.2 (Unreleased)
+
+### Dependencies
+- **[Change]** Loosen the `connection_pool` runtime dependency from `~> 2.4` to `>= 2.4, < 4` so applications can
+  upgrade to `connection_pool` 3.x. The gem only uses `ConnectionPool.new(size:, timeout:)`, `#with`, `#shutdown`,
+  `#reload`, `#available` and the `TimeoutError` / `PoolShuttingDownError` classes, all of which are unchanged in 3.x
+  (the 3.0 breaking change was positional-to-keyword arguments on `#checkout` / `#reap`, which are not used here).
+  The lockfile now resolves to 3.0.2 so CI exercises the new major.
+
 ## 0.7.1 (2026-07-09)
 
 ### Connection Pool
