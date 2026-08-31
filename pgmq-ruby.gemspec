@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Runtime dependencies
-  spec.add_dependency "connection_pool", "~> 2.4"
+  spec.add_dependency "connection_pool", ">= 2.4", "< 4"
   spec.add_dependency "pg", "~> 1.5"
   spec.add_dependency "zeitwerk", "~> 2.6"
 end
