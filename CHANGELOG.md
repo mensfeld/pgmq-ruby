@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.2 (Unreleased)
+## 0.7.2 (2026-08-31)
 
 ### Dependencies
 - **[Change]** Loosen the `connection_pool` runtime dependency from `~> 2.4` to `>= 2.4, < 4` so applications can
