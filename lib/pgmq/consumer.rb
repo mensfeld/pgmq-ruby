@@ -43,12 +43,13 @@ module PGMQ
     # @param max_poll_seconds [Integer] how long a single poll waits for messages
     # @param poll_interval_ms [Integer] interval between server-side checks within a poll
     # @param on_success [Symbol] `:delete` or `:archive`, applied after the block returns
-    # @param max_attempts [Integer, nil] archive without yielding once `read_ct` exceeds this value (nil disables)
+    # @param max_attempts [Integer, nil] archive without yielding once `read_ct` exceeds this value (nil disables).
+    #   Requires `batch_size: 1`
     # @raise [PGMQ::Errors::ConfigurationError] when an option is invalid
     # @raise [PGMQ::Errors::InvalidQueueNameError] when the queue name is invalid
     #
     # @example
-    #   consumer = PGMQ::Consumer.new(client, "orders", batch_size: 10, on_success: :archive, max_attempts: 5)
+    #   consumer = PGMQ::Consumer.new(client, "orders", on_success: :archive, max_attempts: 5)
     def initialize(
       client,
       queue_name,
@@ -67,7 +68,14 @@ module PGMQ
       validate_positive_integer!(:batch_size, batch_size)
       validate_positive_integer!(:max_poll_seconds, max_poll_seconds)
       validate_positive_integer!(:poll_interval_ms, poll_interval_ms)
-      validate_positive_integer!(:max_attempts, max_attempts) unless max_attempts.nil?
+
+      unless max_attempts.nil?
+        validate_positive_integer!(:max_attempts, max_attempts)
+
+        # Every read raises read_ct, so with larger batches the messages released after a failure would have their
+        # unprocessed read counted as a failed attempt
+        raise Errors::ConfigurationError, "max_attempts requires batch_size: 1" unless batch_size == 1
+      end
 
       @client = client
       @queue_name = QueueName.validate!(queue_name)
@@ -87,8 +95,9 @@ module PGMQ
     # not yet yielded messages of the same batch are released at once. Messages read more than `max_attempts` times
     # are archived without being yielded.
     #
-    # {#stop} takes effect after the current message, or after the current poll (up to `max_poll_seconds`) when the
-    # queue is empty.
+    # {#stop} takes effect once the messages of the current poll are processed, or after the current poll (up to
+    # `max_poll_seconds`) when the queue is empty. Messages that were read are always yielded, so a stop never counts
+    # a read that was not processed.
     #
     # @yieldparam message [PGMQ::Message] message to process
     # @return [nil]
@@ -111,7 +120,7 @@ module PGMQ
         pending = messages.dup
 
         begin
-          until @stopped || pending.empty?
+          until pending.empty?
             message = pending.shift
 
             if exhausted?(message)
@@ -174,11 +183,16 @@ module PGMQ
 
     # Makes read but not yielded messages visible again right away
     #
+    # Runs only while an exception from the block is propagating. Failures are ignored so they do not replace that
+    # exception; the messages then reappear after their visibility timeout.
+    #
     # @param messages [Array<PGMQ::Message>] messages to release
     def release(messages)
       return if messages.empty?
 
       @client.set_vt_batch(@queue_name, messages.map(&:msg_id), vt: 0)
+    rescue
+      nil
     end
   end
 end

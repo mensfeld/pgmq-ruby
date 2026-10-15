@@ -766,7 +766,7 @@ consumer = PGMQ::Consumer.new(client, "orders",
   max_poll_seconds: 5,  # how long one poll waits for messages
   poll_interval_ms: 100,
   on_success: :delete,  # or :archive
-  max_attempts: nil     # nil = retry forever; N = archive once read_ct > N
+  max_attempts: nil     # nil = retry forever; N = archive once read_ct > N (needs batch_size: 1)
 )
 
 # stop only sets a flag, so it is safe in a signal trap
@@ -775,7 +775,7 @@ trap("INT")  { consumer.stop }
 
 consumer.each do |message|
   process(JSON.parse(message.message))
-end # returns after stop, once the current message is done
+end # returns after stop, once the messages already read are done
 
 client.close
 ```
@@ -784,10 +784,11 @@ Semantics:
 
 - **Acknowledgement**: when the block returns, the message is deleted (or archived with `on_success: :archive`).
 - **Errors**: when the block raises, the message is not acknowledged, the loop stops and the error is re-raised. The message becomes visible again after `vt`. Retry by calling `each` again (e.g. from a supervisor).
-- **Retry limit**: with `max_attempts: N`, a message whose `read_ct` exceeds `N` is archived without being yielded.
-- **Stopping**: `stop` takes effect after the current message, or after the current poll (up to `max_poll_seconds`) when the queue is empty. Messages of the batch that were not yielded yet are released (`vt` set to 0) right away. A stopped consumer stays stopped.
+- **Retry limit**: with `max_attempts: N`, a message whose `read_ct` exceeds `N` is archived without being yielded. It requires `batch_size: 1`: every read raises `read_ct`, so in a larger batch the messages released after another message failed would count a read they never got.
+- **Stopping**: `stop` takes effect once the messages already read in the current poll are processed, or after the current poll (up to `max_poll_seconds`) when the queue is empty. A stopped consumer stays stopped.
+- **Batches**: when the block raises, the messages of the batch that were not yielded yet are released (`vt` set to 0) right away.
 - **Delivery**: at-least-once. If processing takes longer than `vt`, another reader may receive the same message; extend it from the block with `client.set_vt(consumer.queue_name, message.msg_id, vt: 30)` for long jobs.
-- **Scope**: one queue, one thread. Run one consumer per thread or process to scale; each needs its own connection from the client's pool while polling.
+- **Scope**: one queue, one thread. Run one consumer per thread or process to scale; consumers can share a client, and each needs its own connection from the client's pool while polling.
 
 ### Message Lifecycle
 

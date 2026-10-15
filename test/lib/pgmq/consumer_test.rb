@@ -37,6 +37,14 @@ describe PGMQ::Consumer do
         assert_raises(PGMQ::Errors::ConfigurationError) { build_consumer(option => "1") }
       end
     end
+
+    it "rejects max_attempts with a batch_size above 1" do
+      error = assert_raises(PGMQ::Errors::ConfigurationError) do
+        build_consumer(batch_size: 3, max_attempts: 1)
+      end
+
+      assert_match(/batch_size: 1/, error.message)
+    end
   end
 
   describe "#each" do
@@ -98,18 +106,64 @@ describe PGMQ::Consumer do
       assert_equal([1, 2], remaining.map { |m| JSON.parse(m.message)["n"] })
     end
 
-    it "releases the rest of the batch when stopped mid-batch" do
+    it "keeps the block error when releasing the batch fails" do
+      3.times { |i| @client.produce(@queue_name, to_json_msg({ n: i })) }
+      consumer = build_consumer(batch_size: 3, vt: 30)
+      @client.define_singleton_method(:set_vt_batch) { |*, **| raise PGMQ::Errors::ConnectionError, "down" }
+
+      error = assert_raises(RuntimeError) { consumer.each { raise "boom" } }
+
+      assert_equal "boom", error.message
+    end
+
+    it "processes the rest of the batch when stopped mid-batch" do
       3.times { |i| @client.produce(@queue_name, to_json_msg({ n: i })) }
       consumer = build_consumer(batch_size: 3, vt: 30)
       received = []
 
       consumer.each do |message|
-        received << message
+        received << JSON.parse(message.message)["n"]
         consumer.stop
       end
 
-      assert_equal 1, received.size
-      assert_equal 2, @client.read_batch(@queue_name, vt: 30, qty: 10).size
+      assert_equal [0, 1, 2], received
+      assert_empty @client.read_batch(@queue_name, vt: 0, qty: 10)
+    end
+
+    it "does not count a stop as an attempt for a restarted consumer with max_attempts" do
+      3.times { |i| @client.produce(@queue_name, to_json_msg({ n: i })) }
+      received = []
+
+      first = build_consumer(max_attempts: 1)
+      first.each do |message|
+        received << JSON.parse(message.message)["n"]
+        first.stop
+      end
+
+      second = build_consumer(max_attempts: 1)
+      second.each do |message|
+        received << JSON.parse(message.message)["n"]
+        second.stop if received.size == 3
+      end
+
+      assert_equal [0, 1, 2], received
+      assert_empty @client.connection.with_connection { |c| c.exec("SELECT * FROM pgmq.a_#{@queue_name}").to_a }
+    end
+
+    it "does not count a block error against other messages for a restarted consumer with max_attempts" do
+      3.times { |i| @client.produce(@queue_name, to_json_msg({ n: i })) }
+
+      assert_raises(RuntimeError) { build_consumer(max_attempts: 1, vt: 30).each { raise "boom" } }
+
+      received = []
+      second = build_consumer(max_attempts: 1, vt: 30)
+      second.each do |message|
+        received << JSON.parse(message.message)["n"]
+        second.stop if received.size == 2
+      end
+
+      assert_equal [1, 2], received
+      assert_empty @client.connection.with_connection { |c| c.exec("SELECT * FROM pgmq.a_#{@queue_name}").to_a }
     end
 
     it "archives messages that exceeded max_attempts without yielding them" do

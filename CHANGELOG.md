@@ -8,8 +8,8 @@
   max_attempts:)` wraps an existing client; `#each` long-polls with `read_with_poll`, yields one `PGMQ::Message` at a
   time and deletes (or archives, `on_success: :archive`) it when the block returns. A block exception stops the loop
   and is re-raised without acknowledging the message, so it reappears after `vt` (at-least-once delivery). Messages
-  whose `read_ct` exceeds `max_attempts` are archived without being yielded. `#stop` only sets a flag, so it is safe in
-  a signal trap; the loop finishes the current message and releases the unprocessed rest of the batch.
+  whose `read_ct` exceeds `max_attempts` (requires `batch_size: 1`) are archived without being yielded. `#stop` only
+  sets a flag, so it is safe in a signal trap; the loop finishes the messages it already read, then returns.
 
 ### Documentation
 - **[Fix]** YARD examples used a non-existent `msg.payload`; they now use `msg.message`.
