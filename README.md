@@ -29,6 +29,7 @@ PGMQ-Ruby is a Ruby client for PGMQ (PostgreSQL Message Queue). It provides dire
   - [Sending Messages](#sending-messages)
   - [Reading Messages](#reading-messages)
   - [Grouped Reading](#grouped-reading)
+  - [Consumer](#consumer)
   - [Message Lifecycle](#message-lifecycle)
   - [Monitoring](#monitoring)
   - [Transaction Support](#transaction-support)
@@ -576,8 +577,8 @@ msg = client.read("queue_name", vt: 30)
 # Read batch
 messages = client.read_batch("queue_name", vt: 30, qty: 10)
 
-# Read with long-polling
-msg = client.read_with_poll("queue_name",
+# Read with long-polling (returns an Array of messages)
+messages = client.read_with_poll("queue_name",
   vt: 30,
   qty: 1,
   max_poll_seconds: 5,
@@ -751,6 +752,42 @@ messages = client.read_with_poll("orders",
 CREATE INDEX idx_orders_status
   ON pgmq.q_orders USING gin ((message->'status'));
 ```
+
+### Consumer
+
+`PGMQ::Consumer` is a minimal, single-threaded consumer loop for one queue, similar to the simple consumer of rdkafka-ruby. It wraps an existing client (it does not close it), long-polls with `read_with_poll`, yields one message at a time and acknowledges it when the block returns.
+
+```ruby
+client = PGMQ::Client.new(ENV.fetch("DATABASE_URL"))
+
+consumer = PGMQ::Consumer.new(client, "orders",
+  vt: 30,               # visibility timeout (seconds) of read messages
+  batch_size: 1,        # messages read per poll (still yielded one at a time)
+  max_poll_seconds: 5,  # how long one poll waits for messages
+  poll_interval_ms: 100,
+  on_success: :delete,  # or :archive
+  max_attempts: nil     # nil = retry forever; N = archive once read_ct > N
+)
+
+# stop only sets a flag, so it is safe in a signal trap
+trap("TERM") { consumer.stop }
+trap("INT")  { consumer.stop }
+
+consumer.each do |message|
+  process(JSON.parse(message.message))
+end # returns after stop, once the current message is done
+
+client.close
+```
+
+Semantics:
+
+- **Acknowledgement**: when the block returns, the message is deleted (or archived with `on_success: :archive`).
+- **Errors**: when the block raises, the message is not acknowledged, the loop stops and the error is re-raised. The message becomes visible again after `vt`. Retry by calling `each` again (e.g. from a supervisor).
+- **Retry limit**: with `max_attempts: N`, a message whose `read_ct` exceeds `N` is archived without being yielded.
+- **Stopping**: `stop` takes effect after the current message, or after the current poll (up to `max_poll_seconds`) when the queue is empty. Messages of the batch that were not yielded yet are released (`vt` set to 0) right away. A stopped consumer stays stopped.
+- **Delivery**: at-least-once. If processing takes longer than `vt`, another reader may receive the same message; extend it from the block with `client.set_vt(consumer.queue_name, message.msg_id, vt: 30)` for long jobs.
+- **Scope**: one queue, one thread. Run one consumer per thread or process to scale; each needs its own connection from the client's pool while polling.
 
 ### Message Lifecycle
 

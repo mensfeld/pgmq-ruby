@@ -25,7 +25,7 @@ module PGMQ
       # @example Read up to 5 messages from any of the queues
       #   messages = client.read_multi(['queue1', 'queue2', 'queue3'], vt: 30, qty: 5, limit: 5)
       #   messages.each do |msg|
-      #     puts "Processing #{msg.queue_name}: #{msg.payload}"
+      #     puts "Processing #{msg.queue_name}: #{msg.message}"
       #     client.delete(msg.queue_name, msg.msg_id)
       #   end
       #
@@ -104,7 +104,7 @@ module PGMQ
       #     )
       #
       #     messages.each do |msg|
-      #       process(msg.queue_name, msg.payload)
+      #       process(msg.queue_name, msg.message)
       #       client.delete(msg.queue_name, msg.msg_id)
       #     end
       #   end
@@ -152,7 +152,7 @@ module PGMQ
       #   msg = client.pop_multi(['orders', 'notifications', 'emails'])
       #   if msg
       #     puts "Got message from #{msg.queue_name}"
-      #     process(msg.payload)
+      #     process(msg.message)
       #     # No need to delete - already deleted!
       #   end
       #
@@ -160,7 +160,7 @@ module PGMQ
       #   loop do
       #     msg = client.pop_multi(['queue1', 'queue2', 'queue3'])
       #     break unless msg
-      #     process(msg.queue_name, msg.payload)
+      #     process(msg.queue_name, msg.message)
       #   end
       def pop_multi(queue_names)
         raise ArgumentError, "queue_names must be an array" unless queue_names.is_a?(Array)
