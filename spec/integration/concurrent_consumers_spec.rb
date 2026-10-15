@@ -134,7 +134,6 @@ ExampleHelper.run_example("Concurrent Consumers") do |client, queues, _interrupt
       consumer.each do |message|
         payload = ExampleHelper.parse_message(message)
 
-        # Consumer 0 fails on its first message and stops, so the retry goes to another consumer
         if index.zero?
           failures << payload["n"]
           raise "consumer 0 failed on message #{payload["n"]}"

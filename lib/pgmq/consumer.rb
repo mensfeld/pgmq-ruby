@@ -183,8 +183,8 @@ module PGMQ
 
     # Makes read but not yielded messages visible again right away
     #
-    # Runs only while an exception from the block is propagating. Failures are ignored so they do not replace that
-    # exception; the messages then reappear after their visibility timeout.
+    # Failures are ignored so they never replace an error raised by the block; the messages then reappear after
+    # their visibility timeout.
     #
     # @param messages [Array<PGMQ::Message>] messages to release
     def release(messages)

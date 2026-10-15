@@ -15,7 +15,7 @@ PGMQ-Ruby is a Ruby client for PGMQ (PostgreSQL Message Queue). It provides dire
 - **Like Sidekiq/Resque** - but without Redis, using PostgreSQL for both data and queues
 - **Like rdkafka-ruby** - a thin, efficient wrapper around the underlying system (PGMQ SQL functions)
 
-> **Architecture Note**: This library follows the rdkafka-ruby/Karafka pattern - `pgmq-ruby` is the low-level foundation, while higher-level features (job processing, Rails integration, retry strategies) will live in `pgmq-framework` (similar to how Karafka builds on rdkafka-ruby).
+> **Architecture Note**: This library follows the rdkafka-ruby/Karafka pattern - `pgmq-ruby` is the low-level foundation, while higher-level features (job processing, Rails integration, retry strategies, middleware) will live in `pgmq-framework` (similar to how Karafka builds on rdkafka-ruby). Like rdkafka-ruby's simple consumer, `pgmq-ruby` ships a minimal single-threaded [`PGMQ::Consumer`](#consumer) loop for one queue.
 
 ## Table of Contents
 
@@ -89,6 +89,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | **Ruby Enhancements** | Transaction Support | Atomic operations via `client.transaction do \|txn\|` | ✅ |
 | | Conditional Filtering | Server-side JSONB filtering with `conditional:` | ✅ |
 | | Multi-Queue Ops | Read/pop/delete/archive from multiple queues | ✅ |
+| | Consumer | Minimal single-threaded `PGMQ::Consumer` loop with ack on success | ✅ |
 | | Queue Validation | 48-character limit and name validation | ✅ |
 | | Connection Pooling | Thread-safe connection pool for concurrency | ✅ |
 | | Pluggable Serializers | JSON (default) with custom serializer support | ✅ |

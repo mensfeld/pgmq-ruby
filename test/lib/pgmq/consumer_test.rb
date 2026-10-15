@@ -109,7 +109,7 @@ describe PGMQ::Consumer do
     it "keeps the block error when releasing the batch fails" do
       3.times { |i| @client.produce(@queue_name, to_json_msg({ n: i })) }
       consumer = build_consumer(batch_size: 3, vt: 30)
-      @client.define_singleton_method(:set_vt_batch) { |*, **| raise PGMQ::Errors::ConnectionError, "down" }
+      @client.stubs(:set_vt_batch).raises(PGMQ::Errors::ConnectionError, "down")
 
       error = assert_raises(RuntimeError) { consumer.each { raise "boom" } }
 

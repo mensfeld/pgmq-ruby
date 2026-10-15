@@ -28,8 +28,7 @@ ExampleHelper.run_example("Minimal Consumer") do |client, queues, _interrupted|
   raise "Expected orders 0..4, got #{processed.inspect}" unless processed == [0, 1, 2, 3, 4]
   raise "Queue should be empty" unless client.read(queue, vt: 0).nil?
 
-  # 2. Retries and max_attempts: the block raises, the message reappears after vt, and once read_ct exceeds
-  # max_attempts the consumer archives it without yielding
+  # 2. Retries and max_attempts
   poison_id = client.produce(queue, ExampleHelper.to_json({ poison: true }))
   attempts = 0
 
