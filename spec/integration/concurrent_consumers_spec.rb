@@ -123,6 +123,8 @@ ExampleHelper.run_example("Concurrent Consumers") do |client, queues, _interrupt
   failing_client = ExampleHelper.create_client(pool_size: 3)
   done = Queue.new
   failures = Queue.new
+  # Closed once consumer 0 has failed, so the healthy consumers cannot drain the queue before it reads
+  failed_gate = Queue.new
   consumers = Array.new(3) do
     PGMQ::Consumer.new(failing_client, failing_queue, vt: 1, max_poll_seconds: 1, poll_interval_ms: 10)
   end
@@ -130,12 +132,14 @@ ExampleHelper.run_example("Concurrent Consumers") do |client, queues, _interrupt
   threads = consumers.each_with_index.map do |consumer, index|
     Thread.new do
       Thread.current.report_on_exception = false
+      failed_gate.pop(timeout: 5) unless index.zero?
 
       consumer.each do |message|
         payload = ExampleHelper.parse_message(message)
 
         if index.zero?
           failures << payload["n"]
+          failed_gate.close
           raise "consumer 0 failed on message #{payload["n"]}"
         end
 
