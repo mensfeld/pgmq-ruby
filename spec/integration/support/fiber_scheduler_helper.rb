@@ -13,11 +13,14 @@ require "async"
 module FiberSchedulerHelper
   # Runs a block under the Async fiber scheduler.
   #
+  # Uses `Sync` so an exception raised in the block reaches the caller and fails the spec; a top-level `Async`
+  # would only log it.
+  #
   # @yield [task] Block to execute with fiber scheduler
   # @yieldparam task [Async::Task] The root async task
   # @return [Object] Result of the block
   def self.with_scheduler(&block)
-    Async(&block)
+    Sync(&block)
   end
 
   # Tracks execution timing for multiple operations to verify concurrent execution.

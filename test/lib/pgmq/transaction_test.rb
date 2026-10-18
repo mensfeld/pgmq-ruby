@@ -279,6 +279,20 @@ describe PGMQ::Transaction do
         assert_nil @client.read(@queue1, vt: 30)
       end
 
+      it "propagates an unrescued TransactionError without wrapping it" do
+        assert_raises(PGMQ::Errors::TransactionError) do
+          @client.transaction do |txn|
+            thread = Thread.new do
+              Thread.current.report_on_exception = false
+              txn.produce(@queue1, { data: "from_thread" })
+            end
+            thread.value
+          end
+        end
+
+        assert_nil @client.read(@queue1, vt: 30)
+      end
+
       it "raises on with_connection from another thread" do
         thread_error = nil
 
