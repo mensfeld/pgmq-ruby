@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Transactions
+- **[Fix]** The transactional client yielded by `PGMQ::Client#transaction` now raises the new
+  `PGMQ::Errors::TransactionError` when used from another thread or fiber, or after the block has returned.
+  Previously such calls checked out a different pool connection and committed outside the transaction, so a
+  rollback did not undo them (and with `pool_size: 1` they waited for the pool timeout).
+
+### Testing
+- **[Change]** Add `spec/integration/concurrency_overlap_spec.rb`, which proves concurrency by asserting overlapping
+  execution intervals (not order or absolute timings): threads and fibers overlap on long polls and `LISTEN` waits,
+  the reactor keeps running, a pool of one serializes work, and the transactional client rejects other threads and
+  fibers. `ConcurrencyTracker` now uses the monotonic clock, and the fiber long-polling example asserts its result.
+
 ## 0.7.2 (2026-08-31)
 
 ### Dependencies

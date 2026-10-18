@@ -49,11 +49,11 @@ module FiberSchedulerHelper
     # @yield Block to time
     # @return [Object] Result of the block
     def track(operation_id)
-      @mutex.synchronize { @start_time ||= Time.now }
+      @mutex.synchronize { @start_time ||= now }
 
-      op_start = Time.now
+      op_start = now
       result = yield
-      op_end = Time.now
+      op_end = now
 
       @mutex.synchronize do
         @timings << {
@@ -135,6 +135,13 @@ module FiberSchedulerHelper
         overlapping_pairs: overlapping_operations.size,
         concurrent: concurrent?
       }
+    end
+
+    private
+
+    # @return [Float] monotonic clock reading, immune to wall-clock jumps
+    def now
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
   end
 end
