@@ -118,7 +118,8 @@ PGMQ::Errors::BaseError (StandardError)
 ├── PGMQ::Errors::MessageNotFoundError
 ├── PGMQ::Errors::SerializationError
 ├── PGMQ::Errors::ConfigurationError
-└── PGMQ::Errors::InvalidQueueNameError
+├── PGMQ::Errors::InvalidQueueNameError
+└── PGMQ::Errors::TransactionError
 ```
 
 ### Queue Name Validation

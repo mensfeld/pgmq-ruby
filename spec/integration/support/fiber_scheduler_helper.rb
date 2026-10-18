@@ -13,11 +13,14 @@ require "async"
 module FiberSchedulerHelper
   # Runs a block under the Async fiber scheduler.
   #
+  # Uses `Sync` so an exception raised in the block reaches the caller and fails the spec; a top-level `Async`
+  # would only log it.
+  #
   # @yield [task] Block to execute with fiber scheduler
   # @yieldparam task [Async::Task] The root async task
   # @return [Object] Result of the block
   def self.with_scheduler(&block)
-    Async(&block)
+    Sync(&block)
   end
 
   # Tracks execution timing for multiple operations to verify concurrent execution.
@@ -49,11 +52,11 @@ module FiberSchedulerHelper
     # @yield Block to time
     # @return [Object] Result of the block
     def track(operation_id)
-      @mutex.synchronize { @start_time ||= Time.now }
+      @mutex.synchronize { @start_time ||= now }
 
-      op_start = Time.now
+      op_start = now
       result = yield
-      op_end = Time.now
+      op_end = now
 
       @mutex.synchronize do
         @timings << {
@@ -135,6 +138,13 @@ module FiberSchedulerHelper
         overlapping_pairs: overlapping_operations.size,
         concurrent: concurrent?
       }
+    end
+
+    private
+
+    # @return [Float] monotonic clock reading, immune to wall-clock jumps
+    def now
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
   end
 end
