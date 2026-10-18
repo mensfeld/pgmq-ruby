@@ -26,5 +26,8 @@ module PGMQ
 
     # Raised when an invalid queue name is provided
     class InvalidQueueNameError < BaseError; end
+
+    # Raised when a transactional client is used outside its transaction (another thread/fiber, or after the block)
+    class TransactionError < BaseError; end
   end
 end

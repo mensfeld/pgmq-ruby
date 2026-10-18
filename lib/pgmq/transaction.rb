@@ -20,11 +20,16 @@ module PGMQ
   #     txn.produce("orders", '{"order_id":123}')
   #     raise "Error"  # Both operations rolled back
   #   end
+  #
+  # @note The transactional client is bound to the fiber (and thread) that opened the transaction and is valid only
+  #   inside the block. Using it from another thread or fiber, or after the block returns, raises
+  #   {PGMQ::Errors::TransactionError} instead of silently running the operation outside the transaction.
   module Transaction
     # Executes PGMQ operations atomically within a database transaction
     #
     # Obtains a connection from the pool, starts a transaction, and yields a client that uses that transaction for all
-    # operations.
+    # operations made from the calling thread/fiber while the block runs. The yielded client raises
+    # {PGMQ::Errors::TransactionError} when used from another thread or fiber, or after the block has returned.
     #
     # @yield [PGMQ::Client] transactional client using the same connection
     # @return [Object] result of the block
@@ -38,7 +43,13 @@ module PGMQ
     def transaction
       @connection.with_connection do |conn|
         conn.transaction do
-          yield TransactionalClient.new(self, conn)
+          txn = TransactionalClient.new(self, conn)
+
+          begin
+            yield txn
+          ensure
+            txn.finish!
+          end
         end
       end
     rescue PG::Error, StandardError => e
@@ -57,13 +68,19 @@ module PGMQ
       )
         @parent = parent
         @conn = conn
+        @owner = Fiber.current
+        @finished = false
       end
 
       # Forward all method calls to parent, but use our transaction connection
       # @param method [Symbol] method name
       # @return [Object] result of method call
+      # @raise [PGMQ::Errors::TransactionError] if used off the owner fiber or after the transaction ended
       def method_missing(method, ...)
-        @parent.respond_to?(method, true) ? @parent.__send__(method, ...) : super
+        return super unless @parent.respond_to?(method, true)
+
+        ensure_usable!(method)
+        @parent.__send__(method, ...)
       end
 
       # Check if method exists on parent
@@ -78,13 +95,40 @@ module PGMQ
       end
 
       # Inject our transaction connection instead of using the pool
+      # @raise [PGMQ::Errors::TransactionError] if used off the owner fiber or after the transaction ended
       def with_connection
+        ensure_usable!(:with_connection)
         yield @conn
       end
 
       # Expose parent's connection (for tests/inspection)
       def connection
         @parent.connection
+      end
+
+      # Marks the transaction as ended so any further use raises
+      # @return [void]
+      def finish!
+        @finished = true
+      end
+
+      private
+
+      # Parent operations reach the transaction connection only through the pool's re-entrant checkout, which is keyed
+      # on the current fiber. Another thread/fiber would get a different connection and commit outside the transaction.
+      #
+      # @param method [Symbol] method being called, for the error message
+      # @raise [PGMQ::Errors::TransactionError] if used off the owner fiber or after the transaction ended
+      def ensure_usable!(method)
+        if @finished
+          raise PGMQ::Errors::TransactionError, "Cannot call ##{method}: the transaction has already ended"
+        end
+
+        return if Fiber.current.equal?(@owner)
+
+        raise PGMQ::Errors::TransactionError,
+          "Cannot call ##{method} from another thread or fiber: the transactional client is bound to the fiber " \
+          "that opened the transaction"
       end
     end
   end
