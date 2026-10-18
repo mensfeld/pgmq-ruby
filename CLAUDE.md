@@ -105,7 +105,7 @@ bundle exec bin/console
 
 - Default pool size: 5 connections
 - Default timeout: 5 seconds
-- Fiber-aware (works with Ruby 3.0+ Fiber Scheduler)
+- Fiber-aware (works with the Ruby 3.3+ Fiber Scheduler)
 - Auto-reconnect enabled by default (can be disabled)
 - Connection health verified before each use (if auto-reconnect enabled)
 

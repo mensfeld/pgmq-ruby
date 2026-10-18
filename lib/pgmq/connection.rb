@@ -35,8 +35,10 @@ module PGMQ
       #
       # @return [Array<String, Regexp>]
       # @example
-      #   PGMQ::Connection.reconnectable_error_patterns << "connection reset by peer"
-      #   PGMQ::Connection.reconnectable_error_patterns << /\Abroken pipe\b/i
+      #   PGMQ::Connection.reconnectable_error_patterns = [
+      #     "connection reset by peer",
+      #     /\Abroken pipe\b/i
+      #   ]
       attr_reader :reconnectable_error_patterns
 
       # Additional exception classes that mean the connection is dead. `PG::ConnectionBad` and `PG::UnableToSend` are
@@ -46,7 +48,7 @@ module PGMQ
       #
       # @return [Array<Class>]
       # @example
-      #   PGMQ::Connection.reconnectable_error_classes << PG::ConnectionRefused
+      #   PGMQ::Connection.reconnectable_error_classes = [PG::ConnectionRefused]
       attr_reader :reconnectable_error_classes
 
       # Replaces the extra reconnectable error patterns.
@@ -108,7 +110,7 @@ module PGMQ
       end
     end
 
-    # Initialize class-level defaults (empty arrays, users append at boot)
+    # Initialize class-level defaults (empty frozen arrays, users replace them at boot via the setters)
     @reconnectable_error_patterns = [].freeze
     @reconnectable_error_classes = [].freeze
 
