@@ -941,6 +941,8 @@ end
 - All operations within the block execute in a single PostgreSQL transaction
 - If any operation fails, the entire transaction is rolled back automatically
 - The transactional client delegates all `PGMQ::Client` methods for convenience
+- The transactional client is bound to the thread/fiber that opened the transaction and is valid only inside the
+  block: using it from another thread or fiber, or after the block returns, raises `PGMQ::Errors::TransactionError`
 
 **Use Cases:**
 

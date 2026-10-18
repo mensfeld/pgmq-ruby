@@ -204,6 +204,8 @@ ExampleHelper.run_example("Fiber Scheduler - Long Polling") do |_, queues, _|
     poll_fibers.each(&:wait)
 
     total_found = results.sum { |r| r[:found] }
+    raise "Expected 3 messages across pollers, got #{total_found}" unless total_found == 3
+
     puts "Long polling: #{total_found} messages received"
 
     client.close

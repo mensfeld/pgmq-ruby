@@ -224,6 +224,7 @@ Custom exception hierarchy:
 - `PGMQ::Errors::SerializationError` - Serialization failures
 - `PGMQ::Errors::ConfigurationError` - Invalid configuration
 - `PGMQ::Errors::InvalidQueueNameError` - Invalid queue name
+- `PGMQ::Errors::TransactionError` - Transactional client used outside its transaction
 
 ## Contributing
 

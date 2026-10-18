@@ -239,6 +239,85 @@ describe PGMQ::Transaction do
       end
     end
 
+    describe "ownership" do
+      it "raises when used from another thread and rolls back" do
+        thread_error = nil
+
+        assert_raises(PGMQ::Errors::ConnectionError) do
+          @client.transaction do |txn|
+            Thread.new do
+              txn.produce(@queue1, { data: "from_thread" })
+            rescue PGMQ::Errors::TransactionError => e
+              thread_error = e
+            end.join
+
+            raise "Rollback"
+          end
+        end
+
+        assert_kind_of PGMQ::Errors::TransactionError, thread_error
+        assert_match(/another thread or fiber/, thread_error.message)
+        assert_nil @client.read(@queue1, vt: 30)
+      end
+
+      it "raises when used from another fiber and rolls back" do
+        fiber_error = nil
+
+        assert_raises(PGMQ::Errors::ConnectionError) do
+          @client.transaction do |txn|
+            Fiber.new do
+              txn.produce(@queue1, { data: "from_fiber" })
+            rescue PGMQ::Errors::TransactionError => e
+              fiber_error = e
+            end.resume
+
+            raise "Rollback"
+          end
+        end
+
+        assert_kind_of PGMQ::Errors::TransactionError, fiber_error
+        assert_nil @client.read(@queue1, vt: 30)
+      end
+
+      it "propagates an unrescued TransactionError without wrapping it" do
+        assert_raises(PGMQ::Errors::TransactionError) do
+          @client.transaction do |txn|
+            thread = Thread.new do
+              Thread.current.report_on_exception = false
+              txn.produce(@queue1, { data: "from_thread" })
+            end
+            thread.value
+          end
+        end
+
+        assert_nil @client.read(@queue1, vt: 30)
+      end
+
+      it "raises on with_connection from another thread" do
+        thread_error = nil
+
+        @client.transaction do |txn|
+          Thread.new do
+            txn.with_connection { |conn| conn.exec("SELECT 1") }
+          rescue PGMQ::Errors::TransactionError => e
+            thread_error = e
+          end.join
+        end
+
+        assert_kind_of PGMQ::Errors::TransactionError, thread_error
+      end
+
+      it "raises when used after the transaction ended" do
+        leaked = @client.transaction { |txn| txn }
+
+        e = assert_raises(PGMQ::Errors::TransactionError) do
+          leaked.produce(@queue1, { data: "after_commit" })
+        end
+        assert_match(/already ended/, e.message)
+        assert_nil @client.read(@queue1, vt: 30)
+      end
+    end
+
     describe "connection management" do
       it "does not leak connections from transaction" do
         pool_size_before = @client.connection.pool.available
