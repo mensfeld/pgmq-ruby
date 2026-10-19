@@ -218,7 +218,7 @@ bundle exec rake release
 
 Custom exception hierarchy:
 - `PGMQ::Errors::BaseError` - Base error
-- `PGMQ::Errors::ConnectionError` - Any database error (`PG::Error`, original in `#cause`), connection failures, pool timeouts
+- `PGMQ::Errors::ConnectionError` - Any database error (`PG::Error`, original in `#cause`; in a failed transaction, in `#cause.cause`), connection failures, pool timeouts
 - `PGMQ::Errors::QueueNotFoundError` - Queue doesn't exist (not raised by PGMQ-Ruby)
 - `PGMQ::Errors::MessageNotFoundError` - Message not found (not raised by PGMQ-Ruby)
 - `PGMQ::Errors::SerializationError` - Serialization failures (not raised by PGMQ-Ruby)

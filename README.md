@@ -1150,7 +1150,7 @@ puts msg.data["order_id"]  # => 123
 
 All PGMQ-Ruby errors inherit from `PGMQ::Errors::BaseError`. When PostgreSQL rejects a call, the client raises
 `PGMQ::Errors::ConnectionError`, not only when the connection fails or is lost: a missing queue, invalid JSON or an
-invalid integer raise it too. The original `PG::Error` is in `#cause`.
+invalid integer raise it too. Outside a transaction, the original `PG::Error` is in `#cause`.
 
 ```ruby
 begin
@@ -1162,8 +1162,9 @@ end
 ```
 
 A failed `client.transaction` block, including an exception your own code raises in it, raises
-`PGMQ::Errors::ConnectionError` with the message `Transaction failed: ...`. A `PGMQ::Errors::TransactionError` is
-raised unchanged.
+`PGMQ::Errors::ConnectionError` with the message `Transaction failed: ...`. Its `#cause` is the error raised in the
+block. For a database error that is the inner `PGMQ::Errors::ConnectionError`, so the `PG::Error` is in
+`e.cause.cause`. A `PGMQ::Errors::TransactionError` is raised unchanged.
 
 ## Development
 
