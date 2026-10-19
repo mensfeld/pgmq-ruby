@@ -94,7 +94,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 
 ## Requirements
 
-- Ruby 3.2+
+- Ruby 3.3+
 - PostgreSQL 14-18 with PGMQ extension installed
 
 ### Installing PGMQ Extension
@@ -371,7 +371,7 @@ misconfiguration can't silently disable retries.
 
 **Connection Pool Benefits:**
 - **Thread-safe** - Multiple threads can safely share a single client
-- **Fiber-aware** - Works with Ruby 3.0+ Fiber Scheduler for non-blocking I/O (tested with the `async` gem)
+- **Fiber-aware** - Works with the Ruby 3.3+ Fiber Scheduler for non-blocking I/O (tested with the `async` gem)
 - **Auto-reconnect** - Recovers from lost connections (configurable, extendable)
 - **Health checks** - Verifies connections before use to prevent stale connection errors
 - **Monitoring** - Track pool utilization with `client.stats`
