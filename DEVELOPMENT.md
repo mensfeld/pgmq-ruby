@@ -218,10 +218,10 @@ bundle exec rake release
 
 Custom exception hierarchy:
 - `PGMQ::Errors::BaseError` - Base error
-- `PGMQ::Errors::ConnectionError` - Connection failures
-- `PGMQ::Errors::QueueNotFoundError` - Queue doesn't exist
-- `PGMQ::Errors::MessageNotFoundError` - Message not found
-- `PGMQ::Errors::SerializationError` - Serialization failures
+- `PGMQ::Errors::ConnectionError` - Any database error (`PG::Error`, original in `#cause`), connection failures, pool timeouts
+- `PGMQ::Errors::QueueNotFoundError` - Queue doesn't exist (not raised by PGMQ-Ruby)
+- `PGMQ::Errors::MessageNotFoundError` - Message not found (not raised by PGMQ-Ruby)
+- `PGMQ::Errors::SerializationError` - Serialization failures (not raised by PGMQ-Ruby)
 - `PGMQ::Errors::ConfigurationError` - Invalid configuration
 - `PGMQ::Errors::InvalidQueueNameError` - Invalid queue name
 - `PGMQ::Errors::TransactionError` - Transactional client used outside its transaction
