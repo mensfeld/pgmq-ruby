@@ -147,7 +147,7 @@ ExampleHelper.run_example("Fiber Scheduler - Mixed Producer/Consumer") do |_, qu
     end
 
     sleep(0.05)
-    2.times.map do
+    consumer_fibers = 2.times.map do
       task.async do
         loop do
           msg = client.read(queue, vt: 30)
@@ -161,7 +161,9 @@ ExampleHelper.run_example("Fiber Scheduler - Mixed Producer/Consumer") do |_, qu
     end
 
     producer_fibers.each(&:wait)
-    sleep(0.2)
+    # Consumers hold read messages invisible (vt: 30) until deleted, so the drain
+    # below must not start while a consumer still has one in flight
+    consumer_fibers.each(&:wait)
 
     loop do
       msg = client.read(queue, vt: 30)
