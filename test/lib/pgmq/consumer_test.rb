@@ -32,12 +32,17 @@ describe PGMQ::Consumer do
       assert_raises(PGMQ::Errors::ConfigurationError) do
         PGMQ::Consumer.new(@client, [@queue_name, @queue_name.upcase])
       end
+      assert_raises(PGMQ::Errors::ConfigurationError) do
+        PGMQ::Consumer.new(@client, [@queue_name.to_sym, @queue_name])
+      end
     end
 
     it "rejects an invalid name in a list of queue names" do
       assert_raises(PGMQ::Errors::InvalidQueueNameError) do
         PGMQ::Consumer.new(@client, [@queue_name, "1invalid"])
       end
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) { PGMQ::Consumer.new(@client, [@queue_name, nil]) }
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) { PGMQ::Consumer.new(@client, [1]) }
     end
 
     it "rejects an invalid queue name" do

@@ -166,12 +166,15 @@ module PGMQ
 
       raise Errors::ConfigurationError, "at least one queue name is required" if names.empty?
       raise Errors::ConfigurationError, "at most 50 queues can be consumed" if names.size > 50
+
+      names = names.map { |name| QueueName.validate!(name) }
+
       # pgmq folds queue names to lower case, so names differing only in case refer to the same queue
       unless names.map(&:downcase).uniq.size == names.size
         raise Errors::ConfigurationError, "queue names must be unique (case-insensitive)"
       end
 
-      names.map { |name| QueueName.validate!(name) }.freeze
+      names.freeze
     end
 
     # Reads the next messages
