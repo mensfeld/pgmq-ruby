@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 module PGMQ
-  # Minimal single-threaded consumer for one queue
+  # Minimal single-threaded consumer for one or more queues
   #
   # Wraps an existing {PGMQ::Client} with a blocking `each` loop, similar to the simple consumer of rdkafka-ruby. It
-  # long-polls the queue with `read_with_poll`, yields one message at a time and acknowledges it (delete or archive)
-  # when the block returns. The consumer does not own the client: closing the client stays the caller's job.
+  # long-polls the queue with `read_with_poll` (or several queues with `read_multi_with_poll`), yields one message at a
+  # time and acknowledges it (delete or archive) on its own queue when the block returns. The consumer does not own the
+  # client: closing the client stays the caller's job.
   #
   # Delivery is at-least-once. When the block raises, the message is not acknowledged and becomes visible again once
   # its visibility timeout expires. When processing takes longer than `vt`, another reader may receive the same message.
@@ -22,6 +23,13 @@ module PGMQ
   #   end
   #
   #   client.close
+  #
+  # @example Several queues
+  #   consumer = PGMQ::Consumer.new(client, %w[orders emails], vt: 30)
+  #
+  #   consumer.each do |message|
+  #     puts "#{message.queue_name}: #{message.message}"
+  #   end
   class Consumer
     # Acknowledgement actions available for successfully processed messages
     ON_SUCCESS_ACTIONS = %i[delete archive].freeze
@@ -31,28 +39,28 @@ module PGMQ
     # @return [PGMQ::Client] client used for all queue operations
     attr_reader :client
 
-    # @return [String] name of the consumed queue
-    attr_reader :queue_name
+    # @return [Array<String>] names of the consumed queues
+    attr_reader :queue_names
 
     # Creates a new consumer
     #
     # @param client [PGMQ::Client] client used for all queue operations
-    # @param queue_name [String] name of the queue to consume
+    # @param queue_names [String, Array<String>] name of the queue to consume, or names of up to 50 queues
     # @param vt [Integer] visibility timeout in seconds for read messages
-    # @param batch_size [Integer] number of messages to read per poll (still yielded one at a time)
+    # @param batch_size [Integer] number of messages to read per queue per poll (still yielded one at a time)
     # @param max_poll_seconds [Integer] how long a single poll waits for messages
     # @param poll_interval_ms [Integer] interval between server-side checks within a poll
     # @param on_success [Symbol] `:delete` or `:archive`, applied after the block returns
     # @param max_attempts [Integer, nil] archive without yielding once `read_ct` exceeds this value (nil disables).
-    #   Requires `batch_size: 1`
-    # @raise [PGMQ::Errors::ConfigurationError] when an option is invalid
-    # @raise [PGMQ::Errors::InvalidQueueNameError] when the queue name is invalid
+    #   Requires `batch_size: 1`; with several queues, one message is then read per poll
+    # @raise [PGMQ::Errors::ConfigurationError] when an option or the list of queues is invalid
+    # @raise [PGMQ::Errors::InvalidQueueNameError] when a queue name is invalid
     #
     # @example
     #   consumer = PGMQ::Consumer.new(client, "orders", on_success: :archive, max_attempts: 5)
     def initialize(
       client,
-      queue_name,
+      queue_names,
       vt: Client::DEFAULT_VT,
       batch_size: 1,
       max_poll_seconds: 5,
@@ -78,28 +86,29 @@ module PGMQ
       end
 
       @client = client
-      @queue_name = QueueName.validate!(queue_name)
+      @queue_names = validate_queue_names!(queue_names)
       @vt = vt
       @batch_size = batch_size
       @max_poll_seconds = max_poll_seconds
       @poll_interval_ms = poll_interval_ms
       @on_success = on_success
       @max_attempts = max_attempts
+      @poll_offset = 0
       @stopped = false
     end
 
     # Consumes messages until {#stop} is called
     #
-    # Each message is acknowledged with the `on_success` action after the block returns. An exception raised by the
-    # block stops the loop and is re-raised: that message is left to reappear after its visibility timeout, and the
-    # not yet yielded messages of the same batch are released at once. Messages read more than `max_attempts` times
+    # Each message is acknowledged with the `on_success` action on its own queue after the block returns. An exception
+    # raised by the block stops the loop and is re-raised: that message is left to reappear after its visibility
+    # timeout, and the not yet yielded messages of the same batch are released at once. Messages read more than `max_attempts` times
     # are archived without being yielded.
     #
     # {#stop} takes effect once the messages of the current poll are processed, or after the current poll (up to
     # `max_poll_seconds`) when the queue is empty. Messages that were read are always yielded, so a stop never counts
     # a read that was not processed.
     #
-    # @yieldparam message [PGMQ::Message] message to process
+    # @yieldparam message [PGMQ::Message] message to process, with `queue_name` set
     # @return [nil]
     # @raise [ArgumentError] when no block is given
     #
@@ -109,22 +118,14 @@ module PGMQ
       raise ArgumentError, "a block is required" unless block_given?
 
       until @stopped
-        messages = @client.read_with_poll(
-          @queue_name,
-          vt: @vt,
-          qty: @batch_size,
-          max_poll_seconds: @max_poll_seconds,
-          poll_interval_ms: @poll_interval_ms
-        )
-
-        pending = messages.dup
+        pending = poll
 
         begin
           until pending.empty?
             message = pending.shift
 
             if exhausted?(message)
-              @client.archive(@queue_name, message.msg_id)
+              @client.archive(message.queue_name, message.msg_id)
               next
             end
 
@@ -157,6 +158,53 @@ module PGMQ
 
     private
 
+    # @param queue_names [String, Array<String>] queue name or names
+    # @return [Array<String>] validated, frozen queue names
+    # @raise [PGMQ::Errors::ConfigurationError] when the list is empty, too long or has duplicates
+    def validate_queue_names!(queue_names)
+      names = Array(queue_names)
+
+      raise Errors::ConfigurationError, "at least one queue name is required" if names.empty?
+      raise Errors::ConfigurationError, "at most 50 queues can be consumed" if names.size > 50
+      raise Errors::ConfigurationError, "queue names must be unique" unless names.uniq.size == names.size
+
+      names.map { |name| QueueName.validate!(name) }.freeze
+    end
+
+    # Reads the next messages
+    #
+    # With several queues the read order rotates each poll, so a busy queue listed first does not starve the others.
+    #
+    # @return [Array<PGMQ::Message>] read messages, each with its `queue_name` set
+    def poll
+      if @queue_names.size == 1
+        queue_name = @queue_names.first
+
+        messages = @client.read_with_poll(
+          queue_name,
+          vt: @vt,
+          qty: @batch_size,
+          max_poll_seconds: @max_poll_seconds,
+          poll_interval_ms: @poll_interval_ms
+        )
+
+        return messages.map { |message| message.with(queue_name: queue_name) }
+      end
+
+      queue_names = @queue_names.rotate(@poll_offset)
+      @poll_offset = (@poll_offset + 1) % @queue_names.size
+
+      @client.read_multi_with_poll(
+        queue_names,
+        vt: @vt,
+        qty: @batch_size,
+        # A message released after a failure keeps its raised read_ct, so max_attempts allows one read per poll
+        limit: @max_attempts.nil? ? nil : 1,
+        max_poll_seconds: @max_poll_seconds,
+        poll_interval_ms: @poll_interval_ms
+      )
+    end
+
     # @param name [Symbol] option name used in the error message
     # @param value [Object] option value
     # @raise [PGMQ::Errors::ConfigurationError] when the value is not a positive Integer
@@ -175,9 +223,9 @@ module PGMQ
     # @param message [PGMQ::Message] processed message
     def acknowledge(message)
       if @on_success == :archive
-        @client.archive(@queue_name, message.msg_id)
+        @client.archive(message.queue_name, message.msg_id)
       else
-        @client.delete(@queue_name, message.msg_id)
+        @client.delete(message.queue_name, message.msg_id)
       end
     end
 
@@ -188,11 +236,11 @@ module PGMQ
     #
     # @param messages [Array<PGMQ::Message>] messages to release
     def release(messages)
-      return if messages.empty?
-
-      @client.set_vt_batch(@queue_name, messages.map(&:msg_id), vt: 0)
-    rescue
-      nil
+      messages.group_by(&:queue_name).each do |queue_name, queue_messages|
+        @client.set_vt_batch(queue_name, queue_messages.map(&:msg_id), vt: 0)
+      rescue
+        nil
+      end
     end
   end
 end

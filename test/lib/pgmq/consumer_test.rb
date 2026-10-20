@@ -9,12 +9,32 @@ describe PGMQ::Consumer do
   end
 
   describe "#initialize" do
-    it "exposes the client and queue name" do
+    it "exposes the client and queue names" do
       consumer = build_consumer
 
       assert_same @client, consumer.client
-      assert_equal @queue_name, consumer.queue_name
+      assert_equal [@queue_name], consumer.queue_names
       refute_predicate consumer, :stopped?
+    end
+
+    it "accepts several queue names" do
+      consumer = PGMQ::Consumer.new(@client, [@queue_name, "other_queue"])
+
+      assert_equal [@queue_name, "other_queue"], consumer.queue_names
+    end
+
+    it "rejects an empty, too long or duplicated list of queue names" do
+      assert_raises(PGMQ::Errors::ConfigurationError) { PGMQ::Consumer.new(@client, []) }
+      assert_raises(PGMQ::Errors::ConfigurationError) do
+        PGMQ::Consumer.new(@client, Array.new(51) { |i| "queue_#{i}" })
+      end
+      assert_raises(PGMQ::Errors::ConfigurationError) { PGMQ::Consumer.new(@client, [@queue_name, @queue_name]) }
+    end
+
+    it "rejects an invalid name in a list of queue names" do
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) do
+        PGMQ::Consumer.new(@client, [@queue_name, "1invalid"])
+      end
     end
 
     it "rejects an invalid queue name" do
@@ -223,10 +243,115 @@ describe PGMQ::Consumer do
       assert_predicate consumer, :stopped?
     end
 
+    it "sets queue_name on messages from a single queue" do
+      @client.produce(@queue_name, to_json_msg({ n: 1 }))
+      consumer = build_consumer
+      names = []
+
+      consumer.each do |message|
+        names << message.queue_name
+        consumer.stop
+      end
+
+      assert_equal [@queue_name], names
+    end
+
     it "propagates client errors" do
       consumer = PGMQ::Consumer.new(@client, unique_queue_name("missing"), max_poll_seconds: 1)
 
       assert_raises(PGMQ::Errors::ConnectionError) { consumer.each { flunk "should not yield" } }
+    end
+  end
+
+  describe "with several queues" do
+    before do
+      @other_queue_name = unique_queue_name("consumer_other")
+      ensure_test_queue(@client, @other_queue_name)
+    end
+
+    after do
+      @client.drop_queue(@other_queue_name)
+    rescue
+      nil
+    end
+
+    def build_multi_consumer(**options)
+      PGMQ::Consumer.new(
+        @client, [@queue_name, @other_queue_name], max_poll_seconds: 1, poll_interval_ms: 10, **options
+      )
+    end
+
+    it "yields messages from every queue and acknowledges each on its own queue" do
+      2.times { |i| @client.produce(@queue_name, to_json_msg({ n: i })) }
+      2.times { |i| @client.produce(@other_queue_name, to_json_msg({ n: i })) }
+      consumer = build_multi_consumer(on_success: :archive)
+      received = []
+
+      consumer.each do |message|
+        received << [message.queue_name, JSON.parse(message.message)["n"]]
+        consumer.stop if received.size == 4
+      end
+
+      expected = [[@queue_name, 0], [@queue_name, 1], [@other_queue_name, 0], [@other_queue_name, 1]]
+
+      assert_equal expected, received.sort
+      assert_empty @client.read_batch(@queue_name, vt: 0, qty: 10)
+      assert_empty @client.read_batch(@other_queue_name, vt: 0, qty: 10)
+
+      [@queue_name, @other_queue_name].each do |queue_name|
+        archived = @client.connection.with_connection { |conn| conn.exec("SELECT msg_id FROM pgmq.a_#{queue_name}").to_a }
+
+        assert_equal 2, archived.size
+      end
+    end
+
+    it "does not starve a queue listed after a busy one" do
+      5.times { |i| @client.produce(@queue_name, to_json_msg({ n: i })) }
+      @client.produce(@other_queue_name, to_json_msg({ n: 0 }))
+      consumer = build_multi_consumer(max_attempts: 3)
+      received = []
+
+      consumer.each do |message|
+        received << message.queue_name
+        consumer.stop if received.size == 2
+      end
+
+      assert_includes received, @other_queue_name
+    end
+
+    it "reads one message per poll with max_attempts, so a failure leaves other queues untouched" do
+      @client.produce(@queue_name, to_json_msg({ n: 1 }))
+      @client.produce(@other_queue_name, to_json_msg({ n: 2 }))
+      consumer = build_multi_consumer(max_attempts: 1)
+
+      assert_raises(RuntimeError) { consumer.each { raise "boom" } }
+
+      read_counts = [@queue_name, @other_queue_name].map do |queue_name|
+        @client.connection.with_connection do |conn|
+          conn.exec("SELECT read_ct FROM pgmq.q_#{queue_name}").map { |row| row["read_ct"] }
+        end
+      end
+
+      assert_equal [["1"], ["0"]], read_counts
+    end
+
+    it "releases not yet yielded messages on their own queues" do
+      @client.produce(@queue_name, to_json_msg({ n: 1 }))
+      @client.produce(@other_queue_name, to_json_msg({ n: 2 }))
+      consumer = build_multi_consumer(vt: 30)
+      yielded = []
+
+      assert_raises(RuntimeError) do
+        consumer.each do |message|
+          yielded << message.queue_name
+          raise "boom"
+        end
+      end
+
+      released = [@queue_name, @other_queue_name] - yielded
+
+      assert_equal 1, @client.read_batch(released.first, vt: 0, qty: 10).size
+      assert_empty @client.read_batch(yielded.first, vt: 0, qty: 10)
     end
   end
 end
