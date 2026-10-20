@@ -29,6 +29,9 @@ describe PGMQ::Consumer do
         PGMQ::Consumer.new(@client, Array.new(51) { |i| "queue_#{i}" })
       end
       assert_raises(PGMQ::Errors::ConfigurationError) { PGMQ::Consumer.new(@client, [@queue_name, @queue_name]) }
+      assert_raises(PGMQ::Errors::ConfigurationError) do
+        PGMQ::Consumer.new(@client, [@queue_name, @queue_name.upcase])
+      end
     end
 
     it "rejects an invalid name in a list of queue names" do
@@ -294,7 +297,7 @@ describe PGMQ::Consumer do
 
       expected = [[@queue_name, 0], [@queue_name, 1], [@other_queue_name, 0], [@other_queue_name, 1]]
 
-      assert_equal expected, received.sort
+      assert_equal expected.sort, received.sort
       assert_empty @client.read_batch(@queue_name, vt: 0, qty: 10)
       assert_empty @client.read_batch(@other_queue_name, vt: 0, qty: 10)
 
@@ -303,6 +306,52 @@ describe PGMQ::Consumer do
 
         assert_equal 2, archived.size
       end
+    end
+
+    it "deletes messages on their own queue" do
+      2.times { |i| @client.produce(@queue_name, to_json_msg({ n: i })) }
+      2.times { |i| @client.produce(@other_queue_name, to_json_msg({ n: i })) }
+      consumer = build_multi_consumer
+      received = 0
+
+      consumer.each do
+        received += 1
+        consumer.stop if received == 4
+      end
+
+      [@queue_name, @other_queue_name].each do |queue_name|
+        count = @client.connection.with_connection do |conn|
+          conn.exec("SELECT count(*) FROM pgmq.q_#{queue_name}").getvalue(0, 0)
+        end
+
+        assert_equal "0", count
+      end
+    end
+
+    it "archives messages that exceeded max_attempts on their own queue" do
+      msg_id = @client.produce(@other_queue_name, to_json_msg({ n: 1 }))
+      2.times { @client.read(@other_queue_name, vt: 0) }
+      consumer = build_multi_consumer(max_attempts: 2)
+      yielded = []
+      archived = {}
+
+      thread = Thread.new { consumer.each { |message| yielded << message } }
+      wait_for(timeout: 5) do
+        archived = [@queue_name, @other_queue_name].to_h do |queue_name|
+          rows = @client.connection.with_connection do |conn|
+            conn.exec("SELECT msg_id FROM pgmq.a_#{queue_name}").map { |row| row["msg_id"] }
+          end
+
+          [queue_name, rows]
+        end
+        archived[@other_queue_name].any?
+      end
+      consumer.stop
+      thread.join
+
+      assert_empty yielded
+      assert_empty archived[@queue_name]
+      assert_equal [msg_id], archived[@other_queue_name]
     end
 
     it "does not starve a queue listed after a busy one" do
