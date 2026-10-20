@@ -101,8 +101,8 @@ module PGMQ
     #
     # Each message is acknowledged with the `on_success` action on its own queue after the block returns. An exception
     # raised by the block stops the loop and is re-raised: that message is left to reappear after its visibility
-    # timeout, and the not yet yielded messages of the same batch are released at once. Messages read more than `max_attempts` times
-    # are archived without being yielded.
+    # timeout, and the not yet yielded messages of the same batch are released at once. Messages read more than
+    # `max_attempts` times are archived without being yielded.
     #
     # {#stop} takes effect once the messages of the current poll are processed, or after the current poll (up to
     # `max_poll_seconds`) when the queue is empty. Messages that were read are always yielded, so a stop never counts
