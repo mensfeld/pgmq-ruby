@@ -35,6 +35,7 @@ PGMQ-Ruby is a Ruby client for PGMQ (PostgreSQL Message Queue). It provides dire
   - [Topic Routing](#topic-routing-amqp-like-patterns)
 - [Message Object](#message-object)
 - [Working with JSON](#working-with-json)
+- [Error Handling](#error-handling)
 - [Development](#development)
 - [Author](#author)
 
@@ -1144,6 +1145,26 @@ helper.produce("orders", { order_id: 123 })
 msg = helper.read("orders", vt: 30)
 puts msg.data["order_id"]  # => 123
 ```
+
+## Error Handling
+
+All PGMQ-Ruby errors inherit from `PGMQ::Errors::BaseError`. When PostgreSQL rejects a call, the client raises
+`PGMQ::Errors::ConnectionError`, not only when the connection fails or is lost: a missing queue, invalid JSON or an
+invalid integer raise it too. Outside a transaction, the original `PG::Error` is in `#cause`.
+
+```ruby
+begin
+  client.produce("orders", "not json")
+rescue PGMQ::Errors::ConnectionError => e
+  e.message      # => "Database connection error: ERROR:  invalid input syntax for type json ..."
+  e.cause.class  # => PG::InvalidTextRepresentation
+end
+```
+
+A failed `client.transaction` block, including an exception your own code raises in it, raises
+`PGMQ::Errors::ConnectionError` with the message `Transaction failed: ...`. Its `#cause` is the error raised in the
+block. For a database error that is the inner `PGMQ::Errors::ConnectionError`, so the `PG::Error` is in
+`e.cause.cause`. A `PGMQ::Errors::TransactionError` is raised unchanged.
 
 ## Development
 
