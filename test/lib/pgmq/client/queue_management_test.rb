@@ -112,6 +112,69 @@ describe PGMQ::Client::QueueManagement do
       refute result
     end
 
+    def partition_count(client, table)
+      result = client.instance_eval do
+        with_connection do |conn|
+          conn.exec_params("SELECT count(*) FROM pg_inherits WHERE inhparent = $1::regclass", [table])
+        end
+      end
+      result[0]["count"].to_i
+    end
+
+    def stub_create_connection(client)
+      conn = mock("conn")
+      conn.stubs(:exec_params).returns(stub(ntuples: 0))
+      client.stubs(:with_connection).yields(conn)
+      conn
+    end
+
+    it "pre-makes the requested number of partitions for the queue and archive" do
+      skip "pg_partman not installed" unless pg_partman_available?(@client)
+
+      default_queue = unique_queue_name
+      @client.create_partitioned(default_queue,
+        partition_interval: "10000",
+        retention_interval: "100000")
+      @client.create_partitioned(@queue_name,
+        partition_interval: "10000",
+        retention_interval: "100000",
+        premake: 8)
+
+      default_count = partition_count(@client, "pgmq.q_#{default_queue}")
+
+      assert_equal default_count + 4, partition_count(@client, "pgmq.q_#{@queue_name}")
+      assert_equal partition_count(@client, "pgmq.a_#{default_queue}") + 4,
+        partition_count(@client, "pgmq.a_#{@queue_name}")
+    ensure
+      @client.drop_queue(default_queue) if default_queue
+    end
+
+    it "keeps the 3-argument SQL call when premake is not given" do
+      conn = stub_create_connection(@client)
+      conn.expects(:exec_params)
+        .with("SELECT pgmq.create_partitioned($1::text, $2::text, $3::text)", [@queue_name, "10000", "100000"])
+        .once
+
+      @client.create_partitioned(@queue_name,
+        partition_interval: "10000",
+        retention_interval: "100000")
+    end
+
+    it "passes premake as the 4th SQL argument" do
+      conn = stub_create_connection(@client)
+      conn.expects(:exec_params)
+        .with(
+          "SELECT pgmq.create_partitioned($1::text, $2::text, $3::text, $4::integer)",
+          [@queue_name, "10000", "100000", 12]
+        )
+        .once
+
+      @client.create_partitioned(@queue_name,
+        partition_interval: "10000",
+        retention_interval: "100000",
+        premake: 12)
+    end
+
     it "raises error for invalid queue name" do
       assert_raises(PGMQ::Errors::InvalidQueueNameError) do
         @client.create_partitioned("123invalid",

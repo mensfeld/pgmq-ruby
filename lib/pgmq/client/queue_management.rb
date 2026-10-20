@@ -44,6 +44,9 @@ module PGMQ
       # @param tune_autovacuum [Boolean, Hash] when truthy, tune autovacuum on the new queue's tables after creation.
       #   Pass +true+ for PGMQ-tuned defaults, or a Hash forwarded to {Autovacuum#tune_autovacuum}. Defaults to
       #   +false+. Note: storage parameters are set on the partitioned parent and do not cascade to partitions.
+      # @param premake [Integer, nil] how many partitions pg_partman creates ahead of the current one, for both the
+      #   queue and the archive table. Must be at least 1 (PGMQ raises otherwise). Defaults to +nil+, which uses
+      #   PGMQ's default (4). Requires PGMQ v1.13.0+ when given.
       # @return [Boolean] true if queue was created, false if it already existed
       #
       # @example
@@ -51,20 +54,37 @@ module PGMQ
       #     partition_interval: "daily",
       #     retention_interval: "7 days"
       #   )  # => true
+      #
+      # @example Pre-make more partitions for a high message rate (PGMQ v1.13.0+)
+      #   client.create_partitioned("events",
+      #     partition_interval: "10000",
+      #     retention_interval: "100000",
+      #     premake: 12
+      #   )  # => true
       def create_partitioned(
         queue_name,
         partition_interval: "10000",
         retention_interval: "100000",
-        tune_autovacuum: false
+        tune_autovacuum: false,
+        premake: nil
       )
         validate_queue_name!(queue_name)
 
         with_connection do |conn|
           existed = queue_exists?(conn, queue_name)
-          conn.exec_params(
-            "SELECT pgmq.create_partitioned($1::text, $2::text, $3::text)",
-            [queue_name, partition_interval, retention_interval]
-          )
+
+          if premake.nil?
+            conn.exec_params(
+              "SELECT pgmq.create_partitioned($1::text, $2::text, $3::text)",
+              [queue_name, partition_interval, retention_interval]
+            )
+          else
+            conn.exec_params(
+              "SELECT pgmq.create_partitioned($1::text, $2::text, $3::text, $4::integer)",
+              [queue_name, partition_interval, retention_interval, premake]
+            )
+          end
+
           apply_tune_autovacuum_option(conn, queue_name, tune_autovacuum)
           !existed
         end
