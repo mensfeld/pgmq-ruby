@@ -28,6 +28,12 @@
   v1.13.1, insert notifications never fire for a queue name with uppercase letters (pgmq/pgmq#593). Create queues with
   lower-case names, or use PGMQ v1.13.1+.
 
+### Producer
+- **[Fix]** A Float `delay:` in `produce`, `produce_batch` and `produce_batch_topic` no longer fails with
+  `PGMQ::Errors::ConnectionError` (`invalid input syntax for type integer`). PGMQ takes the delay as whole seconds, so
+  a Float is now rounded up (`1.5` becomes `2`): a message is never visible earlier than asked. Integer and `Time`
+  delays are unchanged.
+
 ### Transactions
 - **[Fix]** The transactional client yielded by `PGMQ::Client#transaction` now raises the new
   `PGMQ::Errors::TransactionError` when used from another thread or fiber, or after the block has returned.

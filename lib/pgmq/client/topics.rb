@@ -111,9 +111,9 @@ module PGMQ
       # @param routing_key [String] dot-separated routing key
       # @param messages [Array<String>] array of message payloads as JSON strings
       # @param headers [Array<String>, nil] optional array of headers as JSON strings
-      # @param delay [Numeric, Time] delay in seconds before messages become visible (integer or float),
-      #   or an absolute Time at which the messages become visible, including ActiveSupport::TimeWithZone
-      #   (PGMQ v1.10.0+)
+      # @param delay [Numeric, Time] delay in seconds before messages become visible (integer or float; a float
+      #   is rounded up to whole seconds), or an absolute Time at which the messages become visible, including
+      #   ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [Array<Hash>] array of hashes with :queue_name and :msg_id
       #
       # @example Batch topic send
@@ -124,6 +124,7 @@ module PGMQ
       #   # => [{ queue_name: "new_orders", msg_id: "1" }, ...]
       def produce_batch_topic(routing_key, messages, headers: nil, delay: 0)
         return [] if messages.empty?
+        delay = normalize_delay(delay)
 
         if headers && headers.length != messages.length
           raise ArgumentError,

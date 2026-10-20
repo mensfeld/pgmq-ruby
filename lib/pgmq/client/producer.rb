@@ -12,9 +12,9 @@ module PGMQ
       # @param queue_name [String] name of the queue
       # @param message [String] message as JSON string (for PostgreSQL JSONB)
       # @param headers [String, nil] optional headers as JSON string (for metadata, routing, tracing)
-      # @param delay [Numeric, Time] delay in seconds before message becomes visible (integer or float),
-      #   or an absolute Time at which the message becomes visible, including ActiveSupport::TimeWithZone
-      #   (PGMQ v1.10.0+)
+      # @param delay [Numeric, Time] delay in seconds before message becomes visible (integer or float; a float
+      #   is rounded up to whole seconds), or an absolute Time at which the message becomes visible, including
+      #   ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [String] message ID as string
       #
       # @example Basic produce
@@ -44,6 +44,7 @@ module PGMQ
         delay: 0
       )
         validate_queue_name!(queue_name)
+        delay = normalize_delay(delay)
 
         result = with_connection do |conn|
           if headers && !delay.is_a?(Numeric)
@@ -77,9 +78,9 @@ module PGMQ
       # @param queue_name [String] name of the queue
       # @param messages [Array<String>] array of message payloads as JSON strings
       # @param headers [Array<String>, nil] optional array of headers as JSON strings (must match messages length)
-      # @param delay [Numeric, Time] delay in seconds before messages become visible (integer or float),
-      #   or an absolute Time at which the messages become visible, including ActiveSupport::TimeWithZone
-      #   (PGMQ v1.10.0+)
+      # @param delay [Numeric, Time] delay in seconds before messages become visible (integer or float; a float
+      #   is rounded up to whole seconds), or an absolute Time at which the messages become visible, including
+      #   ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [Array<String>] array of message IDs
       # @raise [ArgumentError] if headers array length doesn't match messages length
       #
@@ -108,6 +109,7 @@ module PGMQ
       )
         validate_queue_name!(queue_name)
         return [] if messages.empty?
+        delay = normalize_delay(delay)
 
         if headers && headers.length != messages.length
           raise ArgumentError,

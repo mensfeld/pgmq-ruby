@@ -166,6 +166,33 @@ describe PGMQ::Client::Topics do
       assert_match(/headers array length/, e.message)
     end
 
+    it "rounds a float delay up to whole seconds" do
+      { 1.5 => 2, 1.0 => 1 }.each do |delay, expected|
+        results = @client.produce_batch_topic("orders.new",
+          [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })],
+          delay: delay)
+
+        assert_equal 2, results.size
+        results.each { |r| assert_visibility_delay(expected, @client, r[:queue_name], r[:msg_id]) }
+      end
+
+      assert_nil @client.read(@queue_name, vt: 30)
+    end
+
+    it "rounds a float delay with headers up to whole seconds" do
+      { 1.5 => 2, 1.0 => 1 }.each do |delay, expected|
+        results = @client.produce_batch_topic("orders.new",
+          [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })],
+          headers: [to_json_msg({ h: "a" }), to_json_msg({ h: "b" })],
+          delay: delay)
+
+        assert_equal 2, results.size
+        results.each { |r| assert_visibility_delay(expected, @client, r[:queue_name], r[:msg_id]) }
+      end
+
+      assert_nil @client.read(@queue_name, vt: 30)
+    end
+
     it "supports absolute timestamp delay (Time)" do
       future = Time.now + 2
       @client.produce_batch_topic("orders.new",

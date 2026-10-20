@@ -161,5 +161,16 @@ module PGMQ
       QueueName.validate!(queue_name)
       nil
     end
+
+    # Rounds a Numeric delay up to whole seconds for PGMQ's integer delay argument
+    #
+    # PostgreSQL rejects a Float such as +1.5+ for an +integer+ bind, so it is rounded up: a message is never
+    # visible earlier than asked. Integer and Time delays are returned unchanged.
+    #
+    # @param delay [Numeric, Time] delay in seconds or an absolute Time
+    # @return [Integer, Time] whole-second delay or the given Time
+    def normalize_delay(delay)
+      delay.is_a?(Numeric) ? delay.ceil : delay
+    end
   end
 end

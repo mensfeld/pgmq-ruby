@@ -34,6 +34,22 @@ module DatabaseHelpers
     end
   end
 
+  # Asserts that a message becomes visible the given whole seconds after it was enqueued (vt - enqueued_at)
+  def assert_visibility_delay(expected, client, queue_name, msg_id)
+    result = client.with_connection do |conn|
+      conn.exec_params(
+        "SELECT EXTRACT(EPOCH FROM vt - enqueued_at)::float AS delay FROM pgmq.q_#{queue_name} WHERE msg_id = $1",
+        [msg_id]
+      )
+    end
+
+    assert_equal 1, result.ntuples
+    delay = result[0]["delay"].to_f
+
+    assert_operator delay, :>=, expected
+    assert_operator delay, :<, expected + 0.5
+  end
+
   # Returns the PGMQ extension version as an array [major, minor, patch]
   def pgmq_version
     client = create_test_client
