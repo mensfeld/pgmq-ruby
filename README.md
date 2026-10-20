@@ -601,6 +601,9 @@ loop do
   msgs.each { |m| process(m); client.delete("queue_name", m.msg_id) }
 end
 
+# On PGMQ < v1.13.1, NOTIFY never fires for a queue name with uppercase letters
+# (pgmq/pgmq#593): use lower-case queue names, or PGMQ v1.13.1+.
+
 # Pop (atomic read + delete)
 msg = client.pop("queue_name")
 
@@ -855,6 +858,8 @@ client.convert_archive_partitioned("queue_name",
 )
 
 # Enable PostgreSQL NOTIFY for a queue (for LISTEN-based consumers)
+# On PGMQ < v1.13.1, NOTIFY never fires for a queue name with uppercase letters
+# (pgmq/pgmq#593): use lower-case queue names, or PGMQ v1.13.1+.
 client.enable_notify_insert("queue_name", throttle_interval_ms: 250)
 
 # Update the throttle interval without disabling/re-enabling the trigger

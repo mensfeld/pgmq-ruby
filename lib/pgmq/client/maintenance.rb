@@ -41,6 +41,8 @@ module PGMQ
       #
       # @example Disable throttling (notify on every insert)
       #   client.enable_notify_insert("orders", throttle_interval_ms: 0)
+      # @note On PGMQ older than v1.13.1, notifications never fire for a queue name with uppercase letters
+      #   (pgmq/pgmq#593). The call succeeds, but no NOTIFY is sent. Use a lower-case queue name, or PGMQ v1.13.1+.
       def enable_notify_insert(queue_name, throttle_interval_ms: 250)
         validate_queue_name!(queue_name)
 
@@ -203,6 +205,9 @@ module PGMQ
       #   end
       # @note Orchestration (retry loop, reconnect-on-drop, graceful shutdown) is the caller's responsibility.
       #   This method is a thin primitive - it listens once, waits, and returns.
+      # @note On PGMQ older than v1.13.1, no notification arrives for a queue name with uppercase letters
+      #   (pgmq/pgmq#593), so this method always waits for the full timeout. Use a lower-case queue name, or PGMQ
+      #   v1.13.1+.
       def wait_for_notify(queue_name, timeout: nil)
         validate_queue_name!(queue_name)
         # PGMQ trigger fires pg_notify('pgmq.q_<queue>.INSERT', NULL)
