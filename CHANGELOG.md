@@ -15,6 +15,12 @@
   `read_multi_with_poll`, rotating the read order each poll, sets `queue_name` on every yielded message and
   acknowledges each message on its own queue. With `max_attempts`, it reads one message per poll across all queues.
 
+### Metrics
+- **[Feature]** `PGMQ::Metrics` exposes `queue_visible_length` (messages whose visibility timeout has passed, PGMQ
+  v1.5.0+) and `default_partition_length` (estimated rows in the default partitions of a partitioned queue and its
+  archive, PGMQ v1.13.0+; `nil` for non-partitioned queues, non-zero means pg_partman maintenance is failing). Both
+  are raw values like the other fields, and `nil` on PGMQ versions that do not return them.
+
 ### Documentation
 - **[Fix]** YARD examples used a non-existent `msg.payload`; they now use `msg.message`.
 - **[Fix]** The README long-polling example now treats the `read_with_poll` result as an Array of messages.
