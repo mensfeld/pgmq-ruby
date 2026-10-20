@@ -86,17 +86,6 @@ describe PGMQ::Client::QueueManagement do
   end
 
   describe "#create_partitioned" do
-    def pg_partman_available?(client)
-      result = client.instance_eval do
-        with_connection do |conn|
-          conn.exec("SELECT 1 FROM pg_extension WHERE extname = 'pg_partman' LIMIT 1")
-        end
-      end
-      result.ntuples.positive?
-    rescue
-      false
-    end
-
     it "creates a partitioned queue and returns true" do
       skip "pg_partman not installed" unless pg_partman_available?(@client)
 

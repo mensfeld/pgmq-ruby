@@ -4,17 +4,6 @@ describe PGMQ::Client::Metrics do
   before { setup_client_and_queue }
   after { teardown_client_and_queue }
 
-  def pg_partman_available?(client)
-    result = client.instance_eval do
-      with_connection do |conn|
-        conn.exec("SELECT 1 FROM pg_extension WHERE extname = 'pg_partman' LIMIT 1")
-      end
-    end
-    result.ntuples.positive?
-  rescue
-    false
-  end
-
   describe "#metrics" do
     it "returns queue metrics" do
       # Send some messages

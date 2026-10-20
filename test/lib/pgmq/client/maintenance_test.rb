@@ -213,17 +213,6 @@ describe PGMQ::Client::Maintenance do
   end
 
   describe "#convert_archive_partitioned" do
-    def pg_partman_available?(client)
-      result = client.instance_eval do
-        with_connection do |conn|
-          conn.exec("SELECT 1 FROM pg_extension WHERE extname = 'pg_partman' LIMIT 1")
-        end
-      end
-      result.ntuples.positive?
-    rescue
-      false
-    end
-
     it "raises error for invalid queue name" do
       assert_raises(PGMQ::Errors::InvalidQueueNameError) do
         @client.convert_archive_partitioned("123invalid")

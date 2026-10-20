@@ -60,6 +60,16 @@ module DatabaseHelpers
     version[0] > 1 || (version[0] == 1 && version[1] >= 11)
   end
 
+  # Checks if the pg_partman extension is installed
+  def pg_partman_available?(client)
+    result = client.with_connection do |conn|
+      conn.exec("SELECT 1 FROM pg_extension WHERE extname = 'pg_partman' LIMIT 1")
+    end
+    result.ntuples.positive?
+  rescue
+    false
+  end
+
   # Alias for readability in different contexts
   alias_method :pgmq_supports_set_vt_timestamp?, :pgmq_supports_v1_11_features?
   alias_method :pgmq_supports_topic_routing?, :pgmq_supports_v1_11_features?
