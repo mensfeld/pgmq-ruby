@@ -17,7 +17,7 @@ module PGMQ
       # @example
       #   msg = client.read("orders", vt: 30)
       #   if msg
-      #     process(msg.payload)
+      #     process(msg.message)
       #     client.delete("orders", msg.msg_id)
       #   end
       #
@@ -60,7 +60,7 @@ module PGMQ
       # @example
       #   messages = client.read_batch("orders", vt: 30, qty: 10)
       #   messages.each do |msg|
-      #     process(msg.payload)
+      #     process(msg.message)
       #     client.delete("orders", msg.msg_id)
       #   end
       #

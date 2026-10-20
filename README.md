@@ -15,7 +15,7 @@ PGMQ-Ruby is a Ruby client for PGMQ (PostgreSQL Message Queue). It provides dire
 - **Like Sidekiq/Resque** - but without Redis, using PostgreSQL for both data and queues
 - **Like rdkafka-ruby** - a thin, efficient wrapper around the underlying system (PGMQ SQL functions)
 
-> **Architecture Note**: This library follows the rdkafka-ruby/Karafka pattern - `pgmq-ruby` is the low-level foundation, while higher-level features (job processing, Rails integration, retry strategies) will live in `pgmq-framework` (similar to how Karafka builds on rdkafka-ruby).
+> **Architecture Note**: This library follows the rdkafka-ruby/Karafka pattern - `pgmq-ruby` is the low-level foundation, while higher-level features (job processing, Rails integration, retry strategies, middleware) will live in `pgmq-framework` (similar to how Karafka builds on rdkafka-ruby). Like rdkafka-ruby's simple consumer, `pgmq-ruby` ships a minimal single-threaded [`PGMQ::Consumer`](#consumer) loop for one or more queues.
 
 ## Table of Contents
 
@@ -29,6 +29,7 @@ PGMQ-Ruby is a Ruby client for PGMQ (PostgreSQL Message Queue). It provides dire
   - [Sending Messages](#sending-messages)
   - [Reading Messages](#reading-messages)
   - [Grouped Reading](#grouped-reading)
+  - [Consumer](#consumer)
   - [Message Lifecycle](#message-lifecycle)
   - [Monitoring](#monitoring)
   - [Transaction Support](#transaction-support)
@@ -89,6 +90,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | **Ruby Enhancements** | Transaction Support | Atomic operations via `client.transaction do \|txn\|` | ✅ |
 | | Conditional Filtering | Server-side JSONB filtering with `conditional:` | ✅ |
 | | Multi-Queue Ops | Read/pop/delete/archive from multiple queues | ✅ |
+| | Consumer | Minimal single-threaded `PGMQ::Consumer` loop over one or more queues with ack on success | ✅ |
 | | Queue Validation | 48-character limit and name validation | ✅ |
 | | Connection Pooling | Thread-safe connection pool for concurrency | ✅ |
 | | Pluggable Serializers | JSON (default) with custom serializer support | ✅ |
@@ -577,8 +579,8 @@ msg = client.read("queue_name", vt: 30)
 # Read batch
 messages = client.read_batch("queue_name", vt: 30, qty: 10)
 
-# Read with long-polling
-msg = client.read_with_poll("queue_name",
+# Read with long-polling (returns an Array of messages)
+messages = client.read_with_poll("queue_name",
   vt: 30,
   qty: 1,
   max_poll_seconds: 5,
@@ -752,6 +754,57 @@ messages = client.read_with_poll("orders",
 CREATE INDEX idx_orders_status
   ON pgmq.q_orders USING gin ((message->'status'));
 ```
+
+### Consumer
+
+`PGMQ::Consumer` is a minimal, single-threaded consumer loop for one or more queues, similar to the simple consumer of rdkafka-ruby. It wraps an existing client (it does not close it), long-polls with `read_with_poll` (`read_multi_with_poll` for several queues), yields one message at a time and acknowledges it on its own queue when the block returns.
+
+```ruby
+client = PGMQ::Client.new(ENV.fetch("DATABASE_URL"))
+
+consumer = PGMQ::Consumer.new(client, "orders",
+  vt: 30,               # visibility timeout (seconds) of read messages
+  batch_size: 1,        # messages read per queue per poll (still yielded one at a time)
+  max_poll_seconds: 5,  # how long one poll waits for messages
+  poll_interval_ms: 100,
+  on_success: :delete,  # or :archive
+  max_attempts: nil     # nil = retry forever; N = archive once read_ct > N (needs batch_size: 1)
+)
+
+# stop only sets a flag, so it is safe in a signal trap
+trap("TERM") { consumer.stop }
+trap("INT")  { consumer.stop }
+
+consumer.each do |message|
+  process(JSON.parse(message.message))
+end # returns after stop, once the messages already read are done
+
+client.close
+```
+
+To consume several queues (up to 50) with one consumer, pass an Array of names, like subscribing an rdkafka-ruby consumer to several topics. Every yielded message has `queue_name` set:
+
+```ruby
+consumer = PGMQ::Consumer.new(client, %w[orders emails], vt: 30)
+
+consumer.each do |message|
+  case message.queue_name
+  when "orders" then process_order(message)
+  when "emails" then send_email(message)
+  end
+end
+```
+
+Semantics:
+
+- **Acknowledgement**: when the block returns, the message is deleted (or archived with `on_success: :archive`).
+- **Errors**: when the block raises, the message is not acknowledged, the loop stops and the error is re-raised. The message becomes visible again after `vt`. Retry by calling `each` again (e.g. from a supervisor).
+- **Retry limit**: with `max_attempts: N`, a message whose `read_ct` exceeds `N` is archived without being yielded. It requires `batch_size: 1`, and with several queues one message is then read per poll: every read raises `read_ct`, so messages released after another message failed would count a read they never got.
+- **Stopping**: `stop` takes effect once the messages already read in the current poll are processed, or after the current poll (up to `max_poll_seconds`) when the queue is empty. A stopped consumer stays stopped.
+- **Batches**: when the block raises, the messages of the batch that were not yielded yet are released (`vt` set to 0) right away.
+- **Delivery**: at-least-once. If processing takes longer than `vt`, another reader may receive the same message; extend it from the block with `client.set_vt(message.queue_name, message.msg_id, vt: 30)` for long jobs.
+- **Several queues**: one `read_multi_with_poll` query reads all queues. It polls from the client (sleeping `poll_interval_ms` between reads) instead of waiting on the server like `read_with_poll`. The read order rotates every poll, so a busy queue does not starve the others.
+- **Scope**: one thread. Run one consumer per thread or process to scale; consumers can share a client, and each needs its own connection from the client's pool while polling.
 
 ### Message Lifecycle
 

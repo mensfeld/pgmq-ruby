@@ -14,7 +14,7 @@ module PGMQ
       #
       # @example
       #   msg = client.pop("orders")
-      #   process(msg.payload) if msg
+      #   process(msg.message) if msg
       def pop(queue_name)
         validate_queue_name!(queue_name)
 
@@ -35,7 +35,7 @@ module PGMQ
       #
       # @example Pop up to 10 messages
       #   messages = client.pop_batch("orders", 10)
-      #   messages.each { |msg| process(msg.payload) }
+      #   messages.each { |msg| process(msg.message) }
       def pop_batch(queue_name, qty)
         validate_queue_name!(queue_name)
         return [] if qty <= 0
