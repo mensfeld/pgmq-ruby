@@ -19,8 +19,8 @@
 - **[Fix]** YARD examples used a non-existent `msg.payload`; they now use `msg.message`.
 - **[Fix]** The README long-polling example now treats the `read_with_poll` result as an Array of messages.
 - **[Fix]** The `enable_notify_insert` and `wait_for_notify` docs and the README now say that on PGMQ older than
-  v1.13.1, insert notifications never fire for a queue name with uppercase letters (pgmq/pgmq#593). Use lower-case
-  queue names, or PGMQ v1.13.1+.
+  v1.13.1, insert notifications never fire for a queue name with uppercase letters (pgmq/pgmq#593). Create queues with
+  lower-case names, or use PGMQ v1.13.1+.
 
 ### Transactions
 - **[Fix]** The transactional client yielded by `PGMQ::Client#transaction` now raises the new
