@@ -117,7 +117,8 @@ module PGMQ
     #
     # @yield [PG::Connection] a pooled, health-checked database connection
     # @return [Object] the return value of the block
-    # @raise [PGMQ::Errors::ConnectionError] if a connection cannot be obtained
+    # @raise [PGMQ::Errors::ConnectionError] if the block raises any `PG::Error` (the original is in `#cause`), or a
+    #   connection cannot be obtained
     #
     # @example Fire a custom NOTIFY on the PGMQ pool
     #   client.with_connection do |conn|

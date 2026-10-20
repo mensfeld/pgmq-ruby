@@ -148,7 +148,8 @@ module PGMQ
     #
     # @yield [PG::Connection] database connection
     # @return [Object] result of the block
-    # @raise [PGMQ::Errors::ConnectionError] if connection fails
+    # @raise [PGMQ::Errors::ConnectionError] if the block raises any `PG::Error` (the original is in `#cause`), or a
+    #   connection cannot be obtained
     def with_connection
       retries = @auto_reconnect ? 1 : 0
       attempts = 0
