@@ -1,15 +1,14 @@
 # frozen_string_literal: true
 
-# Example: Minimal Consumer
+# Example: Minimal Consumer - single queue
 #
-# Demonstrates PGMQ::Consumer, the single-threaded consumer loop:
+# Demonstrates PGMQ::Consumer, the single-threaded consumer loop, on one queue:
 # 1. Process messages with `each` (deleted after the block returns)
 # 2. Retry a failing message after its visibility timeout, then give up via max_attempts
 # 3. Stop gracefully on SIGTERM from a signal trap
-# 4. Consume several queues with one consumer
 #
 
-ExampleHelper.run_example("Minimal Consumer") do |client, queues, _interrupted|
+ExampleHelper.run_example("Minimal Consumer - single queue") do |client, queues, _interrupted|
   queue = ExampleHelper.unique_queue_name("consumer")
   queues << queue
   client.create(queue)
@@ -95,25 +94,4 @@ ExampleHelper.run_example("Minimal Consumer") do |client, queues, _interrupted|
   raise "Expected jobs 0..2, got #{jobs.inspect}" unless jobs == [0, 1, 2]
   raise "Worker did not stop gracefully" unless status.success? && last_line == "stopped"
   raise "Queue should be empty" unless client.read(queue, vt: 0).nil?
-
-  # 4. Several queues in one consumer
-  emails = ExampleHelper.unique_queue_name("consumer_emails")
-  queues << emails
-  client.create(emails)
-
-  3.times { |i| client.produce(queue, ExampleHelper.to_json({ n: i })) }
-  3.times { |i| client.produce(emails, ExampleHelper.to_json({ n: i })) }
-
-  multi = PGMQ::Consumer.new(client, [queue, emails], vt: 30, max_poll_seconds: 1)
-  received = []
-
-  multi.each do |message|
-    received << [message.queue_name, ExampleHelper.parse_message(message)["n"]]
-    multi.stop if received.size == 6
-  end
-
-  puts "Received from several queues: #{received.inspect}"
-  expected = [queue, emails].flat_map { |name| [0, 1, 2].map { |n| [name, n] } }
-  raise "Expected #{expected.inspect}, got #{received.inspect}" unless received.sort == expected.sort
-  raise "Queues should be empty" unless client.read(queue, vt: 0).nil? && client.read(emails, vt: 0).nil?
 end
