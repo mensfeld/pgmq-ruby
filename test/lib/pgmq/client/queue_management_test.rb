@@ -86,6 +86,8 @@ describe PGMQ::Client::QueueManagement do
   end
 
   describe "#create_partitioned" do
+    after { @client.drop_queue(@default_queue) if @default_queue }
+
     it "creates a partitioned queue and returns true" do
       skip "pg_partman not installed" unless pg_partman_available?(@client)
 
@@ -131,7 +133,7 @@ describe PGMQ::Client::QueueManagement do
     it "pre-makes the requested number of partitions for the queue and archive" do
       skip "pg_partman not installed" unless pg_partman_available?(@client)
 
-      default_queue = unique_queue_name
+      default_queue = @default_queue = unique_queue_name
       @client.create_partitioned(default_queue,
         partition_interval: "10000",
         retention_interval: "100000")
@@ -145,8 +147,6 @@ describe PGMQ::Client::QueueManagement do
       assert_equal default_count + 4, partition_count(@client, "pgmq.q_#{@queue_name}")
       assert_equal partition_count(@client, "pgmq.a_#{default_queue}") + 4,
         partition_count(@client, "pgmq.a_#{@queue_name}")
-    ensure
-      @client.drop_queue(default_queue) if default_queue
     end
 
     it "keeps the 3-argument SQL call when premake is not given" do
