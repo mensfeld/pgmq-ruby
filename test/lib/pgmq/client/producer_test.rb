@@ -39,11 +39,11 @@ describe PGMQ::Client::Producer do
       assert_equal({ "test" => "data" }, JSON.parse(msg.message))
     end
 
-    it "rounds a float delay up to whole seconds" do
-      { 1.5 => 2, 1.2 => 2, 1.0 => 1 }.each do |delay, expected|
+    it "supports a float delay" do
+      [1.5, 1.2, 1.0].each do |delay|
         msg_id = @client.produce(@queue_name, to_json_msg({ delay: delay }), delay: delay)
 
-        assert_visibility_delay(expected, @client, @queue_name, msg_id)
+        assert_visibility_delay(delay, @client, @queue_name, msg_id)
       end
 
       assert_nil @client.read(@queue_name, vt: 30)
@@ -122,13 +122,13 @@ describe PGMQ::Client::Producer do
         assert_equal({ "correlation_id" => "req-001" }, JSON.parse(msg.headers))
       end
 
-      it "rounds a float delay up to whole seconds" do
+      it "supports a float delay" do
         headers = to_json_msg({ correlation_id: "req-002" })
 
-        { 1.5 => 2, 1.0 => 1 }.each do |delay, expected|
+        [1.5, 1.0].each do |delay|
           msg_id = @client.produce(@queue_name, to_json_msg({ delay: delay }), headers: headers, delay: delay)
 
-          assert_visibility_delay(expected, @client, @queue_name, msg_id)
+          assert_visibility_delay(delay, @client, @queue_name, msg_id)
         end
 
         assert_nil @client.read(@queue_name, vt: 30)
@@ -241,14 +241,14 @@ describe PGMQ::Client::Producer do
       assert_equal 2, read_messages.size
     end
 
-    it "rounds a float batch delay up to whole seconds" do
+    it "supports a float batch delay" do
       messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
 
-      { 1.5 => 2, 1.0 => 1 }.each do |delay, expected|
+      [1.5, 1.0].each do |delay|
         msg_ids = @client.produce_batch(@queue_name, messages, delay: delay)
 
         assert_equal 2, msg_ids.size
-        msg_ids.each { |msg_id| assert_visibility_delay(expected, @client, @queue_name, msg_id) }
+        msg_ids.each { |msg_id| assert_visibility_delay(delay, @client, @queue_name, msg_id) }
       end
 
       assert_nil @client.read(@queue_name, vt: 30)
@@ -356,15 +356,15 @@ describe PGMQ::Client::Producer do
         end
       end
 
-      it "rounds a float batch delay with headers up to whole seconds" do
+      it "supports a float batch delay with headers" do
         messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
         headers = [to_json_msg({ correlation_id: "f-1" }), to_json_msg({ correlation_id: "f-2" })]
 
-        { 1.5 => 2, 1.0 => 1 }.each do |delay, expected|
+        [1.5, 1.0].each do |delay|
           msg_ids = @client.produce_batch(@queue_name, messages, headers: headers, delay: delay)
 
           assert_equal 2, msg_ids.size
-          msg_ids.each { |msg_id| assert_visibility_delay(expected, @client, @queue_name, msg_id) }
+          msg_ids.each { |msg_id| assert_visibility_delay(delay, @client, @queue_name, msg_id) }
         end
 
         assert_nil @client.read(@queue_name, vt: 30)

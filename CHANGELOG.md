@@ -30,9 +30,9 @@
 
 ### Producer
 - **[Fix]** A Float `delay:` in `produce`, `produce_batch`, `produce_topic` and `produce_batch_topic` no longer fails
-  with `PGMQ::Errors::ConnectionError` (`invalid input syntax for type integer`). PGMQ takes the delay as whole
-  seconds, so a Float is now rounded up (`1.5` becomes `2`): a message is never visible earlier than asked. Integer
-  and `Time` delays are unchanged.
+  with `PGMQ::Errors::ConnectionError` (`invalid input syntax for type integer`). A fractional delay such as `1.5` now
+  makes the message visible 1.5 seconds later: it is sent to PGMQ's `timestamptz` overload as `clock_timestamp()`
+  plus the delay (PGMQ v1.10.0+), the same way PGMQ handles an integer delay. Integer and `Time` delays are unchanged.
 
 ### Transactions
 - **[Fix]** The transactional client yielded by `PGMQ::Client#transaction` now raises the new

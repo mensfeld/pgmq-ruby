@@ -162,15 +162,24 @@ module PGMQ
       nil
     end
 
-    # Rounds a Numeric delay up to whole seconds for PGMQ's integer delay argument
+    # Builds the SQL argument and bind value for a +delay:+ given in seconds or as an absolute Time
     #
-    # PostgreSQL rejects a Float such as +1.5+ for an +integer+ bind, so it is rounded up: a message is never
-    # visible earlier than asked. Integer and Time delays are returned unchanged.
+    # PostgreSQL rejects a Float such as +1.5+ for an +integer+ bind, so a non-Integer Numeric is passed to the
+    # +timestamptz+ overload as +clock_timestamp()+ plus the delay. This is how PGMQ itself turns an integer delay
+    # into a visibility time, so the database clock is used in both cases.
     #
     # @param delay [Numeric, Time] delay in seconds or an absolute Time
-    # @return [Integer, Time] whole-second delay or the given Time
-    def normalize_delay(delay)
-      delay.is_a?(Numeric) ? delay.ceil : delay
+    # @param index [Integer] position of the delay bind parameter in the query
+    # @return [Array(String, Object)] SQL argument and its bind value
+    def delay_argument(delay, index)
+      case delay
+      when Integer
+        ["$#{index}::integer", delay]
+      when Numeric
+        ["clock_timestamp() + make_interval(secs => $#{index}::double precision)", delay.to_f]
+      else
+        ["$#{index}::timestamptz", delay.to_time.utc.iso8601(6)]
+      end
     end
   end
 end

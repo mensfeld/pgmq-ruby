@@ -34,7 +34,7 @@ module DatabaseHelpers
     end
   end
 
-  # Asserts that a message becomes visible the given whole seconds after it was enqueued (vt - enqueued_at)
+  # Asserts that a message becomes visible the given seconds after it was enqueued (vt - enqueued_at)
   def assert_visibility_delay(expected, client, queue_name, msg_id)
     result = client.with_connection do |conn|
       conn.exec_params(
@@ -47,7 +47,7 @@ module DatabaseHelpers
     delay = result[0]["delay"].to_f
 
     assert_operator delay, :>=, expected
-    assert_operator delay, :<, expected + 0.5
+    assert_operator delay, :<, expected + 0.25
   end
 
   # Returns the PGMQ extension version as an array [major, minor, patch]
