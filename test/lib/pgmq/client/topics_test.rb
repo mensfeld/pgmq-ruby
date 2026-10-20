@@ -130,6 +130,17 @@ describe PGMQ::Client::Topics do
 
       refute_nil msg
     end
+
+    it "rounds a float delay up to whole seconds" do
+      { 1.5 => 2, 1.0 => 1 }.each.with_index(1) do |(delay, expected), msg_id|
+        count = @client.produce_topic("orders.new", to_json_msg({ delayed: true }), delay: delay)
+
+        assert_equal 1, count
+        assert_visibility_delay(expected, @client, @queue_name, msg_id)
+      end
+
+      assert_nil @client.read(@queue_name, vt: 30)
+    end
   end
 
   describe "#produce_batch_topic" do

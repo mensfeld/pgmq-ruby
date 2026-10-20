@@ -70,7 +70,8 @@ module PGMQ
       # @param routing_key [String] dot-separated routing key (e.g., "orders.new.priority")
       # @param message [String] message as JSON string
       # @param headers [String, nil] optional headers as JSON string
-      # @param delay [Integer] delay in seconds before message becomes visible
+      # @param delay [Numeric] delay in seconds before message becomes visible (integer or float; a float is rounded
+      #   up to whole seconds)
       # @return [Integer] count of queues the message was delivered to
       #
       # @example Basic topic send
@@ -82,6 +83,8 @@ module PGMQ
       #     headers: '{"trace_id":"abc"}',
       #     delay: 30)
       def produce_topic(routing_key, message, headers: nil, delay: 0)
+        delay = normalize_delay(delay)
+
         result = with_connection do |conn|
           if headers
             conn.exec_params(
