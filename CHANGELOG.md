@@ -39,6 +39,10 @@
   with `PGMQ::Errors::ConnectionError` (`invalid input syntax for type integer`). A fractional delay such as `1.5` now
   makes the message visible 1.5 seconds later: it is sent to PGMQ's `timestamptz` overload as `clock_timestamp()`
   plus the delay (PGMQ v1.10.0+), the same way PGMQ handles an integer delay. Integer and `Time` delays are unchanged.
+- **[Fix]** `produce` and `produce_batch` raise `ArgumentError` when a message is not a String (including `nil`) or
+  headers are neither a String nor `nil`. Previously a Hash or `nil` was bound as SQL NULL, so the call returned a
+  `msg_id` but the message or headers were stored as NULL without an error. Inside `transaction` the error is wrapped
+  in `PGMQ::Errors::ConnectionError` like any other error. Serialize payloads to JSON before producing.
 
 ### Transactions
 - **[Fix]** The transactional client yielded by `PGMQ::Client#transaction` now raises the new
@@ -48,6 +52,7 @@
   `TransactionError` propagates from `#transaction` as is, not wrapped in `PGMQ::Errors::ConnectionError`.
 
 ### Testing
+- **[Fix]** Transaction tests produce JSON strings instead of Hashes, which were stored as NULL.
 - **[Change]** Add `spec/integration/concurrency_overlap_spec.rb`, which proves concurrency by asserting overlapping
   execution intervals (not order or absolute timings): threads and fibers overlap on long polls and `LISTEN` waits,
   the reactor keeps running, a pool of one serializes work, and the transactional client rejects other threads and

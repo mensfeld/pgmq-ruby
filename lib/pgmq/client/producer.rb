@@ -16,6 +16,7 @@ module PGMQ
       #   a float such as 1.5 needs PGMQ v1.10.0+), or an absolute Time at which the message becomes visible,
       #   including ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [String] message ID as string
+      # @raise [ArgumentError] if message is not a String, or headers is neither a String nor nil
       #
       # @example Basic produce
       #   msg_id = client.produce("orders", '{"order_id":123,"total":99.99}')
@@ -44,6 +45,7 @@ module PGMQ
         delay: 0
       )
         validate_queue_name!(queue_name)
+        validate_payload!(message, headers)
         delay_sql, delay_value = delay_argument(delay, headers ? 4 : 3)
 
         result = with_connection do |conn|
@@ -72,7 +74,8 @@ module PGMQ
       #   a float such as 1.5 needs PGMQ v1.10.0+), or an absolute Time at which the messages become visible,
       #   including ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [Array<String>] array of message IDs
-      # @raise [ArgumentError] if headers array length doesn't match messages length
+      # @raise [ArgumentError] if headers array length doesn't match messages length, a message is not a String,
+      #   or a header is neither a String nor nil
       #
       # @example Basic batch produce
       #   ids = client.produce_batch("orders", [
@@ -105,6 +108,8 @@ module PGMQ
             "headers array length (#{headers.length}) must match messages array length (#{messages.length})"
         end
 
+        messages.each_with_index { |message, index| validate_payload!(message, headers && headers[index]) }
+
         result = with_connection do |conn|
           encoder = PG::TextEncoder::Array.new
           encoded_messages = encoder.encode(messages)
@@ -126,6 +131,24 @@ module PGMQ
         end
 
         result.map { |row| row["send_batch"] }
+      end
+
+      private
+
+      # Validates the message and headers types before they are bound
+      #
+      # The pg gem reads a Hash bind parameter as a parameter spec and binds +nil+ as SQL NULL, so a non-String value
+      # would be stored as NULL without an error.
+      #
+      # @param message [Object] message to validate
+      # @param headers [Object] headers to validate
+      # @return [void]
+      # @raise [ArgumentError] if message is not a String, or headers is neither a String nor nil
+      def validate_payload!(message, headers)
+        raise ArgumentError, "message must be a JSON String, got #{message.class}" unless message.is_a?(String)
+        return if headers.nil? || headers.is_a?(String)
+
+        raise ArgumentError, "headers must be a JSON String or nil, got #{headers.class}"
       end
     end
   end

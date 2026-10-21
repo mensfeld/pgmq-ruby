@@ -193,6 +193,50 @@ describe PGMQ::Client::Producer do
         assert_nil msg.headers
       end
     end
+
+    context "with payload types" do
+      it "raises ArgumentError for a Hash message" do
+        e = assert_raises(ArgumentError) do
+          @client.produce(@queue_name, { "order_id" => 1 })
+        end
+        assert_match(/message must be a JSON String, got Hash/, e.message)
+        assert_nil @client.read(@queue_name, vt: 30)
+      end
+
+      it "raises ArgumentError for a nil message" do
+        e = assert_raises(ArgumentError) do
+          @client.produce(@queue_name, nil)
+        end
+        assert_match(/message must be a JSON String, got NilClass/, e.message)
+        assert_nil @client.read(@queue_name, vt: 30)
+      end
+
+      it "raises ArgumentError for Hash headers" do
+        e = assert_raises(ArgumentError) do
+          @client.produce(@queue_name, to_json_msg({ a: 1 }), headers: { "trace" => "t" })
+        end
+        assert_match(/headers must be a JSON String or nil, got Hash/, e.message)
+        assert_nil @client.read(@queue_name, vt: 30)
+      end
+
+      it "rejects a Hash message inside a transaction" do
+        e = assert_raises(PGMQ::Errors::ConnectionError) do
+          @client.transaction do |txn|
+            txn.produce(@queue_name, { "order_id" => 1 })
+          end
+        end
+        assert_match(/message must be a JSON String, got Hash/, e.message)
+        assert_nil @client.read(@queue_name, vt: 30)
+      end
+
+      it "accepts a String message with explicit nil headers" do
+        @client.produce(@queue_name, to_json_msg({ a: 1 }), headers: nil)
+        msg = @client.read(@queue_name, vt: 30)
+
+        assert_equal({ "a" => 1 }, JSON.parse(msg.message))
+        assert_nil msg.headers
+      end
+    end
   end
 
   describe "#send_batch" do
@@ -486,6 +530,43 @@ describe PGMQ::Client::Producer do
           assert_equal "1.0", parsed_headers["metadata"]["version"]
           assert_kind_of Hash, parsed_headers["tracing"]
         end
+      end
+    end
+
+    context "with payload types" do
+      it "raises ArgumentError for a nil message" do
+        e = assert_raises(ArgumentError) do
+          @client.produce_batch(@queue_name, [to_json_msg({ id: 1 }), nil])
+        end
+        assert_match(/message must be a JSON String, got NilClass/, e.message)
+        assert_nil @client.read(@queue_name, vt: 30)
+      end
+
+      it "raises ArgumentError for a Hash message" do
+        e = assert_raises(ArgumentError) do
+          @client.produce_batch(@queue_name, [{ "id" => 1 }])
+        end
+        assert_match(/message must be a JSON String, got Hash/, e.message)
+      end
+
+      it "raises ArgumentError for a Hash header" do
+        messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
+
+        e = assert_raises(ArgumentError) do
+          @client.produce_batch(@queue_name, messages, headers: [to_json_msg({ h: 1 }), { "h" => 2 }])
+        end
+        assert_match(/headers must be a JSON String or nil, got Hash/, e.message)
+        assert_nil @client.read(@queue_name, vt: 30)
+      end
+
+      it "accepts String and nil headers" do
+        messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
+
+        @client.produce_batch(@queue_name, messages, headers: [to_json_msg({ h: 1 }), nil])
+        read_messages = @client.read_batch(@queue_name, vt: 30, qty: 2).sort_by { |m| m.msg_id.to_i }
+
+        assert_equal({ "h" => 1 }, JSON.parse(read_messages[0].headers))
+        assert_nil read_messages[1].headers
       end
     end
   end
