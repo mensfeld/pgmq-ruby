@@ -115,10 +115,8 @@ describe PGMQ::Client::QueueManagement do
     end
 
     def partition_count(client, table)
-      result = client.instance_eval do
-        with_connection do |conn|
-          conn.exec_params("SELECT count(*) FROM pg_inherits WHERE inhparent = $1::regclass", [table])
-        end
+      result = client.with_connection do |conn|
+        conn.exec_params("SELECT count(*) FROM pg_inherits WHERE inhparent = $1::regclass", [table])
       end
       result[0]["count"].to_i
     end
@@ -133,8 +131,8 @@ describe PGMQ::Client::QueueManagement do
     it "pre-makes the requested number of partitions for the queue and archive" do
       skip "pg_partman not installed" unless pg_partman_available?(@client)
 
-      default_queue = @default_queue = unique_queue_name
-      @client.create_partitioned(default_queue,
+      @default_queue = unique_queue_name("premake_default")
+      @client.create_partitioned(@default_queue,
         partition_interval: "10000",
         retention_interval: "100000")
       @client.create_partitioned(@queue_name,
@@ -142,10 +140,10 @@ describe PGMQ::Client::QueueManagement do
         retention_interval: "100000",
         premake: 8)
 
-      default_count = partition_count(@client, "pgmq.q_#{default_queue}")
+      default_count = partition_count(@client, "pgmq.q_#{@default_queue}")
 
       assert_equal default_count + 4, partition_count(@client, "pgmq.q_#{@queue_name}")
-      assert_equal partition_count(@client, "pgmq.a_#{default_queue}") + 4,
+      assert_equal partition_count(@client, "pgmq.a_#{@default_queue}") + 4,
         partition_count(@client, "pgmq.a_#{@queue_name}")
     end
 
