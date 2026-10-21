@@ -63,7 +63,7 @@ module PGMQ
       #   {DEFAULT_ARCHIVE_SETTINGS}
       # @return [void]
       # @raise [PGMQ::Errors::AutovacuumSettingsInvalidError] if queue_settings or archive_settings has an unknown
-      #   storage parameter
+      #   storage parameter or a value that is not numeric
       # @raise [PGMQ::Errors::InvalidQueueNameError] if the queue name is invalid
       # @raise [PGMQ::Errors::ConnectionError] if the database operation fails (e.g. the queue does not exist)
       #

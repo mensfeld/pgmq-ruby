@@ -66,9 +66,10 @@
   headers failed in SQL with `PGMQ::Errors::ConnectionError` before), and `tune_autovacuum` checks the queue and
   archive settings before it changes any table (an unknown archive setting raised only after the queue table was
   changed). A setting value that is not numeric raises `PGMQ::Errors::AutovacuumSettingsInvalidError` too, also before
-  any table changes (it raised `ArgumentError` from `Float()` or `Integer()`). Two calls that returned without an
-  error now raise a validation error: `produce_batch` and `produce_batch_topic` with an empty messages Array and
-  non-empty or String headers (they returned `[]`), and `tune_autovacuum` (and `create` with `tune_autovacuum:`) with
+  any table changes (it raised `ArgumentError` from `Float()` or `Integer()` for a String, `TypeError` for other values
+  such as `nil` or `true`, so `rescue TypeError` no longer catches it). Two calls that returned without an error now
+  raise a validation error: `produce_batch` and `produce_batch_topic` with an empty messages Array and non-empty or
+  String headers (they returned `[]`), and `tune_autovacuum` (and `create` with `tune_autovacuum:`) with
   `archive: false` and an unknown or non-numeric archive setting (it ignored the archive settings).
 
 ### Transactions
