@@ -70,7 +70,8 @@ module PGMQ
       # @param routing_key [String] dot-separated routing key (e.g., "orders.new.priority")
       # @param message [String] message as JSON string
       # @param headers [String, nil] optional headers as JSON string
-      # @param delay [Integer] delay in seconds before message becomes visible
+      # @param delay [Numeric] delay in seconds before message becomes visible (integer or float; a float such as
+      #   1.5 needs PGMQ v1.10.0+)
       # @return [Integer] count of queues the message was delivered to
       #
       # @example Basic topic send
@@ -82,6 +83,11 @@ module PGMQ
       #     headers: '{"trace_id":"abc"}',
       #     delay: 30)
       def produce_topic(routing_key, message, headers: nil, delay: 0)
+        # send_topic takes whole seconds only, so a fractional delay goes through send_batch_topic
+        if delay.is_a?(Numeric) && !delay.integer?
+          return produce_batch_topic(routing_key, [message], headers: headers && [headers], delay: delay).size
+        end
+
         result = with_connection do |conn|
           if headers
             conn.exec_params(
@@ -111,9 +117,9 @@ module PGMQ
       # @param routing_key [String] dot-separated routing key
       # @param messages [Array<String>] array of message payloads as JSON strings
       # @param headers [Array<String>, nil] optional array of headers as JSON strings
-      # @param delay [Numeric, Time] delay in seconds before messages become visible (integer or float),
-      #   or an absolute Time at which the messages become visible, including ActiveSupport::TimeWithZone
-      #   (PGMQ v1.10.0+)
+      # @param delay [Numeric, Time] delay in seconds before messages become visible (integer or float;
+      #   a float such as 1.5 needs PGMQ v1.10.0+), or an absolute Time at which the messages become visible,
+      #   including ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [Array<Hash>] array of hashes with :queue_name and :msg_id
       #
       # @example Batch topic send
@@ -134,32 +140,23 @@ module PGMQ
           encoder = PG::TextEncoder::Array.new
           encoded_messages = encoder.encode(messages)
 
-          if headers && !delay.is_a?(Numeric)
+          delay_sql, delay_value = delay_argument(delay, headers ? 4 : 3)
+
+          if headers
             encoded_headers = encoder.encode(headers)
             conn.exec_params(
-              "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::jsonb[], $4::timestamptz)",
-              [routing_key, encoded_messages, encoded_headers, delay.to_time.utc.iso8601(6)]
+              "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::jsonb[], #{delay_sql})",
+              [routing_key, encoded_messages, encoded_headers, delay_value]
             )
-          elsif headers
-            encoded_headers = encoder.encode(headers)
-            conn.exec_params(
-              "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::jsonb[], $4::integer)",
-              [routing_key, encoded_messages, encoded_headers, delay]
-            )
-          elsif !delay.is_a?(Numeric)
-            conn.exec_params(
-              "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::timestamptz)",
-              [routing_key, encoded_messages, delay.to_time.utc.iso8601(6)]
-            )
-          elsif delay > 0
-            conn.exec_params(
-              "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::integer)",
-              [routing_key, encoded_messages, delay]
-            )
-          else
+          elsif delay.is_a?(Integer) && delay <= 0
             conn.exec_params(
               "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[])",
               [routing_key, encoded_messages]
+            )
+          else
+            conn.exec_params(
+              "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], #{delay_sql})",
+              [routing_key, encoded_messages, delay_value]
             )
           end
         end

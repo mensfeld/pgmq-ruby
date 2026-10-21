@@ -161,5 +161,25 @@ module PGMQ
       QueueName.validate!(queue_name)
       nil
     end
+
+    # Builds the SQL argument and bind value for a +delay:+ given in seconds or as an absolute Time
+    #
+    # PostgreSQL rejects a Float such as +1.5+ for an +integer+ bind, so a non-Integer Numeric is passed to the
+    # +timestamptz+ overload as +clock_timestamp()+ plus the delay. This is how PGMQ itself turns an integer delay
+    # into a visibility time, so the database clock is used in both cases.
+    #
+    # @param delay [Numeric, Time] delay in seconds or an absolute Time
+    # @param index [Integer] position of the delay bind parameter in the query
+    # @return [Array(String, Object)] SQL argument and its bind value
+    def delay_argument(delay, index)
+      case delay
+      when Integer
+        ["$#{index}::integer", delay]
+      when Numeric
+        ["clock_timestamp() + make_interval(secs => $#{index}::double precision)", delay.to_f]
+      else
+        ["$#{index}::timestamptz", delay.to_time.utc.iso8601(6)]
+      end
+    end
   end
 end

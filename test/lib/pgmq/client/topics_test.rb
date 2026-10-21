@@ -130,6 +130,37 @@ describe PGMQ::Client::Topics do
 
       refute_nil msg
     end
+
+    it "supports a float delay" do
+      [1.5, 1.0].each.with_index(1) do |delay, msg_id|
+        count = @client.produce_topic("orders.new", to_json_msg({ delayed: true }), delay: delay)
+
+        assert_equal 1, count
+        assert_visibility_delay(delay, @client, @queue_name, msg_id)
+      end
+
+      assert_nil @client.read(@queue_name, vt: 30)
+    end
+
+    it "supports a float delay with headers" do
+      count = @client.produce_topic("orders.new",
+        to_json_msg({ delayed: true }),
+        headers: to_json_msg({ trace_id: "f-1" }),
+        delay: 1.5)
+
+      assert_equal 1, count
+      assert_visibility_delay(1.5, @client, @queue_name, 1)
+      assert_nil @client.read(@queue_name, vt: 30)
+
+      sleep 1.75
+      msg = @client.read(@queue_name, vt: 30)
+
+      assert_equal "f-1", JSON.parse(msg.headers)["trace_id"]
+    end
+
+    it "returns 0 for a float delay when no queues match" do
+      assert_equal 0, @client.produce_topic("unmatched.key", to_json_msg({ data: "test" }), delay: 1.5)
+    end
   end
 
   describe "#produce_batch_topic" do
@@ -164,6 +195,33 @@ describe PGMQ::Client::Topics do
           headers: [to_json_msg({ h: 1 })])
       end
       assert_match(/headers array length/, e.message)
+    end
+
+    it "supports a float delay" do
+      [1.5, 1.0].each do |delay|
+        results = @client.produce_batch_topic("orders.new",
+          [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })],
+          delay: delay)
+
+        assert_equal 2, results.size
+        results.each { |r| assert_visibility_delay(delay, @client, r[:queue_name], r[:msg_id]) }
+      end
+
+      assert_nil @client.read(@queue_name, vt: 30)
+    end
+
+    it "supports a float delay with headers" do
+      [1.5, 1.0].each do |delay|
+        results = @client.produce_batch_topic("orders.new",
+          [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })],
+          headers: [to_json_msg({ h: "a" }), to_json_msg({ h: "b" })],
+          delay: delay)
+
+        assert_equal 2, results.size
+        results.each { |r| assert_visibility_delay(delay, @client, r[:queue_name], r[:msg_id]) }
+      end
+
+      assert_nil @client.read(@queue_name, vt: 30)
     end
 
     it "supports absolute timestamp delay (Time)" do

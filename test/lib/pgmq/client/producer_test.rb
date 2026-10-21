@@ -39,6 +39,16 @@ describe PGMQ::Client::Producer do
       assert_equal({ "test" => "data" }, JSON.parse(msg.message))
     end
 
+    it "supports a float delay" do
+      [1.5, 1.2, 1.0].each do |delay|
+        msg_id = @client.produce(@queue_name, to_json_msg({ delay: delay }), delay: delay)
+
+        assert_visibility_delay(delay, @client, @queue_name, msg_id)
+      end
+
+      assert_nil @client.read(@queue_name, vt: 30)
+    end
+
     it "sends message with absolute timestamp delay (Time)" do
       future = Time.now + 2
 
@@ -110,6 +120,18 @@ describe PGMQ::Client::Producer do
         refute_nil msg
         assert_equal({ "order_id" => 789 }, JSON.parse(msg.message))
         assert_equal({ "correlation_id" => "req-001" }, JSON.parse(msg.headers))
+      end
+
+      it "supports a float delay" do
+        headers = to_json_msg({ correlation_id: "req-002" })
+
+        [1.5, 1.0].each do |delay|
+          msg_id = @client.produce(@queue_name, to_json_msg({ delay: delay }), headers: headers, delay: delay)
+
+          assert_visibility_delay(delay, @client, @queue_name, msg_id)
+        end
+
+        assert_nil @client.read(@queue_name, vt: 30)
       end
 
       it "sends a message with headers and absolute timestamp delay (Time)" do
@@ -219,6 +241,19 @@ describe PGMQ::Client::Producer do
       assert_equal 2, read_messages.size
     end
 
+    it "supports a float batch delay" do
+      messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
+
+      [1.5, 1.0].each do |delay|
+        msg_ids = @client.produce_batch(@queue_name, messages, delay: delay)
+
+        assert_equal 2, msg_ids.size
+        msg_ids.each { |msg_id| assert_visibility_delay(delay, @client, @queue_name, msg_id) }
+      end
+
+      assert_nil @client.read(@queue_name, vt: 30)
+    end
+
     it "sends batch with absolute timestamp delay (Time)" do
       messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
       future = Time.now + 2
@@ -319,6 +354,20 @@ describe PGMQ::Client::Producer do
 
           assert_match(/corr-\d/, parsed_headers["correlation_id"])
         end
+      end
+
+      it "supports a float batch delay with headers" do
+        messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
+        headers = [to_json_msg({ correlation_id: "f-1" }), to_json_msg({ correlation_id: "f-2" })]
+
+        [1.5, 1.0].each do |delay|
+          msg_ids = @client.produce_batch(@queue_name, messages, headers: headers, delay: delay)
+
+          assert_equal 2, msg_ids.size
+          msg_ids.each { |msg_id| assert_visibility_delay(delay, @client, @queue_name, msg_id) }
+        end
+
+        assert_nil @client.read(@queue_name, vt: 30)
       end
 
       it "sends batch with headers and absolute timestamp delay (Time)" do
