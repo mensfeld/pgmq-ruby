@@ -39,12 +39,13 @@
   with `PGMQ::Errors::ConnectionError` (`invalid input syntax for type integer`). A fractional delay such as `1.5` now
   makes the message visible 1.5 seconds later: it is sent to PGMQ's `timestamptz` overload as `clock_timestamp()`
   plus the delay (PGMQ v1.10.0+), the same way PGMQ handles an integer delay. Integer and `Time` delays are unchanged.
-- **[Fix]** `produce` and `produce_batch` raise `ArgumentError` when a message is not a String (including `nil`) or
-  headers are neither a String nor `nil`. Previously a Hash or `nil` was bound as SQL NULL, so the call returned a
-  `msg_id` but the message or headers were stored as NULL without an error. Any other non-String value now raises
-  too, including Integer, Float, `true`/`false` and Array values that were stored as JSON before, and Hash values on a
-  connection with a query type map (`PG::BasicTypeMapForQueries`), which were stored as JSON objects. The error
-  message names the invalid key, for example `{"messages.1.message": "must be a JSON String"}` for a batch. Inside
+- **[Breaking]** `produce` and `produce_batch` raise `ArgumentError` when a message is not a String (including
+  `nil`) or headers are neither a String nor `nil`. Previously a Hash or `nil` was bound as SQL NULL, so the call
+  returned a `msg_id` but the message or headers were stored as NULL without an error. Any other non-String value now
+  raises too, including Integer, Float, `true` and Array values that were stored as JSON before, `false` headers that
+  were dropped, and Hash values on a connection with a query type map (`PG::BasicTypeMapForQueries`), which were
+  stored as JSON objects. The error message names the invalid key (`message` or `headers`; in a batch
+  `messages.<index>.message` or `messages.<index>.headers`) and the reason, such as `must be a JSON String`. Inside
   `transaction` the error is wrapped in `PGMQ::Errors::ConnectionError` like any other error. Serialize payloads to
   JSON before producing. The check is the new `PGMQ::Contracts::Message`, built on `PGMQ::Contractable`, the contract
   layer extracted from karafka-core (no new dependency).

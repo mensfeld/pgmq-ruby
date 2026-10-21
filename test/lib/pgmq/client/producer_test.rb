@@ -199,7 +199,7 @@ describe PGMQ::Client::Producer do
         e = assert_raises(ArgumentError) do
           @client.produce(@queue_name, { "order_id" => 1 })
         end
-        assert_match(/message: "must be a JSON String"/, e.message)
+        assert_equal({ message: "must be a JSON String" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
@@ -207,7 +207,7 @@ describe PGMQ::Client::Producer do
         e = assert_raises(ArgumentError) do
           @client.produce(@queue_name, nil)
         end
-        assert_match(/message: "must be a JSON String"/, e.message)
+        assert_equal({ message: "must be a JSON String" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
@@ -216,7 +216,7 @@ describe PGMQ::Client::Producer do
           e = assert_raises(ArgumentError) do
             @client.produce(@queue_name, message)
           end
-          assert_match(/message: "must be a JSON String"/, e.message)
+          assert_equal({ message: "must be a JSON String" }.to_s, e.message)
         end
         assert_nil @client.read(@queue_name, vt: 30)
       end
@@ -225,7 +225,7 @@ describe PGMQ::Client::Producer do
         e = assert_raises(ArgumentError) do
           @client.produce(@queue_name, to_json_msg({ a: 1 }), headers: { "trace" => "t" })
         end
-        assert_match(/headers: "must be a JSON String or nil"/, e.message)
+        assert_equal({ headers: "must be a JSON String or nil" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
@@ -233,7 +233,7 @@ describe PGMQ::Client::Producer do
         e = assert_raises(ArgumentError) do
           @client.produce(@queue_name, to_json_msg({ a: 1 }), headers: [1])
         end
-        assert_match(/headers: "must be a JSON String or nil"/, e.message)
+        assert_equal({ headers: "must be a JSON String or nil" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
@@ -243,7 +243,7 @@ describe PGMQ::Client::Producer do
             txn.produce(@queue_name, { "order_id" => 1 })
           end
         end
-        assert_match(/message: "must be a JSON String"/, e.message)
+        assert_equal("Transaction failed: #{{ message: "must be a JSON String" }.inspect}", e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
@@ -556,7 +556,7 @@ describe PGMQ::Client::Producer do
         e = assert_raises(ArgumentError) do
           @client.produce_batch(@queue_name, [to_json_msg({ id: 1 }), nil])
         end
-        assert_match(/"messages.1.message": "must be a JSON String"/, e.message)
+        assert_equal({ "messages.1.message": "must be a JSON String" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
@@ -564,14 +564,14 @@ describe PGMQ::Client::Producer do
         e = assert_raises(ArgumentError) do
           @client.produce_batch(@queue_name, [{ "id" => 1 }])
         end
-        assert_match(/"messages.0.message": "must be a JSON String"/, e.message)
+        assert_equal({ "messages.0.message": "must be a JSON String" }.to_s, e.message)
       end
 
       it "raises ArgumentError for Integer and Array messages" do
         e = assert_raises(ArgumentError) do
           @client.produce_batch(@queue_name, [to_json_msg({ id: 1 }), 2, [3]])
         end
-        assert_match(/"messages.1.message": "must be a JSON String"/, e.message)
+        assert_equal({ "messages.1.message": "must be a JSON String" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
@@ -581,7 +581,7 @@ describe PGMQ::Client::Producer do
         e = assert_raises(ArgumentError) do
           @client.produce_batch(@queue_name, messages, headers: [to_json_msg({ h: 1 }), { "h" => 2 }])
         end
-        assert_match(/"messages.1.headers": "must be a JSON String or nil"/, e.message)
+        assert_equal({ "messages.1.headers": "must be a JSON String or nil" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 

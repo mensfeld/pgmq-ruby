@@ -98,8 +98,8 @@ module PGMQ
       # Runs the validation
       #
       # @param data [Hash] hash with data we want to validate
-      # @param scope [Array<String>] scope of this contract (if any) or empty array if no parent scope is needed if
-      #   contract starts from root
+      # @param scope [Array<String, Integer>] scope of this contract (if any) or empty array if no parent scope is
+      #   needed if contract starts from root
       # @return [Result] validation result
       def call(data, scope: EMPTY_ARRAY)
         errors = []
@@ -143,8 +143,8 @@ module PGMQ
       #
       # @param data [Hash] data for validation
       # @param error_class [Class] error class that should be used when validation fails
-      # @param scope [Array<String>] scope of this contract (if any) or empty array if no parent scope is needed if
-      #   contract starts from root
+      # @param scope [Array<String, Integer>] scope of this contract (if any) or empty array if no parent scope is
+      #   needed if contract starts from root
       # @return [Boolean] true
       # @raise [StandardError] any error provided in the error_class that inherits from the standard error
       def validate!(data, error_class, scope: EMPTY_ARRAY)
