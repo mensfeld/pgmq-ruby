@@ -73,7 +73,7 @@ module PGMQ
       def reconnectable_error_classes=(classes)
         CONTRACT.validate!({ reconnectable_error_classes: classes }, Errors::ConfigurationError)
 
-        @reconnectable_error_classes = Array(classes).freeze
+        @reconnectable_error_classes = Array(classes).dup.freeze
       end
 
       private

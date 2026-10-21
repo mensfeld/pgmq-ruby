@@ -14,6 +14,8 @@ module PGMQ
       required(:queue_names) do |queue_names|
         next :empty if queue_names.empty?
         next :too_many if queue_names.size > MultiQueue::MAX_QUEUES
+        # An invalid name is reported by PGMQ::QueueName.validate! with its own error class
+        next true unless queue_names.all? { |name| QueueName.valid?(name) }
         # pgmq folds queue names to lower case, so names differing only in case refer to the same queue
         next :unique unless queue_names.map { |name| name.to_s.downcase }.uniq.size == queue_names.size
 

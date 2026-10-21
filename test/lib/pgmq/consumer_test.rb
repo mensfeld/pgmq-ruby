@@ -43,6 +43,8 @@ describe PGMQ::Consumer do
       end
       assert_raises(PGMQ::Errors::InvalidQueueNameError) { PGMQ::Consumer.new(@client, [@queue_name, nil]) }
       assert_raises(PGMQ::Errors::InvalidQueueNameError) { PGMQ::Consumer.new(@client, [1]) }
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) { PGMQ::Consumer.new(@client, [nil, nil]) }
+      assert_raises(PGMQ::Errors::InvalidQueueNameError) { PGMQ::Consumer.new(@client, %w[1invalid 1invalid]) }
     end
 
     it "rejects an invalid queue name" do

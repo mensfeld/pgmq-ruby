@@ -484,6 +484,14 @@ describe PGMQ::Connection do
       end
     end
 
+    it "does not freeze the classes Array passed in" do
+      classes = [PG::Error]
+      PGMQ::Connection.reconnectable_error_classes = classes
+
+      refute_predicate classes, :frozen?
+      assert_predicate PGMQ::Connection.reconnectable_error_classes, :frozen?
+    end
+
     it "raises ConfigurationError for non-Exception classes" do
       assert_raises(PGMQ::Errors::ConfigurationError) do
         PGMQ::Connection.reconnectable_error_classes = [String]

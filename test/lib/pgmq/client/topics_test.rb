@@ -188,6 +188,13 @@ describe PGMQ::Client::Topics do
       assert_equal [], results
     end
 
+    it "raises error for headers with an empty messages array" do
+      e = assert_raises(ArgumentError) do
+        @client.produce_batch_topic("orders.new", [], headers: [to_json_msg({ h: 1 })])
+      end
+      assert_equal({ headers: "must have one element per message" }.to_s, e.message)
+    end
+
     it "raises error when headers array length doesn't match messages" do
       e = assert_raises(ArgumentError) do
         @client.produce_batch_topic("orders.new",

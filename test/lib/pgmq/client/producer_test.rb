@@ -538,6 +538,18 @@ describe PGMQ::Client::Producer do
         assert_equal [], msg_ids
       end
 
+      it "raises ArgumentError for headers with an empty messages array" do
+        e = assert_raises(ArgumentError) do
+          @client.produce_batch(@queue_name, [], headers: [to_json_msg({ h: 1 })])
+        end
+        assert_equal({ headers: "must have one element per message" }.to_s, e.message)
+
+        e = assert_raises(ArgumentError) do
+          @client.produce_batch(@queue_name, [], headers: to_json_msg({ h: 1 }))
+        end
+        assert_equal({ headers: "must be an Array or nil" }.to_s, e.message)
+      end
+
       it "sends batch with complex nested headers" do
         messages = [
           to_json_msg({ event: "user.created" }),

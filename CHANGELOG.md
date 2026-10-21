@@ -60,7 +60,10 @@
   `produce_batch` and `produce_batch_topic` raise `ArgumentError` when messages is not an Array or headers is neither
   an Array nor `nil` (String headers failed in SQL with `PGMQ::Errors::ConnectionError` before), and `tune_autovacuum`
   checks the queue and archive settings before it changes any table (an unknown archive setting raised only after the
-  queue table was changed).
+  queue table was changed). Two calls that returned without an error now raise `ArgumentError`: `produce_batch` and
+  `produce_batch_topic` with an empty messages Array and non-empty or String headers (they returned `[]`), and
+  `tune_autovacuum` (and `create` with `tune_autovacuum:`) with `archive: false` and an unknown archive setting (it
+  ignored the archive settings).
 
 ### Transactions
 - **[Fix]** The transactional client yielded by `PGMQ::Client#transaction` now raises the new

@@ -34,6 +34,10 @@ describe PGMQ::Contracts::Consumer do
     )
   end
 
+  it "leaves duplicated invalid queue names to PGMQ::QueueName" do
+    assert_predicate contract.call(config.merge(queue_names: [nil, nil])), :success?
+  end
+
   it "rejects an unknown on_success action" do
     assert_equal(
       { on_success: "must be :delete or :archive" },
