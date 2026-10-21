@@ -589,6 +589,8 @@ messages = client.read_with_poll("queue_name",
 
 # Event-driven consumption via LISTEN/NOTIFY (more efficient than long-polling at low message rates)
 # Step 1: enable server-side NOTIFY trigger once (idempotent)
+# On PGMQ < v1.13.1, NOTIFY never fires for a queue name with uppercase letters
+# (pgmq/pgmq#593): create queues with lower-case names, or use PGMQ v1.13.1+.
 client.enable_notify_insert("queue_name")
 
 # Step 2: consumer loop — wake up on notification, then drain all available messages.
@@ -855,6 +857,8 @@ client.convert_archive_partitioned("queue_name",
 )
 
 # Enable PostgreSQL NOTIFY for a queue (for LISTEN-based consumers)
+# On PGMQ < v1.13.1, NOTIFY never fires for a queue name with uppercase letters
+# (pgmq/pgmq#593): create queues with lower-case names, or use PGMQ v1.13.1+.
 client.enable_notify_insert("queue_name", throttle_interval_ms: 250)
 
 # Update the throttle interval without disabling/re-enabling the trigger
