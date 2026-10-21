@@ -195,25 +195,25 @@ describe PGMQ::Client::Producer do
     end
 
     context "with payload types" do
-      it "raises ArgumentError for a Hash message" do
-        e = assert_raises(ArgumentError) do
+      it "raises MessageInvalidError for a Hash message" do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce(@queue_name, { "order_id" => 1 })
         end
         assert_equal({ message: "must be a JSON String" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
-      it "raises ArgumentError for a nil message" do
-        e = assert_raises(ArgumentError) do
+      it "raises MessageInvalidError for a nil message" do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce(@queue_name, nil)
         end
         assert_equal({ message: "must be a JSON String" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
-      it "raises ArgumentError for JSON-compatible non-String messages" do
+      it "raises MessageInvalidError for JSON-compatible non-String messages" do
         [1, 1.5, true, [1, 2]].each do |message|
-          e = assert_raises(ArgumentError) do
+          e = assert_raises(PGMQ::Errors::MessageInvalidError) do
             @client.produce(@queue_name, message)
           end
           assert_equal({ message: "must be a JSON String" }.to_s, e.message)
@@ -221,16 +221,16 @@ describe PGMQ::Client::Producer do
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
-      it "raises ArgumentError for Hash headers" do
-        e = assert_raises(ArgumentError) do
+      it "raises MessageInvalidError for Hash headers" do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce(@queue_name, to_json_msg({ a: 1 }), headers: { "trace" => "t" })
         end
         assert_equal({ headers: "must be a JSON String or nil" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
-      it "raises ArgumentError for Array headers" do
-        e = assert_raises(ArgumentError) do
+      it "raises MessageInvalidError for Array headers" do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce(@queue_name, to_json_msg({ a: 1 }), headers: [1])
         end
         assert_equal({ headers: "must be a JSON String or nil" }.to_s, e.message)
@@ -462,7 +462,7 @@ describe PGMQ::Client::Producer do
         end
       end
 
-      it "raises ArgumentError when headers length does not match messages length" do
+      it "raises MessageInvalidError when headers length does not match messages length" do
         messages = [
           to_json_msg({ id: 1 }),
           to_json_msg({ id: 2 }),
@@ -473,27 +473,27 @@ describe PGMQ::Client::Producer do
           to_json_msg({ priority: "low" })
         ]
 
-        e = assert_raises(ArgumentError) do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce_batch(@queue_name, messages, headers: headers)
         end
         assert_equal({ headers: "must have one element per message" }.to_s, e.message)
       end
 
-      it "raises ArgumentError when headers is shorter than messages" do
+      it "raises MessageInvalidError when headers is shorter than messages" do
         messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
         headers = [to_json_msg({ h: 1 })]
 
-        e = assert_raises(ArgumentError) do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce_batch(@queue_name, messages, headers: headers)
         end
         assert_equal({ headers: "must have one element per message" }.to_s, e.message)
       end
 
-      it "raises ArgumentError when headers is longer than messages" do
+      it "raises MessageInvalidError when headers is longer than messages" do
         messages = [to_json_msg({ id: 1 })]
         headers = [to_json_msg({ h: 1 }), to_json_msg({ h: 2 }), to_json_msg({ h: 3 })]
 
-        e = assert_raises(ArgumentError) do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce_batch(@queue_name, messages, headers: headers)
         end
         assert_equal({ headers: "must have one element per message" }.to_s, e.message)
@@ -517,16 +517,16 @@ describe PGMQ::Client::Producer do
         end
       end
 
-      it "raises ArgumentError when headers is not an Array" do
-        e = assert_raises(ArgumentError) do
+      it "raises MessageInvalidError when headers is not an Array" do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce_batch(@queue_name, [to_json_msg({ id: 1 })], headers: to_json_msg({ h: 1 }))
         end
         assert_equal({ headers: "must be an Array or nil" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
-      it "raises ArgumentError when messages is not an Array" do
-        e = assert_raises(ArgumentError) do
+      it "raises MessageInvalidError when messages is not an Array" do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce_batch(@queue_name, to_json_msg({ id: 1 }))
         end
         assert_equal({ messages: "must be an Array" }.to_s, e.message)
@@ -538,13 +538,13 @@ describe PGMQ::Client::Producer do
         assert_equal [], msg_ids
       end
 
-      it "raises ArgumentError for headers with an empty messages array" do
-        e = assert_raises(ArgumentError) do
+      it "raises MessageInvalidError for headers with an empty messages array" do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce_batch(@queue_name, [], headers: [to_json_msg({ h: 1 })])
         end
         assert_equal({ headers: "must have one element per message" }.to_s, e.message)
 
-        e = assert_raises(ArgumentError) do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce_batch(@queue_name, [], headers: to_json_msg({ h: 1 }))
         end
         assert_equal({ headers: "must be an Array or nil" }.to_s, e.message)
@@ -579,33 +579,33 @@ describe PGMQ::Client::Producer do
     end
 
     context "with payload types" do
-      it "raises ArgumentError for a nil message" do
-        e = assert_raises(ArgumentError) do
+      it "raises MessageInvalidError for a nil message" do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce_batch(@queue_name, [to_json_msg({ id: 1 }), nil])
         end
         assert_equal({ "messages.1.message": "must be a JSON String" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
-      it "raises ArgumentError for a Hash message" do
-        e = assert_raises(ArgumentError) do
+      it "raises MessageInvalidError for a Hash message" do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce_batch(@queue_name, [{ "id" => 1 }])
         end
         assert_equal({ "messages.0.message": "must be a JSON String" }.to_s, e.message)
       end
 
-      it "raises ArgumentError for Integer and Array messages" do
-        e = assert_raises(ArgumentError) do
+      it "raises MessageInvalidError for Integer and Array messages" do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce_batch(@queue_name, [to_json_msg({ id: 1 }), 2, [3]])
         end
         assert_equal({ "messages.1.message": "must be a JSON String" }.to_s, e.message)
         assert_nil @client.read(@queue_name, vt: 30)
       end
 
-      it "raises ArgumentError for a Hash header" do
+      it "raises MessageInvalidError for a Hash header" do
         messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
 
-        e = assert_raises(ArgumentError) do
+        e = assert_raises(PGMQ::Errors::MessageInvalidError) do
           @client.produce_batch(@queue_name, messages, headers: [to_json_msg({ h: 1 }), { "h" => 2 }])
         end
         assert_equal({ "messages.1.headers": "must be a JSON String or nil" }.to_s, e.message)

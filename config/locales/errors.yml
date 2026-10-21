@@ -36,6 +36,8 @@ en:
       missing: needs to be present
       queue_settings_format: must contain only known storage parameters
       archive_settings_format: must contain only known storage parameters
+      queue_settings_values: must contain only numeric values
+      archive_settings_values: must contain only numeric values
 
     connection:
       conn_params_empty: are required

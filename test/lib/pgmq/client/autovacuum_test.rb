@@ -117,20 +117,30 @@ describe PGMQ::Client::Autovacuum do
     end
 
     it "rejects non-numeric values rather than injecting them" do
-      assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::AutovacuumSettingsInvalidError) do
         @client.tune_autovacuum(@queue_name,
           queue_settings: { autovacuum_vacuum_scale_factor: "0.01); DROP TABLE pgmq.meta; --" })
       end
+
+      assert_equal({ queue_settings: "must contain only numeric values" }.to_s, e.message)
+    end
+
+    it "rejects a non-numeric archive value before it changes any table" do
+      assert_raises(PGMQ::Errors::AutovacuumSettingsInvalidError) do
+        @client.tune_autovacuum(@queue_name, archive_settings: { autovacuum_vacuum_threshold: "many" })
+      end
+
+      assert_empty reloptions("q_#{@queue_name}")
     end
 
     it "rejects unknown storage parameters rather than injecting them" do
-      assert_raises(ArgumentError) do
+      assert_raises(PGMQ::Errors::AutovacuumSettingsInvalidError) do
         @client.tune_autovacuum(@queue_name, queue_settings: { "evil) ; DROP TABLE pgmq.meta; --" => 1 })
       end
     end
 
     it "validates every setting before it changes any table" do
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::AutovacuumSettingsInvalidError) do
         @client.tune_autovacuum(@queue_name, archive_settings: { evil: 1 })
       end
 
@@ -139,7 +149,7 @@ describe PGMQ::Client::Autovacuum do
     end
 
     it "rejects unknown archive settings when archive: false" do
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::AutovacuumSettingsInvalidError) do
         @client.tune_autovacuum(@queue_name, archive: false, archive_settings: { evil: 1 })
       end
 

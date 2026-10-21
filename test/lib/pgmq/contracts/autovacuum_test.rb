@@ -22,6 +22,28 @@ describe PGMQ::Contracts::Autovacuum do
     )
   end
 
+  it "accepts numeric values and numeric Strings" do
+    assert_predicate(
+      contract.call({ queue_settings: { autovacuum_vacuum_scale_factor: "0.03", fillfactor: "85" }, archive_settings: {} }),
+      :success?
+    )
+  end
+
+  it "rejects values that do not coerce to the parameter type" do
+    assert_equal(
+      { queue_settings: "must contain only numeric values" },
+      contract.call({ queue_settings: { autovacuum_vacuum_scale_factor: "0.01); --" }, archive_settings: {} }).errors
+    )
+    assert_equal(
+      { archive_settings: "must contain only numeric values" },
+      contract.call({ queue_settings: {}, archive_settings: { autovacuum_vacuum_threshold: "1.5" } }).errors
+    )
+    assert_equal(
+      { queue_settings: "must contain only numeric values" },
+      contract.call({ queue_settings: { fillfactor: nil }, archive_settings: {} }).errors
+    )
+  end
+
   it "reports missing settings" do
     assert_equal({ archive_settings: "needs to be present" }, contract.call({ queue_settings: {} }).errors)
   end

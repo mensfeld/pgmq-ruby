@@ -42,13 +42,6 @@ module PGMQ
         autovacuum_analyze_scale_factor: 0.05
       }.freeze
 
-      # Storage parameters whose values are interpolated as Floats; everything else is interpolated as an Integer.
-      FLOAT_SETTINGS = %i[
-        autovacuum_vacuum_scale_factor
-        autovacuum_analyze_scale_factor
-      ].freeze
-      private_constant :FLOAT_SETTINGS
-
       # Validates the storage settings before they are interpolated into SQL
       CONTRACT = Contracts::Autovacuum.new
 
@@ -69,7 +62,8 @@ module PGMQ
       # @param archive_settings [Hash{Symbol=>Numeric}] storage params for the archive table, merged onto
       #   {DEFAULT_ARCHIVE_SETTINGS}
       # @return [void]
-      # @raise [ArgumentError] if queue_settings or archive_settings has an unknown storage parameter
+      # @raise [PGMQ::Errors::AutovacuumSettingsInvalidError] if queue_settings or archive_settings has an unknown
+      #   storage parameter
       # @raise [PGMQ::Errors::InvalidQueueNameError] if the queue name is invalid
       # @raise [PGMQ::Errors::ConnectionError] if the database operation fails (e.g. the queue does not exist)
       #
@@ -118,7 +112,10 @@ module PGMQ
         queue_settings = symbolize(queue_settings)
         archive_settings = symbolize(archive_settings)
 
-        CONTRACT.validate!({ queue_settings: queue_settings, archive_settings: archive_settings }, ArgumentError)
+        CONTRACT.validate!(
+          { queue_settings: queue_settings, archive_settings: archive_settings },
+          Errors::AutovacuumSettingsInvalidError
+        )
 
         alter_storage(conn, "q_#{queue_name}", DEFAULT_QUEUE_SETTINGS.merge(queue_settings))
 
@@ -136,8 +133,8 @@ module PGMQ
       #
       # Identifiers cannot be passed as bind parameters, so the table name is quoted with the connection's
       # +quote_ident+. The queue name has already passed {#validate_queue_name!} (strict identifier rules); the
-      # parameter names are validated by {PGMQ::Contracts::Autovacuum}; and the values are coerced to Float/Integer, so
-      # no untrusted text reaches the statement.
+      # parameter names and values are validated by {PGMQ::Contracts::Autovacuum}; and the values are coerced to
+      # Float/Integer, so no untrusted text reaches the statement.
       #
       # @param conn [PG::Connection] database connection
       # @param table [String] unqualified table name (e.g. "q_orders")
@@ -150,14 +147,14 @@ module PGMQ
         conn.exec("ALTER TABLE #{qualified} SET (#{clause})")
       end
 
-      # Coerces a setting value to its SQL form: Float for scale factors, Integer for everything else. Raising on
-      # non-numeric input is the injection guard for values.
+      # Coerces a setting value to its SQL form: Float for scale factors, Integer for everything else.
+      # {PGMQ::Contracts::Autovacuum} has already rejected values that do not coerce.
       #
       # @param key [Symbol] storage parameter name
       # @param value [Numeric, String] the value to coerce
       # @return [Float, Integer]
       def coerce_setting(key, value)
-        FLOAT_SETTINGS.include?(key) ? Float(value) : Integer(value)
+        Contracts::Autovacuum::FLOAT_SETTINGS.include?(key) ? Float(value) : Integer(value)
       end
 
       # Symbolizes top-level keys of a settings Hash so callers may pass either Symbol or String keys.

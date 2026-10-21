@@ -11,7 +11,7 @@ module PGMQ
     #     required(:id) { |id| id.is_a?(String) }
     #   end
     #
-    #   MyContract.new.validate!({ id: 1 }, ArgumentError)
+    #   MyContract.new.validate!({ id: 1 }, PGMQ::Errors::ConfigurationError)
     #
     # @note This contract does NOT support rules inheritance.
     class Contract

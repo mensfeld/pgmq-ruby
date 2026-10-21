@@ -39,31 +39,37 @@
   with `PGMQ::Errors::ConnectionError` (`invalid input syntax for type integer`). A fractional delay such as `1.5` now
   makes the message visible 1.5 seconds later: it is sent to PGMQ's `timestamptz` overload as `clock_timestamp()`
   plus the delay (PGMQ v1.10.0+), the same way PGMQ handles an integer delay. Integer and `Time` delays are unchanged.
-- **[Breaking]** `produce` and `produce_batch` raise `ArgumentError` when a message is not a String (including
-  `nil`) or headers are neither a String nor `nil`. Previously a Hash or `nil` was bound as SQL NULL, so the call
-  returned a `msg_id` but the message or headers were stored as NULL without an error. Any other non-String value now
-  raises too, including Integer, Float, `true` and Array values that were stored as JSON before, `false` headers that
-  were dropped, and Hash values on a connection with a query type map (`PG::BasicTypeMapForQueries`), which were
-  stored as JSON objects. The error message names the invalid key (`message` or `headers`; in a batch
-  `messages.<index>.message` or `messages.<index>.headers`) and the reason, such as `must be a JSON String`. Inside
-  `transaction` the error is wrapped in `PGMQ::Errors::ConnectionError` like any other error. Serialize payloads to
-  JSON before producing. The check is the new `PGMQ::Contracts::Message`, built on `PGMQ::Contractable`, the contract
-  layer extracted from karafka-core (no new dependency).
+- **[Breaking]** `produce` and `produce_batch` raise `PGMQ::Errors::MessageInvalidError` when a message is not a
+  String (including `nil`) or headers are neither a String nor `nil`. Previously a Hash or `nil` was bound as SQL
+  NULL, so the call returned a `msg_id` but the message or headers were stored as NULL without an error. Any other
+  non-String value now raises too, including Integer, Float, `true` and Array values that were stored as JSON before,
+  `false` headers that were dropped, and Hash values on a connection with a query type map
+  (`PG::BasicTypeMapForQueries`), which were stored as JSON objects. The error message names the invalid key
+  (`message` or `headers`; in a batch `messages.<index>.message` or `messages.<index>.headers`) and the reason, such
+  as `must be a JSON String`. Inside `transaction` the error is wrapped in `PGMQ::Errors::ConnectionError` like any
+  other error. Serialize payloads to JSON before producing. The check is the new `PGMQ::Contracts::Message`, built on
+  `PGMQ::Contractable`, the contract layer extracted from karafka-core (no new dependency).
 
 ### Validation
 - **[Breaking]** Every argument check now runs through a contract in `PGMQ::Contracts` (`Message`, `Batch`,
-  `MultiQueue`, `Consumer`, `Autovacuum`, `Connection`), with the error messages in `config/locales/errors.yml`. The
-  error classes stay the same (`ArgumentError` from client calls, `PGMQ::Errors::ConfigurationError` from
-  `PGMQ::Consumer.new`, the connection parameters and the `PGMQ::Connection` reconnectable error settings), but the
-  message is now a Hash of each invalid key and its reason, such as `queue_names` and `cannot be empty`. The
-  headers length error of `produce_batch` and `produce_batch_topic` no longer includes the two lengths. New checks:
-  `produce_batch` and `produce_batch_topic` raise `ArgumentError` when messages is not an Array or headers is neither
-  an Array nor `nil` (String headers failed in SQL with `PGMQ::Errors::ConnectionError` before), and `tune_autovacuum`
-  checks the queue and archive settings before it changes any table (an unknown archive setting raised only after the
-  queue table was changed). Two calls that returned without an error now raise `ArgumentError`: `produce_batch` and
-  `produce_batch_topic` with an empty messages Array and non-empty or String headers (they returned `[]`), and
-  `tune_autovacuum` (and `create` with `tune_autovacuum:`) with `archive: false` and an unknown archive setting (it
-  ignored the archive settings).
+  `MultiQueue`, `Consumer`, `Autovacuum`, `Connection`), with the error messages in `config/locales/errors.yml`.
+  Client calls raise new validation errors instead of `ArgumentError`, like WaterDrop:
+  `PGMQ::Errors::MessageInvalidError` (`produce`, `produce_batch`, `produce_batch_topic`),
+  `PGMQ::Errors::MultiQueueInvalidError` (`read_multi`, `read_multi_with_poll`, `pop_multi`, `delete_multi`,
+  `archive_multi`, `set_vt_multi`) and `PGMQ::Errors::AutovacuumSettingsInvalidError` (`tune_autovacuum`). They
+  inherit from `PGMQ::Errors::BaseError`, not from `ArgumentError`, so `rescue ArgumentError` no longer catches them.
+  `PGMQ::Consumer.new`, the connection parameters and the `PGMQ::Connection` reconnectable error settings still raise
+  `PGMQ::Errors::ConfigurationError`. The message is now a Hash of each invalid key and its reason, such as
+  `queue_names` and `cannot be empty`. The headers length error of `produce_batch` and `produce_batch_topic` no longer
+  includes the two lengths. New checks: `produce_batch` and `produce_batch_topic` raise
+  `PGMQ::Errors::MessageInvalidError` when messages is not an Array or headers is neither an Array nor `nil` (String
+  headers failed in SQL with `PGMQ::Errors::ConnectionError` before), and `tune_autovacuum` checks the queue and
+  archive settings before it changes any table (an unknown archive setting raised only after the queue table was
+  changed). A setting value that is not numeric raises `PGMQ::Errors::AutovacuumSettingsInvalidError` too, also before
+  any table changes (it raised `ArgumentError` from `Float()` or `Integer()`). Two calls that returned without an
+  error now raise a validation error: `produce_batch` and `produce_batch_topic` with an empty messages Array and
+  non-empty or String headers (they returned `[]`), and `tune_autovacuum` (and `create` with `tune_autovacuum:`) with
+  `archive: false` and an unknown or non-numeric archive setting (it ignored the archive settings).
 
 ### Transactions
 - **[Fix]** The transactional client yielded by `PGMQ::Client#transaction` now raises the new

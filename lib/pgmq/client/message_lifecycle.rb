@@ -109,6 +109,7 @@ module PGMQ
       #
       # @param deletions [Hash] hash of queue_name => array of msg_ids
       # @return [Hash] hash of queue_name => array of deleted msg_ids
+      # @raise [PGMQ::Errors::MultiQueueInvalidError] if deletions is not a Hash
       #
       # @example Delete messages from multiple queues
       #   client.delete_multi({
@@ -123,7 +124,7 @@ module PGMQ
       #   deletions = messages.group_by(&:queue_name).transform_values { |mss| mss.map(&:msg_id) }
       #   client.delete_multi(deletions)
       def delete_multi(deletions)
-        MULTI_QUEUE_CONTRACT.validate!({ deletions: deletions }, ArgumentError)
+        MULTI_QUEUE_CONTRACT.validate!({ deletions: deletions }, Errors::MultiQueueInvalidError)
         return {} if deletions.empty?
 
         # Validate all queue names
@@ -202,6 +203,7 @@ module PGMQ
       #
       # @param archives [Hash] hash of queue_name => array of msg_ids
       # @return [Hash] hash of queue_name => array of archived msg_ids
+      # @raise [PGMQ::Errors::MultiQueueInvalidError] if archives is not a Hash
       #
       # @example Archive messages from multiple queues
       #   client.archive_multi({
@@ -209,7 +211,7 @@ module PGMQ
       #     'notifications' => [5]
       #   })
       def archive_multi(archives)
-        MULTI_QUEUE_CONTRACT.validate!({ archives: archives }, ArgumentError)
+        MULTI_QUEUE_CONTRACT.validate!({ archives: archives }, Errors::MultiQueueInvalidError)
         return {} if archives.empty?
 
         # Validate all queue names
@@ -317,6 +319,7 @@ module PGMQ
       # @param updates [Hash] hash of queue_name => array of msg_ids
       # @param vt [Integer, Time] visibility timeout as seconds offset or absolute timestamp
       # @return [Hash] hash of queue_name => array of updated PGMQ::Message objects
+      # @raise [PGMQ::Errors::MultiQueueInvalidError] if updates is not a Hash
       #
       # @example Extend visibility timeout for messages from multiple queues
       #   client.set_vt_multi({
@@ -334,7 +337,7 @@ module PGMQ
       #   updates = messages.group_by(&:queue_name).transform_values { |msgs| msgs.map(&:msg_id) }
       #   client.set_vt_multi(updates, vt: 120)
       def set_vt_multi(updates, vt:)
-        MULTI_QUEUE_CONTRACT.validate!({ updates: updates }, ArgumentError)
+        MULTI_QUEUE_CONTRACT.validate!({ updates: updates }, Errors::MultiQueueInvalidError)
         return {} if updates.empty?
 
         # Validate all queue names

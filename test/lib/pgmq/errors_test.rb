@@ -29,6 +29,18 @@ describe "PGMQ::Errors" do
     it "has InvalidQueueNameError inheriting from BaseError" do
       assert_equal PGMQ::Errors::BaseError, PGMQ::Errors::InvalidQueueNameError.superclass
     end
+
+    it "has MessageInvalidError inheriting from BaseError" do
+      assert_equal PGMQ::Errors::BaseError, PGMQ::Errors::MessageInvalidError.superclass
+    end
+
+    it "has MultiQueueInvalidError inheriting from BaseError" do
+      assert_equal PGMQ::Errors::BaseError, PGMQ::Errors::MultiQueueInvalidError.superclass
+    end
+
+    it "has AutovacuumSettingsInvalidError inheriting from BaseError" do
+      assert_equal PGMQ::Errors::BaseError, PGMQ::Errors::AutovacuumSettingsInvalidError.superclass
+    end
   end
 
   describe "error instantiation" do

@@ -86,14 +86,14 @@ describe PGMQ::Client::MultiQueue do
 
   describe "validation" do
     it "requires array of queue names" do
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::MultiQueueInvalidError) do
         @client.read_multi("not_an_array", vt: 30)
       end
       assert_match(/must be an Array/, e.message)
     end
 
     it "rejects empty array" do
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::MultiQueueInvalidError) do
         @client.read_multi([], vt: 30)
       end
       assert_match(/cannot be empty/, e.message)
@@ -108,7 +108,7 @@ describe PGMQ::Client::MultiQueue do
     it "limits to 50 queues maximum" do
       many_queues = (1..51).map { |i| "queue#{i}" }
 
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::MultiQueueInvalidError) do
         @client.read_multi(many_queues, vt: 30)
       end
       assert_match(/cannot exceed 50/, e.message)
@@ -238,14 +238,14 @@ describe PGMQ::Client::MultiQueue do
     end
 
     it "validates queue names array" do
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::MultiQueueInvalidError) do
         @client.read_multi_with_poll("not_array", vt: 30)
       end
       assert_match(/must be an Array/, e.message)
     end
 
     it "validates non-empty array" do
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::MultiQueueInvalidError) do
         @client.read_multi_with_poll([], vt: 30)
       end
       assert_match(/cannot be empty/, e.message)
@@ -305,14 +305,14 @@ describe PGMQ::Client::MultiQueue do
     end
 
     it "validates array input" do
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::MultiQueueInvalidError) do
         @client.pop_multi("not_array")
       end
       assert_match(/must be an Array/, e.message)
     end
 
     it "validates non-empty array" do
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::MultiQueueInvalidError) do
         @client.pop_multi([])
       end
       assert_match(/cannot be empty/, e.message)
@@ -320,7 +320,7 @@ describe PGMQ::Client::MultiQueue do
 
     it "limits to 50 queues" do
       many_queues = (1..51).map { |i| "queue#{i}" }
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::MultiQueueInvalidError) do
         @client.pop_multi(many_queues)
       end
       assert_match(/cannot exceed 50/, e.message)
@@ -374,7 +374,7 @@ describe PGMQ::Client::MultiQueue do
     end
 
     it "validates hash input" do
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::MultiQueueInvalidError) do
         @client.delete_multi("not_hash")
       end
       assert_match(/must be a Hash/, e.message)
@@ -449,7 +449,7 @@ describe PGMQ::Client::MultiQueue do
     end
 
     it "validates hash input" do
-      e = assert_raises(ArgumentError) do
+      e = assert_raises(PGMQ::Errors::MultiQueueInvalidError) do
         @client.archive_multi("not_hash")
       end
       assert_match(/must be a Hash/, e.message)

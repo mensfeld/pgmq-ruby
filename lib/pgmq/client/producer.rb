@@ -16,7 +16,8 @@ module PGMQ
       #   a float such as 1.5 needs PGMQ v1.10.0+), or an absolute Time at which the message becomes visible,
       #   including ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [String] message ID as string
-      # @raise [ArgumentError] if message is not a String, or headers is neither a String nor nil
+      # @raise [PGMQ::Errors::MessageInvalidError] if message is not a String, or headers is neither a String nor
+      #   nil
       #
       # @example Basic produce
       #   msg_id = client.produce("orders", '{"order_id":123,"total":99.99}')
@@ -45,7 +46,7 @@ module PGMQ
         delay: 0
       )
         validate_queue_name!(queue_name)
-        MESSAGE_CONTRACT.validate!({ message: message, headers: headers }, ArgumentError)
+        MESSAGE_CONTRACT.validate!({ message: message, headers: headers }, Errors::MessageInvalidError)
         delay_sql, delay_value = delay_argument(delay, headers ? 4 : 3)
 
         result = with_connection do |conn|
@@ -74,8 +75,9 @@ module PGMQ
       #   a float such as 1.5 needs PGMQ v1.10.0+), or an absolute Time at which the messages become visible,
       #   including ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [Array<String>] array of message IDs
-      # @raise [ArgumentError] if messages is not an Array, headers is neither an Array nor nil, headers length doesn't
-      #   match messages length, a message is not a String, or a header is neither a String nor nil
+      # @raise [PGMQ::Errors::MessageInvalidError] if messages is not an Array, headers is neither an Array nor nil,
+      #   headers length doesn't match messages length, a message is not a String, or a header is neither a String
+      #   nor nil
       #
       # @example Basic batch produce
       #   ids = client.produce_batch("orders", [
@@ -101,13 +103,13 @@ module PGMQ
         delay: 0
       )
         validate_queue_name!(queue_name)
-        BATCH_CONTRACT.validate!({ messages: messages, headers: headers }, ArgumentError)
+        BATCH_CONTRACT.validate!({ messages: messages, headers: headers }, Errors::MessageInvalidError)
         return [] if messages.empty?
 
         messages.each_with_index do |message, index|
           MESSAGE_CONTRACT.validate!(
             { message: message, headers: headers && headers[index] },
-            ArgumentError,
+            Errors::MessageInvalidError,
             scope: ["messages", index]
           )
         end
