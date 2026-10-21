@@ -50,6 +50,17 @@
   JSON before producing. The check is the new `PGMQ::Contracts::Message`, built on `PGMQ::Contractable`, the contract
   layer extracted from karafka-core (no new dependency).
 
+### Validation
+- **[Breaking]** Every argument check now runs through a contract in `PGMQ::Contracts` (`Message`, `Batch`,
+  `MultiQueue`, `Consumer`, `Autovacuum`), with the error messages in `config/locales/errors.yml`. The error classes
+  stay the same (`ArgumentError` from client calls, `PGMQ::Errors::ConfigurationError` from `PGMQ::Consumer.new`), but
+  the message is now a Hash of each invalid key and its reason, such as `queue_names` and `cannot be empty`. The
+  headers length error of `produce_batch` and `produce_batch_topic` no longer includes the two lengths. New checks:
+  `produce_batch` and `produce_batch_topic` raise `ArgumentError` when messages is not an Array or headers is neither
+  an Array nor `nil` (String headers failed in SQL with `PGMQ::Errors::ConnectionError` before), and `tune_autovacuum`
+  checks the queue and archive settings before it changes any table (an unknown archive setting raised only after the
+  queue table was changed).
+
 ### Transactions
 - **[Fix]** The transactional client yielded by `PGMQ::Client#transaction` now raises the new
   `PGMQ::Errors::TransactionError` when used from another thread or fiber, or after the block has returned.

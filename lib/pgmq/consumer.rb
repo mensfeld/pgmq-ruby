@@ -31,10 +31,10 @@ module PGMQ
   #     puts "#{message.queue_name}: #{message.message}"
   #   end
   class Consumer
-    # Acknowledgement actions available for successfully processed messages
-    ON_SUCCESS_ACTIONS = %i[delete archive].freeze
+    # Validates the options before the consumer is built
+    CONTRACT = Contracts::Consumer.new
 
-    private_constant :ON_SUCCESS_ACTIONS
+    private_constant :CONTRACT
 
     # @return [PGMQ::Client] client used for all queue operations
     attr_reader :client
@@ -68,25 +68,23 @@ module PGMQ
       on_success: :delete,
       max_attempts: nil
     )
-      unless ON_SUCCESS_ACTIONS.include?(on_success)
-        raise Errors::ConfigurationError, "on_success must be one of #{ON_SUCCESS_ACTIONS.inspect}"
-      end
+      queue_names = Array(queue_names)
 
-      validate_positive_integer!(:vt, vt)
-      validate_positive_integer!(:batch_size, batch_size)
-      validate_positive_integer!(:max_poll_seconds, max_poll_seconds)
-      validate_positive_integer!(:poll_interval_ms, poll_interval_ms)
-
-      unless max_attempts.nil?
-        validate_positive_integer!(:max_attempts, max_attempts)
-
-        # Every read raises read_ct, so with larger batches the messages released after a failure would have their
-        # unprocessed read counted as a failed attempt
-        raise Errors::ConfigurationError, "max_attempts requires batch_size: 1" unless batch_size == 1
-      end
+      CONTRACT.validate!(
+        {
+          queue_names: queue_names,
+          vt: vt,
+          batch_size: batch_size,
+          max_poll_seconds: max_poll_seconds,
+          poll_interval_ms: poll_interval_ms,
+          on_success: on_success,
+          max_attempts: max_attempts
+        },
+        Errors::ConfigurationError
+      )
 
       @client = client
-      @queue_names = validate_queue_names!(queue_names)
+      @queue_names = queue_names.map { |name| QueueName.validate!(name) }.freeze
       @vt = vt
       @batch_size = batch_size
       @max_poll_seconds = max_poll_seconds
@@ -158,25 +156,6 @@ module PGMQ
 
     private
 
-    # @param queue_names [String, Array<String>] queue name or names
-    # @return [Array<String>] validated, frozen queue names
-    # @raise [PGMQ::Errors::ConfigurationError] when the list is empty, too long or has duplicates
-    def validate_queue_names!(queue_names)
-      names = Array(queue_names)
-
-      raise Errors::ConfigurationError, "at least one queue name is required" if names.empty?
-      raise Errors::ConfigurationError, "at most 50 queues can be consumed" if names.size > 50
-
-      names = names.map { |name| QueueName.validate!(name) }
-
-      # pgmq folds queue names to lower case, so names differing only in case refer to the same queue
-      unless names.map(&:downcase).uniq.size == names.size
-        raise Errors::ConfigurationError, "queue names must be unique (case-insensitive)"
-      end
-
-      names.freeze
-    end
-
     # Reads the next messages
     #
     # With several queues the read order rotates each poll, so a busy queue listed first does not starve the others.
@@ -209,15 +188,6 @@ module PGMQ
         max_poll_seconds: @max_poll_seconds,
         poll_interval_ms: @poll_interval_ms
       )
-    end
-
-    # @param name [Symbol] option name used in the error message
-    # @param value [Object] option value
-    # @raise [PGMQ::Errors::ConfigurationError] when the value is not a positive Integer
-    def validate_positive_integer!(name, value)
-      return if value.is_a?(Integer) && value.positive?
-
-      raise Errors::ConfigurationError, "#{name} must be a positive Integer, got: #{value.inspect}"
     end
 
     # @param message [PGMQ::Message] read message

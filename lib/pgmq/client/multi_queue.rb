@@ -46,9 +46,7 @@ module PGMQ
         qty: 1,
         limit: nil
       )
-        raise ArgumentError, "queue_names must be an array" unless queue_names.is_a?(Array)
-        raise ArgumentError, "queue_names cannot be empty" if queue_names.empty?
-        raise ArgumentError, "queue_names cannot exceed 50 queues" if queue_names.size > 50
+        MULTI_QUEUE_CONTRACT.validate!({ queue_names: queue_names }, ArgumentError)
 
         # Validate all queue names (prevents SQL injection)
         queue_names.each { |qn| validate_queue_name!(qn) }
@@ -116,9 +114,7 @@ module PGMQ
         max_poll_seconds: 5,
         poll_interval_ms: 100
       )
-        raise ArgumentError, "queue_names must be an array" unless queue_names.is_a?(Array)
-        raise ArgumentError, "queue_names cannot be empty" if queue_names.empty?
-        raise ArgumentError, "queue_names cannot exceed 50 queues" if queue_names.size > 50
+        MULTI_QUEUE_CONTRACT.validate!({ queue_names: queue_names }, ArgumentError)
 
         start_time = Time.now
         poll_interval_seconds = poll_interval_ms / 1000.0
@@ -163,9 +159,7 @@ module PGMQ
       #     process(msg.queue_name, msg.message)
       #   end
       def pop_multi(queue_names)
-        raise ArgumentError, "queue_names must be an array" unless queue_names.is_a?(Array)
-        raise ArgumentError, "queue_names cannot be empty" if queue_names.empty?
-        raise ArgumentError, "queue_names cannot exceed 50 queues" if queue_names.size > 50
+        MULTI_QUEUE_CONTRACT.validate!({ queue_names: queue_names }, ArgumentError)
 
         # Validate all queue names
         queue_names.each { |qn| validate_queue_name!(qn) }

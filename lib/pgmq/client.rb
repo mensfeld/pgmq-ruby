@@ -24,6 +24,17 @@ module PGMQ
   # @example With connection string
   #   client = PGMQ::Client.new('postgres://localhost/mydb')
   class Client
+    # Validates message and headers types before they are bound
+    MESSAGE_CONTRACT = Contracts::Message.new
+
+    # Validates the messages and headers arrays of a batch
+    BATCH_CONTRACT = Contracts::Batch.new
+
+    # Validates the arguments of multi-queue operations
+    MULTI_QUEUE_CONTRACT = Contracts::MultiQueue.new
+
+    private_constant :MESSAGE_CONTRACT, :BATCH_CONTRACT, :MULTI_QUEUE_CONTRACT
+
     # Include functional modules (order matters for discoverability)
     include Transaction          # Transaction support (already existed)
     include QueueManagement      # Queue lifecycle (create, drop, list)

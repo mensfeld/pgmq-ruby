@@ -129,12 +129,8 @@ module PGMQ
       #   ])
       #   # => [{ queue_name: "new_orders", msg_id: "1" }, ...]
       def produce_batch_topic(routing_key, messages, headers: nil, delay: 0)
+        BATCH_CONTRACT.validate!({ messages: messages, headers: headers }, ArgumentError)
         return [] if messages.empty?
-
-        if headers && headers.length != messages.length
-          raise ArgumentError,
-            "headers array length (#{headers.length}) must match messages array length (#{messages.length})"
-        end
 
         result = with_connection do |conn|
           encoder = PG::TextEncoder::Array.new

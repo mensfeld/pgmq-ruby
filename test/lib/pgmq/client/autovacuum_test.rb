@@ -129,6 +129,15 @@ describe PGMQ::Client::Autovacuum do
       end
     end
 
+    it "validates every setting before it changes any table" do
+      e = assert_raises(ArgumentError) do
+        @client.tune_autovacuum(@queue_name, archive_settings: { evil: 1 })
+      end
+
+      assert_equal({ archive_settings: "must contain only known storage parameters" }.to_s, e.message)
+      assert_empty reloptions("q_#{@queue_name}")
+    end
+
     it "tunes the correct table for a mixed-case queue name" do
       # PGMQ folds queue names to lower case for the backing tables, so tune_autovacuum must target the lower-cased
       # table (pgmq.q_<name>) rather than the mixed-case name verbatim.

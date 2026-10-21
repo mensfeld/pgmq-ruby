@@ -49,6 +49,11 @@ module PGMQ
       ].freeze
       private_constant :FLOAT_SETTINGS
 
+      # Validates the storage settings before they are interpolated into SQL
+      CONTRACT = Contracts::Autovacuum.new
+
+      private_constant :CONTRACT
+
       # Tunes autovacuum and storage parameters on a queue's underlying tables.
       #
       # Applies {DEFAULT_QUEUE_SETTINGS} to the queue table (+pgmq.q_<name>+) and, unless +archive: false+,
@@ -64,6 +69,7 @@ module PGMQ
       # @param archive_settings [Hash{Symbol=>Numeric}] storage params for the archive table, merged onto
       #   {DEFAULT_ARCHIVE_SETTINGS}
       # @return [void]
+      # @raise [ArgumentError] if queue_settings or archive_settings has an unknown storage parameter
       # @raise [PGMQ::Errors::InvalidQueueNameError] if the queue name is invalid
       # @raise [PGMQ::Errors::ConnectionError] if the database operation fails (e.g. the queue does not exist)
       #
@@ -109,11 +115,16 @@ module PGMQ
       # @param archive_settings [Hash] archive-table overrides, merged onto {DEFAULT_ARCHIVE_SETTINGS}
       # @return [void]
       def tune_autovacuum_on(conn, queue_name, queue_settings: {}, archive: true, archive_settings: {})
-        alter_storage(conn, "q_#{queue_name}", DEFAULT_QUEUE_SETTINGS.merge(symbolize(queue_settings)))
+        queue_settings = symbolize(queue_settings)
+        archive_settings = symbolize(archive_settings)
+
+        CONTRACT.validate!({ queue_settings: queue_settings, archive_settings: archive_settings }, ArgumentError)
+
+        alter_storage(conn, "q_#{queue_name}", DEFAULT_QUEUE_SETTINGS.merge(queue_settings))
 
         return unless archive
 
-        alter_storage(conn, "a_#{queue_name}", DEFAULT_ARCHIVE_SETTINGS.merge(symbolize(archive_settings)))
+        alter_storage(conn, "a_#{queue_name}", DEFAULT_ARCHIVE_SETTINGS.merge(archive_settings))
       end
 
       # Issues a single ALTER TABLE setting the given storage parameters on one pgmq table.
@@ -125,7 +136,7 @@ module PGMQ
       #
       # Identifiers cannot be passed as bind parameters, so the table name is quoted with the connection's
       # +quote_ident+. The queue name has already passed {#validate_queue_name!} (strict identifier rules); the
-      # parameter names are validated against the known default keys; and the values are coerced to Float/Integer, so
+      # parameter names are validated by {PGMQ::Contracts::Autovacuum}; and the values are coerced to Float/Integer, so
       # no untrusted text reaches the statement.
       #
       # @param conn [PG::Connection] database connection
@@ -134,28 +145,9 @@ module PGMQ
       # @return [void]
       def alter_storage(conn, table, settings)
         qualified = "pgmq.#{conn.quote_ident(table.downcase)}"
-        clause = settings.map { |key, value| "#{storage_param_name(key)} = #{coerce_setting(key, value)}" }.join(", ")
+        clause = settings.map { |key, value| "#{key} = #{coerce_setting(key, value)}" }.join(", ")
 
         conn.exec("ALTER TABLE #{qualified} SET (#{clause})")
-      end
-
-      # Validates a storage-parameter name against the known keys before it is interpolated into SQL.
-      #
-      # Parameter names cannot be bound; allow-listing them against the union of the queue and archive default keys
-      # keeps an arbitrary Symbol from being injected as a raw identifier.
-      #
-      # @param key [Symbol] storage parameter name
-      # @return [String] the validated parameter name
-      # @raise [ArgumentError] if the key is not a recognised storage parameter
-      def storage_param_name(key)
-        return key.to_s if known_storage_params.include?(key)
-
-        raise ArgumentError, "Unknown storage parameter #{key.inspect}; allowed: #{known_storage_params.to_a.sort}"
-      end
-
-      # @return [Set<Symbol>] the union of queue and archive default keys
-      def known_storage_params
-        @known_storage_params ||= (DEFAULT_QUEUE_SETTINGS.keys + DEFAULT_ARCHIVE_SETTINGS.keys).to_set
       end
 
       # Coerces a setting value to its SQL form: Float for scale factors, Integer for everything else. Raising on

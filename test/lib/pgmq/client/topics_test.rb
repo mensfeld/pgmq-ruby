@@ -194,7 +194,7 @@ describe PGMQ::Client::Topics do
           [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })],
           headers: [to_json_msg({ h: 1 })])
       end
-      assert_match(/headers array length/, e.message)
+      assert_equal({ headers: "must have one element per message" }.to_s, e.message)
     end
 
     it "supports a float delay" do

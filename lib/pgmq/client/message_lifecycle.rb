@@ -123,7 +123,7 @@ module PGMQ
       #   deletions = messages.group_by(&:queue_name).transform_values { |mss| mss.map(&:msg_id) }
       #   client.delete_multi(deletions)
       def delete_multi(deletions)
-        raise ArgumentError, "deletions must be a hash" unless deletions.is_a?(Hash)
+        MULTI_QUEUE_CONTRACT.validate!({ deletions: deletions }, ArgumentError)
         return {} if deletions.empty?
 
         # Validate all queue names
@@ -209,7 +209,7 @@ module PGMQ
       #     'notifications' => [5]
       #   })
       def archive_multi(archives)
-        raise ArgumentError, "archives must be a hash" unless archives.is_a?(Hash)
+        MULTI_QUEUE_CONTRACT.validate!({ archives: archives }, ArgumentError)
         return {} if archives.empty?
 
         # Validate all queue names
@@ -334,7 +334,7 @@ module PGMQ
       #   updates = messages.group_by(&:queue_name).transform_values { |msgs| msgs.map(&:msg_id) }
       #   client.set_vt_multi(updates, vt: 120)
       def set_vt_multi(updates, vt:)
-        raise ArgumentError, "updates must be a hash" unless updates.is_a?(Hash)
+        MULTI_QUEUE_CONTRACT.validate!({ updates: updates }, ArgumentError)
         return {} if updates.empty?
 
         # Validate all queue names

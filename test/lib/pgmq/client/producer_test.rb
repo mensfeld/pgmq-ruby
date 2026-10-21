@@ -476,7 +476,7 @@ describe PGMQ::Client::Producer do
         e = assert_raises(ArgumentError) do
           @client.produce_batch(@queue_name, messages, headers: headers)
         end
-        assert_match(/headers array length \(2\) must match messages array length \(3\)/, e.message)
+        assert_equal({ headers: "must have one element per message" }.to_s, e.message)
       end
 
       it "raises ArgumentError when headers is shorter than messages" do
@@ -486,7 +486,7 @@ describe PGMQ::Client::Producer do
         e = assert_raises(ArgumentError) do
           @client.produce_batch(@queue_name, messages, headers: headers)
         end
-        assert_match(/headers array length \(1\) must match messages array length \(2\)/, e.message)
+        assert_equal({ headers: "must have one element per message" }.to_s, e.message)
       end
 
       it "raises ArgumentError when headers is longer than messages" do
@@ -496,7 +496,7 @@ describe PGMQ::Client::Producer do
         e = assert_raises(ArgumentError) do
           @client.produce_batch(@queue_name, messages, headers: headers)
         end
-        assert_match(/headers array length \(3\) must match messages array length \(1\)/, e.message)
+        assert_equal({ headers: "must have one element per message" }.to_s, e.message)
       end
 
       it "sends batch without headers (backward compatibility)" do
@@ -515,6 +515,21 @@ describe PGMQ::Client::Producer do
         read_messages.each do |msg|
           assert_nil msg.headers
         end
+      end
+
+      it "raises ArgumentError when headers is not an Array" do
+        e = assert_raises(ArgumentError) do
+          @client.produce_batch(@queue_name, [to_json_msg({ id: 1 })], headers: to_json_msg({ h: 1 }))
+        end
+        assert_equal({ headers: "must be an Array or nil" }.to_s, e.message)
+        assert_nil @client.read(@queue_name, vt: 30)
+      end
+
+      it "raises ArgumentError when messages is not an Array" do
+        e = assert_raises(ArgumentError) do
+          @client.produce_batch(@queue_name, to_json_msg({ id: 1 }))
+        end
+        assert_equal({ messages: "must be an Array" }.to_s, e.message)
       end
 
       it "handles empty headers array with empty messages array" do
