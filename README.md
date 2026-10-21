@@ -80,7 +80,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | `set_vt_batch` | Batch update visibility timeouts | ✅ |
 | | `set_vt_multi` | Update visibility timeouts across multiple queues | ✅ |
 | | `list_queues` | List all queues with metadata | ✅ |
-| | `metrics` | Get queue metrics (length, age, total messages) | ✅ |
+| | `metrics` | Get queue metrics (length, visible length, age, total messages, default partition length) | ✅ |
 | | `metrics_all` | Get metrics for all queues | ✅ |
 | | `enable_notify_insert` | Enable PostgreSQL NOTIFY on insert | ✅ |
 | | `update_notify_insert` | Update throttle interval on an existing NOTIFY trigger | ✅ |
@@ -892,6 +892,8 @@ puts metrics.queue_length        # => 42
 puts metrics.oldest_msg_age_sec  # => 120
 puts metrics.newest_msg_age_sec  # => 5
 puts metrics.total_messages      # => 1000
+puts metrics.queue_visible_length      # => 40 (PGMQ v1.5.0+)
+puts metrics.default_partition_length  # => nil for non-partitioned queues, 0 is healthy (PGMQ v1.13.0+)
 
 # Get all queue metrics
 all_metrics = client.metrics_all
