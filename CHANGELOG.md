@@ -21,6 +21,12 @@
   archive, PGMQ v1.13.0+; `nil` for non-partitioned queues, non-zero means pg_partman maintenance is failing). Both
   are raw values like the other fields, and `nil` on PGMQ versions that do not return them.
 
+### Queue Management
+- **[Feature]** `create_partitioned` accepts `premake:`, the number of partitions pg_partman creates ahead of the
+  current one for the queue and archive tables (PGMQ's default is 4). Raise it when writes outrun the pre-made
+  partitions and land in the default partition. Requires PGMQ v1.13.0+ when given; without it the SQL call is
+  unchanged.
+
 ### Documentation
 - **[Fix]** YARD examples used a non-existent `msg.payload`; they now use `msg.message`.
 - **[Fix]** The README long-polling example now treats the `read_with_poll` result as an Array of messages.

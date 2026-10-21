@@ -395,6 +395,13 @@ client.create_partitioned("queue_name",
   retention_interval: "7 days"
 )  # => true/false
 
+# Pre-make more partitions ahead of the current one (default 4; PGMQ v1.13.0+)
+client.create_partitioned("queue_name",
+  partition_interval: "10000",
+  retention_interval: "100000",
+  premake: 12
+)  # => true/false
+
 # Create unlogged queue (faster, no crash recovery)
 client.create_unlogged("queue_name")  # => true/false
 
