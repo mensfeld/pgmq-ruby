@@ -36,3 +36,9 @@ en:
       missing: needs to be present
       queue_settings_format: must contain only known storage parameters
       archive_settings_format: must contain only known storage parameters
+
+    connection:
+      conn_params_empty: are required
+      conn_params_format: must be a connection String, a non-empty Hash or a callable
+      reconnectable_error_patterns_format: must contain Strings or Regexps
+      reconnectable_error_classes_format: must contain Exception subclasses

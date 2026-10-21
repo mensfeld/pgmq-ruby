@@ -52,9 +52,10 @@
 
 ### Validation
 - **[Breaking]** Every argument check now runs through a contract in `PGMQ::Contracts` (`Message`, `Batch`,
-  `MultiQueue`, `Consumer`, `Autovacuum`), with the error messages in `config/locales/errors.yml`. The error classes
-  stay the same (`ArgumentError` from client calls, `PGMQ::Errors::ConfigurationError` from `PGMQ::Consumer.new`), but
-  the message is now a Hash of each invalid key and its reason, such as `queue_names` and `cannot be empty`. The
+  `MultiQueue`, `Consumer`, `Autovacuum`, `Connection`), with the error messages in `config/locales/errors.yml`. The
+  error classes stay the same (`ArgumentError` from client calls, `PGMQ::Errors::ConfigurationError` from
+  `PGMQ::Consumer.new`, the connection parameters and the `PGMQ::Connection` reconnectable error settings), but the
+  message is now a Hash of each invalid key and its reason, such as `queue_names` and `cannot be empty`. The
   headers length error of `produce_batch` and `produce_batch_topic` no longer includes the two lengths. New checks:
   `produce_batch` and `produce_batch_topic` raise `ArgumentError` when messages is not an Array or headers is neither
   an Array nor `nil` (String headers failed in SQL with `PGMQ::Errors::ConnectionError` before), and `tune_autovacuum`

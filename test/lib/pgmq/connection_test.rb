@@ -3,6 +3,25 @@
 describe PGMQ::Connection do
   before { @conn_params = TEST_DB_PARAMS }
 
+  describe "connection parameters" do
+    it "raises ConfigurationError for nil connection parameters" do
+      e = assert_raises(PGMQ::Errors::ConfigurationError) { PGMQ::Connection.new(nil) }
+
+      assert_equal({ conn_params: "are required" }.to_s, e.message)
+    end
+
+    it "raises ConfigurationError for an empty Hash or another format" do
+      [{}, 1].each do |conn_params|
+        e = assert_raises(PGMQ::Errors::ConfigurationError) { PGMQ::Connection.new(conn_params) }
+
+        assert_equal(
+          { conn_params: "must be a connection String, a non-empty Hash or a callable" }.to_s,
+          e.message
+        )
+      end
+    end
+  end
+
   describe "pool statistics" do
     it "provides pool size and available connections" do
       connection = PGMQ::Connection.new(@conn_params, pool_size: 3)

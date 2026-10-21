@@ -26,6 +26,11 @@ module PGMQ
     # Default connection pool timeout in seconds
     DEFAULT_POOL_TIMEOUT = 5
 
+    # Validates the connection configuration
+    CONTRACT = Contracts::Connection.new
+
+    private_constant :CONTRACT
+
     class << self
       # Additional error message patterns (String or Regexp) that mean the connection is dead and a retry on a fresh
       # socket is safe. Strings are matched as case-insensitive substrings; Regexps match the original message. The
@@ -56,6 +61,8 @@ module PGMQ
       # @param patterns [Array<String, Regexp>]
       # @raise [PGMQ::Errors::ConfigurationError] if any element is invalid
       def reconnectable_error_patterns=(patterns)
+        CONTRACT.validate!({ reconnectable_error_patterns: patterns }, Errors::ConfigurationError)
+
         @reconnectable_error_patterns = normalize_patterns(patterns)
       end
 
@@ -64,7 +71,9 @@ module PGMQ
       # @param classes [Array<Class>]
       # @raise [PGMQ::Errors::ConfigurationError] if any element is invalid
       def reconnectable_error_classes=(classes)
-        @reconnectable_error_classes = normalize_classes(classes)
+        CONTRACT.validate!({ reconnectable_error_classes: classes }, Errors::ConfigurationError)
+
+        @reconnectable_error_classes = Array(classes).freeze
       end
 
       private
@@ -77,36 +86,7 @@ module PGMQ
       # @param patterns [Array<String, Regexp>, String, Regexp, nil]
       # @return [Array<String, Regexp>]
       def normalize_patterns(patterns)
-        Array(patterns).map do |pattern|
-          case pattern
-          when Regexp
-            pattern
-          when String
-            pattern.downcase
-          else
-            raise(
-              PGMQ::Errors::ConfigurationError,
-              "reconnectable_error_patterns must contain Strings or Regexps, got #{pattern.class}"
-            )
-          end
-        end.freeze
-      end
-
-      # Normalizes user-supplied reconnectable error classes.
-      #
-      # @param classes [Array<Class>, Class, nil]
-      # @return [Array<Class>]
-      def normalize_classes(classes)
-        Array(classes).map do |klass|
-          unless klass.is_a?(Class) && klass <= Exception
-            raise(
-              PGMQ::Errors::ConfigurationError,
-              "reconnectable_error_classes must contain Exception subclasses, got #{klass.inspect}"
-            )
-          end
-
-          klass
-        end.freeze
+        Array(patterns).map { |pattern| pattern.is_a?(String) ? pattern.downcase : pattern }.freeze
       end
     end
 
@@ -130,12 +110,7 @@ module PGMQ
       pool_timeout: DEFAULT_POOL_TIMEOUT,
       auto_reconnect: true
     )
-      if conn_params.nil?
-        raise(
-          PGMQ::Errors::ConfigurationError,
-          "Connection parameters are required"
-        )
-      end
+      CONTRACT.validate!({ conn_params: conn_params }, Errors::ConfigurationError)
 
       @conn_params = normalize_connection_params(conn_params)
       @pool_size = pool_size
@@ -281,13 +256,11 @@ module PGMQ
     # Normalizes various connection parameter formats
     # @param params [String, Hash, Proc]
     # @return [Hash, Proc]
-    # @raise [PGMQ::Errors::ConfigurationError] if params format is invalid
+    # @raise [PGMQ::Errors::ConfigurationError] if the connection string is invalid
     def normalize_connection_params(params)
-      return params if params.respond_to?(:call) # Callable (e.g., proc for Rails)
       return parse_connection_string(params) if params.is_a?(String)
-      return params if params.is_a?(Hash) && !params.empty?
 
-      raise PGMQ::Errors::ConfigurationError, "Invalid connection parameters format"
+      params
     end
 
     # Parses a PostgreSQL connection string

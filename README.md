@@ -1228,7 +1228,7 @@ end
 ```
 
 Invalid arguments are rejected before they reach PostgreSQL: client calls raise `ArgumentError` and
-`PGMQ::Consumer.new` raises `PGMQ::Errors::ConfigurationError`. For example, `produce` and `produce_batch` raise when a
+`PGMQ::Consumer.new` and invalid connection settings raise `PGMQ::Errors::ConfigurationError`. For example, `produce` and `produce_batch` raise when a
 message is not a String or its headers are neither a String nor `nil`. The error message names each invalid key and the
 reason, for example `messages.1.message` for the second message of a batch. Inside a transaction it arrives as
 `PGMQ::Errors::ConnectionError`, as described below.
