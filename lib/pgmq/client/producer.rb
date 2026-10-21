@@ -7,6 +7,11 @@ module PGMQ
     # This module handles producing messages to queues, both individual messages and batches. Users must serialize
     # messages to JSON strings themselves.
     module Producer
+      # Validates message and headers types before they are bound
+      MESSAGE_CONTRACT = Contracts::Message.new
+
+      private_constant :MESSAGE_CONTRACT
+
       # Produces a message to a queue
       #
       # @param queue_name [String] name of the queue
@@ -45,7 +50,7 @@ module PGMQ
         delay: 0
       )
         validate_queue_name!(queue_name)
-        validate_payload!(message, headers)
+        MESSAGE_CONTRACT.validate!({ message: message, headers: headers }, ArgumentError)
         delay_sql, delay_value = delay_argument(delay, headers ? 4 : 3)
 
         result = with_connection do |conn|
@@ -108,7 +113,13 @@ module PGMQ
             "headers array length (#{headers.length}) must match messages array length (#{messages.length})"
         end
 
-        messages.each_with_index { |message, index| validate_payload!(message, headers && headers[index]) }
+        messages.each_with_index do |message, index|
+          MESSAGE_CONTRACT.validate!(
+            { message: message, headers: headers && headers[index] },
+            ArgumentError,
+            scope: ["messages", index]
+          )
+        end
 
         result = with_connection do |conn|
           encoder = PG::TextEncoder::Array.new
@@ -131,24 +142,6 @@ module PGMQ
         end
 
         result.map { |row| row["send_batch"] }
-      end
-
-      private
-
-      # Validates the message and headers types before they are bound
-      #
-      # The pg gem reads a Hash bind parameter as a parameter spec and binds +nil+ as SQL NULL, so a non-String value
-      # would be stored as NULL without an error.
-      #
-      # @param message [Object] message to validate
-      # @param headers [Object] headers to validate
-      # @return [void]
-      # @raise [ArgumentError] if message is not a String, or headers is neither a String nor nil
-      def validate_payload!(message, headers)
-        raise ArgumentError, "message must be a JSON String, got #{message.class}" unless message.is_a?(String)
-        return if headers.nil? || headers.is_a?(String)
-
-        raise ArgumentError, "headers must be a JSON String or nil, got #{headers.class}"
       end
     end
   end

@@ -1,0 +1,6 @@
+en:
+  validations:
+    message:
+      missing: needs to be present
+      message_format: must be a JSON String
+      headers_format: must be a JSON String or nil
