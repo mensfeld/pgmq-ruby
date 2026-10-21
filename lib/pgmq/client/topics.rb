@@ -121,6 +121,8 @@ module PGMQ
       #   a float such as 1.5 needs PGMQ v1.10.0+), or an absolute Time at which the messages become visible,
       #   including ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [Array<Hash>] array of hashes with :queue_name and :msg_id
+      # @raise [ArgumentError] if messages is not an Array, headers is neither an Array nor nil, or headers length
+      #   doesn't match messages length
       #
       # @example Batch topic send
       #   results = client.produce_batch_topic("orders.new", [

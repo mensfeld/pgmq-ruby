@@ -12,12 +12,12 @@ en:
       headers_length: must have one element per message
 
     multi_queue:
-      queue_names_format: must be an array
+      queue_names_format: must be an Array
       queue_names_empty: cannot be empty
       queue_names_too_many: cannot exceed 50 queues
-      deletions_format: must be a hash
-      archives_format: must be a hash
-      updates_format: must be a hash
+      deletions_format: must be a Hash
+      archives_format: must be a Hash
+      updates_format: must be a Hash
 
     consumer:
       missing: needs to be present

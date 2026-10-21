@@ -89,7 +89,7 @@ describe PGMQ::Client::MultiQueue do
       e = assert_raises(ArgumentError) do
         @client.read_multi("not_an_array", vt: 30)
       end
-      assert_match(/must be an array/, e.message)
+      assert_match(/must be an Array/, e.message)
     end
 
     it "rejects empty array" do
@@ -241,7 +241,7 @@ describe PGMQ::Client::MultiQueue do
       e = assert_raises(ArgumentError) do
         @client.read_multi_with_poll("not_array", vt: 30)
       end
-      assert_match(/must be an array/, e.message)
+      assert_match(/must be an Array/, e.message)
     end
 
     it "validates non-empty array" do
@@ -308,7 +308,7 @@ describe PGMQ::Client::MultiQueue do
       e = assert_raises(ArgumentError) do
         @client.pop_multi("not_array")
       end
-      assert_match(/must be an array/, e.message)
+      assert_match(/must be an Array/, e.message)
     end
 
     it "validates non-empty array" do
@@ -377,7 +377,7 @@ describe PGMQ::Client::MultiQueue do
       e = assert_raises(ArgumentError) do
         @client.delete_multi("not_hash")
       end
-      assert_match(/must be a hash/, e.message)
+      assert_match(/must be a Hash/, e.message)
     end
 
     it "validates all queue names" do
@@ -452,7 +452,7 @@ describe PGMQ::Client::MultiQueue do
       e = assert_raises(ArgumentError) do
         @client.archive_multi("not_hash")
       end
-      assert_match(/must be a hash/, e.message)
+      assert_match(/must be a Hash/, e.message)
     end
 
     it "validates all queue names" do

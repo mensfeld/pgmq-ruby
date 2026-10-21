@@ -12,7 +12,7 @@ describe PGMQ::Contracts::MultiQueue do
   end
 
   it "rejects queue_names that are not an Array" do
-    assert_equal({ queue_names: "must be an array" }, contract.call({ queue_names: "a" }).errors)
+    assert_equal({ queue_names: "must be an Array" }, contract.call({ queue_names: "a" }).errors)
   end
 
   it "rejects empty queue_names" do
@@ -28,7 +28,7 @@ describe PGMQ::Contracts::MultiQueue do
 
   %i[deletions archives updates].each do |key|
     it "rejects #{key} that is not a Hash" do
-      assert_equal({ key => "must be a hash" }, contract.call({ key => [] }).errors)
+      assert_equal({ key => "must be a Hash" }, contract.call({ key => [] }).errors)
     end
   end
 end
