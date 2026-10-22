@@ -17,6 +17,8 @@ module PGMQ
       # @param qty [Integer] max messages to read per queue
       # @param limit [Integer, nil] max total messages across all queues (nil = all)
       # @return [Array<PGMQ::Message>] array of messages with queue_name attribute
+      # @raise [PGMQ::Errors::MultiQueueInvalidError] if queue_names is not an Array, is empty or has more than 50
+      #   names
       #
       # @example Read from multiple queues (gets first available from any queue)
       #   msg = client.read_multi(['orders', 'notifications', 'emails'], vt: 30, limit: 1).first
@@ -46,9 +48,7 @@ module PGMQ
         qty: 1,
         limit: nil
       )
-        raise ArgumentError, "queue_names must be an array" unless queue_names.is_a?(Array)
-        raise ArgumentError, "queue_names cannot be empty" if queue_names.empty?
-        raise ArgumentError, "queue_names cannot exceed 50 queues" if queue_names.size > 50
+        MULTI_QUEUE_CONTRACT.validate!({ queue_names: queue_names }, Errors::MultiQueueInvalidError)
 
         # Validate all queue names (prevents SQL injection)
         queue_names.each { |qn| validate_queue_name!(qn) }
@@ -85,6 +85,8 @@ module PGMQ
       # @param max_poll_seconds [Integer] maximum seconds to wait for messages
       # @param poll_interval_ms [Integer] milliseconds between polls
       # @return [Array<PGMQ::Message>] array of messages (empty if timeout)
+      # @raise [PGMQ::Errors::MultiQueueInvalidError] if queue_names is not an Array, is empty or has more than 50
+      #   names
       #
       # @example Wait for first available message from any queue
       #   msg = client.read_multi_with_poll(
@@ -116,9 +118,7 @@ module PGMQ
         max_poll_seconds: 5,
         poll_interval_ms: 100
       )
-        raise ArgumentError, "queue_names must be an array" unless queue_names.is_a?(Array)
-        raise ArgumentError, "queue_names cannot be empty" if queue_names.empty?
-        raise ArgumentError, "queue_names cannot exceed 50 queues" if queue_names.size > 50
+        MULTI_QUEUE_CONTRACT.validate!({ queue_names: queue_names }, Errors::MultiQueueInvalidError)
 
         start_time = Time.now
         poll_interval_seconds = poll_interval_ms / 1000.0
@@ -147,6 +147,8 @@ module PGMQ
       #
       # @param queue_names [Array<String>] array of queue names
       # @return [PGMQ::Message, nil] message with queue_name attribute, or nil if no messages
+      # @raise [PGMQ::Errors::MultiQueueInvalidError] if queue_names is not an Array, is empty or has more than 50
+      #   names
       #
       # @example Get first available message from any queue and auto-delete
       #   msg = client.pop_multi(['orders', 'notifications', 'emails'])
@@ -163,9 +165,7 @@ module PGMQ
       #     process(msg.queue_name, msg.message)
       #   end
       def pop_multi(queue_names)
-        raise ArgumentError, "queue_names must be an array" unless queue_names.is_a?(Array)
-        raise ArgumentError, "queue_names cannot be empty" if queue_names.empty?
-        raise ArgumentError, "queue_names cannot exceed 50 queues" if queue_names.size > 50
+        MULTI_QUEUE_CONTRACT.validate!({ queue_names: queue_names }, Errors::MultiQueueInvalidError)
 
         # Validate all queue names
         queue_names.each { |qn| validate_queue_name!(qn) }

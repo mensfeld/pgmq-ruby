@@ -37,6 +37,16 @@ module PGMQ
     # Raised when configuration is invalid
     class ConfigurationError < BaseError; end
 
+    # Raised when a message, headers or a batch to produce do not match {PGMQ::Contracts::Message} or
+    # {PGMQ::Contracts::Batch}
+    class MessageInvalidError < BaseError; end
+
+    # Raised when the arguments of a multi-queue operation do not match {PGMQ::Contracts::MultiQueue}
+    class MultiQueueInvalidError < BaseError; end
+
+    # Raised when autovacuum settings do not match {PGMQ::Contracts::Autovacuum}
+    class AutovacuumSettingsInvalidError < BaseError; end
+
     # Raised when an invalid queue name is provided
     class InvalidQueueNameError < BaseError; end
 

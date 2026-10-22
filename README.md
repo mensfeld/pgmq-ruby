@@ -1227,6 +1227,20 @@ rescue PGMQ::Errors::ConnectionError => e
 end
 ```
 
+Invalid arguments are rejected by a contract before they reach PostgreSQL, with a validation error:
+
+- `PGMQ::Errors::MessageInvalidError` from `produce`, `produce_batch` and `produce_batch_topic`, for example when a
+  message is not a String or its headers are neither a String nor `nil`
+- `PGMQ::Errors::MultiQueueInvalidError` from the multi-queue operations (`read_multi`, `read_multi_with_poll`,
+  `pop_multi`, `delete_multi`, `archive_multi`, `set_vt_multi`)
+- `PGMQ::Errors::AutovacuumSettingsInvalidError` from `tune_autovacuum` for an unknown storage parameter or a
+  non-numeric value
+- `PGMQ::Errors::ConfigurationError` from `PGMQ::Consumer.new` and invalid connection settings
+
+The error message names each invalid key and the reason, for example `messages.1.message` for the second message of a
+batch.
+Inside a transaction it arrives as `PGMQ::Errors::ConnectionError`, as described below.
+
 A failed `client.transaction` block, including an exception your own code raises in it, raises
 `PGMQ::Errors::ConnectionError` with the message `Transaction failed: ...`. Its `#cause` is the error raised in the
 block. For a database error that is the inner `PGMQ::Errors::ConnectionError`, so the `PG::Error` is in

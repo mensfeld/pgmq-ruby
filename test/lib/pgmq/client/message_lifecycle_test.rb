@@ -319,11 +319,11 @@ describe PGMQ::Client::MessageLifecycle do
       assert_equal({}, result)
     end
 
-    it "raises ArgumentError when updates is not a hash" do
-      e = assert_raises(ArgumentError) do
+    it "raises MultiQueueInvalidError when updates is not a hash" do
+      e = assert_raises(PGMQ::Errors::MultiQueueInvalidError) do
         @client.set_vt_multi([], vt: 60)
       end
-      assert_match(/must be a hash/, e.message)
+      assert_match(/must be a Hash/, e.message)
     end
 
     it "skips queues with empty message arrays" do

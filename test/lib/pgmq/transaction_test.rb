@@ -158,7 +158,7 @@ describe PGMQ::Transaction do
 
       it "returns transaction block result" do
         result = @client.transaction do |txn|
-          txn.produce(@queue1, { test: "data" })
+          txn.produce(@queue1, to_json_msg({ test: "data" }))
           "transaction_result"
         end
 
@@ -170,7 +170,7 @@ describe PGMQ::Transaction do
       it "rolls back on raised exception" do
         e = assert_raises(PGMQ::Errors::ConnectionError) do
           @client.transaction do |txn|
-            txn.produce(@queue1, { data: "will_rollback" })
+            txn.produce(@queue1, to_json_msg({ data: "will_rollback" }))
             raise "Test error"
           end
         end
@@ -185,8 +185,8 @@ describe PGMQ::Transaction do
       it "rolls back all queue operations on error" do
         assert_raises(PGMQ::Errors::ConnectionError) do
           @client.transaction do |txn|
-            txn.produce(@queue1, { data: "message1" })
-            txn.produce(@queue2, { data: "message2" })
+            txn.produce(@queue1, to_json_msg({ data: "message1" }))
+            txn.produce(@queue2, to_json_msg({ data: "message2" }))
             raise StandardError, "Rollback trigger"
           end
         end
@@ -205,7 +205,7 @@ describe PGMQ::Transaction do
 
         assert_raises(PGMQ::Errors::ConnectionError) do
           @client.transaction do |txn|
-            txn.produce(@queue1, { data: "in_txn" })
+            txn.produce(@queue1, to_json_msg({ data: "in_txn" }))
             raise "Rollback"
           end
         end
@@ -223,7 +223,7 @@ describe PGMQ::Transaction do
       it "properly handles PG::Error during transaction" do
         e = assert_raises(PGMQ::Errors::ConnectionError) do
           @client.transaction do |txn|
-            txn.produce(@queue1, { data: "test" })
+            txn.produce(@queue1, to_json_msg({ data: "test" }))
             # Trigger a PG error by using invalid SQL
             txn.connection.with_connection do |conn|
               conn.exec("INVALID SQL STATEMENT")
@@ -246,7 +246,7 @@ describe PGMQ::Transaction do
         assert_raises(PGMQ::Errors::ConnectionError) do
           @client.transaction do |txn|
             Thread.new do
-              txn.produce(@queue1, { data: "from_thread" })
+              txn.produce(@queue1, to_json_msg({ data: "from_thread" }))
             rescue PGMQ::Errors::TransactionError => e
               thread_error = e
             end.join
@@ -266,7 +266,7 @@ describe PGMQ::Transaction do
         assert_raises(PGMQ::Errors::ConnectionError) do
           @client.transaction do |txn|
             Fiber.new do
-              txn.produce(@queue1, { data: "from_fiber" })
+              txn.produce(@queue1, to_json_msg({ data: "from_fiber" }))
             rescue PGMQ::Errors::TransactionError => e
               fiber_error = e
             end.resume
@@ -284,7 +284,7 @@ describe PGMQ::Transaction do
           @client.transaction do |txn|
             thread = Thread.new do
               Thread.current.report_on_exception = false
-              txn.produce(@queue1, { data: "from_thread" })
+              txn.produce(@queue1, to_json_msg({ data: "from_thread" }))
             end
             thread.value
           end
@@ -311,7 +311,7 @@ describe PGMQ::Transaction do
         leaked = @client.transaction { |txn| txn }
 
         e = assert_raises(PGMQ::Errors::TransactionError) do
-          leaked.produce(@queue1, { data: "after_commit" })
+          leaked.produce(@queue1, to_json_msg({ data: "after_commit" }))
         end
         assert_match(/already ended/, e.message)
         assert_nil @client.read(@queue1, vt: 30)
@@ -324,7 +324,7 @@ describe PGMQ::Transaction do
 
         10.times do
           @client.transaction do |txn|
-            txn.produce(@queue1, { iteration: "test" })
+            txn.produce(@queue1, to_json_msg({ iteration: "test" }))
           end
         end
 

@@ -3,6 +3,25 @@
 describe PGMQ::Connection do
   before { @conn_params = TEST_DB_PARAMS }
 
+  describe "connection parameters" do
+    it "raises ConfigurationError for nil connection parameters" do
+      e = assert_raises(PGMQ::Errors::ConfigurationError) { PGMQ::Connection.new(nil) }
+
+      assert_equal({ conn_params: "are required" }.to_s, e.message)
+    end
+
+    it "raises ConfigurationError for an empty Hash or another format" do
+      [{}, 1].each do |conn_params|
+        e = assert_raises(PGMQ::Errors::ConfigurationError) { PGMQ::Connection.new(conn_params) }
+
+        assert_equal(
+          { conn_params: "must be a connection String, a non-empty Hash or a callable" }.to_s,
+          e.message
+        )
+      end
+    end
+  end
+
   describe "pool statistics" do
     it "provides pool size and available connections" do
       connection = PGMQ::Connection.new(@conn_params, pool_size: 3)
@@ -463,6 +482,14 @@ describe PGMQ::Connection do
       assert_raises(PGMQ::Errors::ConfigurationError) do
         PGMQ::Connection.reconnectable_error_patterns = [123]
       end
+    end
+
+    it "does not freeze the classes Array passed in" do
+      classes = [PG::Error]
+      PGMQ::Connection.reconnectable_error_classes = classes
+
+      refute_predicate classes, :frozen?
+      assert_predicate PGMQ::Connection.reconnectable_error_classes, :frozen?
     end
 
     it "raises ConfigurationError for non-Exception classes" do

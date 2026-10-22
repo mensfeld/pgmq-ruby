@@ -2,13 +2,13 @@
 
 require "zeitwerk"
 require "time"
+require "yaml"
 
 loader = Zeitwerk::Loader.for_gem
 loader.inflector.inflect(
   "pgmq" => "PGMQ"
 )
 loader.setup
-loader.eager_load
 
 # PGMQ - Low-level Ruby client for Postgres Message Queue
 #
@@ -38,6 +38,11 @@ loader.eager_load
 #   client.drop_queue('orders')
 module PGMQ
   class << self
+    # @return [String] root path of this gem
+    def gem_root
+      File.expand_path("..", __dir__)
+    end
+
     # Convenience method to create a new client
     #
     # @return [PGMQ::Client] new client instance
@@ -50,3 +55,5 @@ module PGMQ
     end
   end
 end
+
+loader.eager_load

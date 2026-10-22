@@ -1,0 +1,46 @@
+en:
+  validations:
+    message:
+      missing: needs to be present
+      message_format: must be a JSON String
+      headers_format: must be a JSON String or nil
+
+    batch:
+      missing: needs to be present
+      messages_format: must be an Array
+      headers_format: must be an Array or nil
+      headers_length: must have one element per message
+
+    multi_queue:
+      queue_names_format: must be an Array
+      queue_names_empty: cannot be empty
+      queue_names_too_many: cannot exceed 50 queues
+      deletions_format: must be a Hash
+      archives_format: must be a Hash
+      updates_format: must be a Hash
+
+    consumer:
+      missing: needs to be present
+      queue_names_empty: needs at least one queue name
+      queue_names_too_many: cannot exceed 50 queues
+      queue_names_unique: must be unique (case-insensitive)
+      on_success_format: must be :delete or :archive
+      vt_format: must be a positive Integer
+      batch_size_format: must be a positive Integer
+      max_poll_seconds_format: must be a positive Integer
+      poll_interval_ms_format: must be a positive Integer
+      max_attempts_format: must be a positive Integer or nil
+      max_attempts_batch_size: "requires batch_size: 1"
+
+    autovacuum:
+      missing: needs to be present
+      queue_settings_format: must contain only known storage parameters
+      archive_settings_format: must contain only known storage parameters
+      queue_settings_values: must contain only numeric values
+      archive_settings_values: must contain only numeric values
+
+    connection:
+      conn_params_empty: are required
+      conn_params_format: must be a connection String, a non-empty Hash or a callable
+      reconnectable_error_patterns_format: must contain Strings or Regexps
+      reconnectable_error_classes_format: must contain Exception subclasses
