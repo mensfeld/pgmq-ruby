@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 (2026-10-25)
 
 ### Consumer
 - **[Feature]** Add `PGMQ::Consumer`, a minimal single-threaded consumer loop modelled on the rdkafka-ruby simple
