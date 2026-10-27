@@ -53,7 +53,7 @@ module PGMQ
       #
       # @return [Array<Class>]
       # @example
-      #   PGMQ::Connection.reconnectable_error_classes = [PG::ConnectionRefused]
+      #   PGMQ::Connection.reconnectable_error_classes = [PG::ConnectionFailure]
       attr_reader :reconnectable_error_classes
 
       # Replaces the extra reconnectable error patterns.

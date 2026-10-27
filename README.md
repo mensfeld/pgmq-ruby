@@ -357,7 +357,7 @@ PGMQ::Connection.reconnectable_error_patterns = [
 ]
 
 # Any Exception subclass is accepted. Subclasses also match.
-PGMQ::Connection.reconnectable_error_classes = [PG::ConnectionRefused]
+PGMQ::Connection.reconnectable_error_classes = [PG::ConnectionFailure]
 ```
 
 The built-in defaults are always kept - your patterns and classes are
