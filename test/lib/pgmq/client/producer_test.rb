@@ -49,6 +49,16 @@ describe PGMQ::Client::Producer do
       assert_nil @client.read(@queue_name, vt: 30)
     end
 
+    it "supports a Duration-like delay (ActiveSupport::Duration)" do
+      [DurationLike.new(2), DurationLike.new(1.5)].each do |delay|
+        msg_id = @client.produce(@queue_name, to_json_msg({ delay: delay.value }), delay: delay)
+
+        assert_visibility_delay(delay.value, @client, @queue_name, msg_id)
+      end
+
+      assert_nil @client.read(@queue_name, vt: 30)
+    end
+
     it "sends message with absolute timestamp delay (Time)" do
       future = Time.now + 2
 
@@ -311,6 +321,19 @@ describe PGMQ::Client::Producer do
 
         assert_equal 2, msg_ids.size
         msg_ids.each { |msg_id| assert_visibility_delay(delay, @client, @queue_name, msg_id) }
+      end
+
+      assert_nil @client.read(@queue_name, vt: 30)
+    end
+
+    it "supports a Duration-like batch delay (ActiveSupport::Duration)" do
+      messages = [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })]
+
+      [DurationLike.new(2), DurationLike.new(1.5)].each do |delay|
+        msg_ids = @client.produce_batch(@queue_name, messages, delay: delay)
+
+        assert_equal 2, msg_ids.size
+        msg_ids.each { |msg_id| assert_visibility_delay(delay.value, @client, @queue_name, msg_id) }
       end
 
       assert_nil @client.read(@queue_name, vt: 30)

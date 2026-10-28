@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Producer
+- **[Fix]** A whole-second `ActiveSupport::Duration` delay (`delay: 5.minutes`) works again in `produce`, `produce_batch`
+  and `produce_batch_topic`; 0.8.0 raised `NoMethodError: undefined method 'to_time'`. A fractional one
+  (`delay: 1.5.seconds`) now works in all four producers, `produce_topic` included, and stays fractional. A Duration is
+  bound as its number of seconds.
+
 ## 0.8.0 (2026-10-25)
 
 ### Consumer

@@ -86,6 +86,24 @@ describe PGMQ::Client do
     end
   end
 
+  describe "#delay_argument" do
+    it "binds a Duration-like whole number of seconds as a plain Integer" do
+      sql, value = @client.__send__(:delay_argument, DurationLike.new(300), 3)
+
+      assert_equal "$3::integer", sql
+      assert_instance_of Integer, value
+      assert_equal 300, value
+    end
+
+    it "binds a Duration-like fractional number of seconds as a plain Float" do
+      sql, value = @client.__send__(:delay_argument, DurationLike.new(1.5), 4)
+
+      assert_equal "clock_timestamp() + make_interval(secs => $4::double precision)", sql
+      assert_instance_of Float, value
+      assert_in_delta 1.5, value
+    end
+  end
+
   describe "#validate_queue_name!" do
     describe "valid queue names" do
       it "accepts simple lowercase names" do
