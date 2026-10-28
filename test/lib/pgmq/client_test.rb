@@ -91,7 +91,7 @@ describe PGMQ::Client do
       sql, value = @client.__send__(:delay_argument, DurationLike.new(300), 3)
 
       assert_equal "$3::integer", sql
-      assert_instance_of Integer, value
+      assert_same Integer, value.class
       assert_equal 300, value
     end
 
@@ -99,7 +99,7 @@ describe PGMQ::Client do
       sql, value = @client.__send__(:delay_argument, DurationLike.new(1.5), 4)
 
       assert_equal "clock_timestamp() + make_interval(secs => $4::double precision)", sql
-      assert_instance_of Float, value
+      assert_same Float, value.class
       assert_in_delta 1.5, value
     end
   end
