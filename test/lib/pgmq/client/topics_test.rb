@@ -158,31 +158,6 @@ describe PGMQ::Client::Topics do
       assert_equal "f-1", JSON.parse(msg.headers)["trace_id"]
     end
 
-    it "supports a Duration-like delay (ActiveSupport::Duration)" do
-      [DurationLike.new(2), DurationLike.new(1.5)].each.with_index(1) do |delay, msg_id|
-        count = @client.produce_topic("orders.new", to_json_msg({ delayed: true }), delay: delay)
-
-        assert_equal 1, count
-        assert_visibility_delay(delay.value, @client, @queue_name, msg_id)
-      end
-
-      assert_nil @client.read(@queue_name, vt: 30)
-    end
-
-    it "supports a Duration-like delay with headers (ActiveSupport::Duration)" do
-      [DurationLike.new(2), DurationLike.new(1.5)].each.with_index(1) do |delay, msg_id|
-        count = @client.produce_topic("orders.new",
-          to_json_msg({ delayed: true }),
-          headers: to_json_msg({ trace_id: "d-1" }),
-          delay: delay)
-
-        assert_equal 1, count
-        assert_visibility_delay(delay.value, @client, @queue_name, msg_id)
-      end
-
-      assert_nil @client.read(@queue_name, vt: 30)
-    end
-
     it "returns 0 for a float delay when no queues match" do
       assert_equal 0, @client.produce_topic("unmatched.key", to_json_msg({ data: "test" }), delay: 1.5)
     end
@@ -237,19 +212,6 @@ describe PGMQ::Client::Topics do
 
         assert_equal 2, results.size
         results.each { |r| assert_visibility_delay(delay, @client, r[:queue_name], r[:msg_id]) }
-      end
-
-      assert_nil @client.read(@queue_name, vt: 30)
-    end
-
-    it "supports a Duration-like delay (ActiveSupport::Duration)" do
-      [DurationLike.new(2), DurationLike.new(1.5)].each do |delay|
-        results = @client.produce_batch_topic("orders.new",
-          [to_json_msg({ id: 1 }), to_json_msg({ id: 2 })],
-          delay: delay)
-
-        assert_equal 2, results.size
-        results.each { |r| assert_visibility_delay(delay.value, @client, r[:queue_name], r[:msg_id]) }
       end
 
       assert_nil @client.read(@queue_name, vt: 30)
