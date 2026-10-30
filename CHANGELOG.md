@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.1 (2026-10-30)
 
 ### Producer
 - **[Fix]** A whole-second `ActiveSupport::Duration` delay (`delay: 5.minutes`) works again in `produce`, `produce_batch`
