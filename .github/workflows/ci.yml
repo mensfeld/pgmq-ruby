@@ -17,10 +17,12 @@ jobs:
   tests:
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    continue-on-error: ${{ contains(matrix.ruby, 'preview') || contains(matrix.ruby, 'rc') }}
     strategy:
       fail-fast: false
       matrix:
         ruby:
+          - '4.1.0-preview1'
           - '4.0'
           - '3.4'
           - '3.3'
@@ -57,6 +59,10 @@ jobs:
 
       - name: Install package dependencies
         run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends postgresql-client"
+
+      - name: Remove Gemfile.lock for Ruby preview versions
+        if: contains(matrix.ruby, 'preview') || contains(matrix.ruby, 'rc')
+        run: rm -f Gemfile.lock
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
