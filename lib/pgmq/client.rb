@@ -179,18 +179,22 @@ module PGMQ
     # +timestamptz+ overload as +clock_timestamp()+ plus the delay. This is how PGMQ itself turns an integer delay
     # into a visibility time, so the database clock is used in both cases.
     #
-    # The type is checked with +is_a?+, not +case+/+===+: +ActiveSupport::Duration+ (+5.minutes+) answers +is_a?+
-    # for its value but is not a Numeric, so +Integer === 5.minutes+ is false. The bind value is a plain number.
+    # +ActiveSupport::Duration+ (+5.minutes+) answers +is_a?+ for its value but is not a Numeric, so
+    # +Integer === 5.minutes+ is false and it reaches the last branch. It is converted there to a plain number, which
+    # keeps the +is_a?+ calls off the path of a plain Integer or Float.
     #
     # @param delay [Numeric, ActiveSupport::Duration, Time] delay in seconds or an absolute Time
     # @param index [Integer] position of the delay bind parameter in the query
     # @return [Array(String, Object)] SQL argument and its bind value
     def delay_argument(delay, index)
-      if delay.is_a?(Integer)
-        ["$#{index}::integer", delay.to_i]
-      elsif delay.is_a?(Numeric)
+      case delay
+      when Integer
+        ["$#{index}::integer", delay]
+      when Numeric
         ["clock_timestamp() + make_interval(secs => $#{index}::double precision)", delay.to_f]
       else
+        return delay_argument(delay.is_a?(Integer) ? delay.to_i : delay.to_f, index) if delay.is_a?(Numeric)
+
         ["$#{index}::timestamptz", delay.to_time.utc.iso8601(6)]
       end
     end

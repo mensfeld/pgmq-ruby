@@ -6,11 +6,18 @@
 # Runs all integration specs (or specific ones) as isolated subprocesses,
 # automatically loading the example_helper via -r flag.
 #
+# A spec in a `*_pristine` directory runs in its own bundle, resolved from that directory's
+# Gemfile (copied to a temp dir), so it can use gems the main Gemfile does not have.
+#
 # Usage:
 #   bin/integrations                                      # run all specs
 #   bin/integrations spec/integration/archiving_spec.rb   # run specific spec(s)
 
-SPEC_DIR = File.expand_path("../spec/integration", __dir__)
+require "fileutils"
+require "tmpdir"
+
+ROOT_DIR = File.expand_path("..", __dir__)
+SPEC_DIR = File.join(ROOT_DIR, "spec/integration")
 LOAD_PATH = File.join(SPEC_DIR, "support")
 
 Signal.trap("INT") do
@@ -18,7 +25,11 @@ Signal.trap("INT") do
   exit(130)
 end
 
-files = ARGV.empty? ? Dir.glob(File.join(SPEC_DIR, "*_spec.rb")).sort : ARGV.map { |f| File.expand_path(f) }
+files = if ARGV.empty?
+  Dir.glob(File.join(SPEC_DIR, "{,*_pristine/}*_spec.rb")).sort
+else
+  ARGV.map { |f| File.expand_path(f) }
+end
 
 if files.empty?
   puts "No spec files found."
@@ -34,7 +45,23 @@ files.each_with_index do |file, index|
   name = File.basename(file)
   puts "[#{index + 1}/#{files.size}] Running #{name}..."
 
-  success = system("bundle", "exec", "ruby", "-I", LOAD_PATH, "-r", "example_helper", file)
+  command = ["bundle", "exec", "ruby", "-I", LOAD_PATH, "-r", "example_helper"]
+
+  success = if File.dirname(file).end_with?("_pristine")
+    Dir.mktmpdir do |dir|
+      FileUtils.cp_r("#{File.dirname(file)}/.", dir)
+
+      env = {
+        "BUNDLE_GEMFILE" => File.join(dir, "Gemfile"),
+        "BUNDLE_AUTO_INSTALL" => "true",
+        "PGMQ_GEM_DIR" => ROOT_DIR
+      }
+
+      system(env, *command, name, chdir: dir)
+    end
+  else
+    system(*command, file)
+  end
 
   if success.nil?
     puts "Interrupted."
