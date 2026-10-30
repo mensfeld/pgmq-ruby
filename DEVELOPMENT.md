@@ -143,8 +143,7 @@ bundle exec ruby examples/rails_usage.rb
 ### Test Structure
 
 - **Unit tests** (`test/lib/`): Minitest/spec tests for classes in isolation and with database
-- **Integration tests** (`spec/integration/`): Standalone example scripts with real PostgreSQL. A spec in a
-  `*_pristine` directory runs in its own bundle from that directory's `Gemfile` (e.g. with real activesupport)
+- **Integration tests** (`spec/integration/`): Standalone example scripts with real PostgreSQL
 
 ### Test Coverage
 
