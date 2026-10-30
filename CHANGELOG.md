@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Producer
+- **[Fix]** A whole-second `ActiveSupport::Duration` delay (`delay: 5.minutes`) works again in `produce`, `produce_batch`
+  and `produce_batch_topic`; 0.8.0 raised `NoMethodError: undefined method 'to_time'`. A fractional one
+  (`delay: 1.5.seconds`) now works in all four producers, `produce_topic` included, and stays fractional. A Duration is
+  bound as its number of seconds.
+
+### Testing
+- **[Feature]** `bin/integrations` runs a spec in a `*_pristine` directory in its own bundle from that directory's
+  `Gemfile`. The ActiveSupport delay spec uses it to test with real activesupport, which the main Gemfile does not
+  have.
+
 ## 0.8.0 (2026-10-25)
 
 ### Consumer

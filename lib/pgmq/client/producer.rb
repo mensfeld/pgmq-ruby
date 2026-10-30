@@ -12,9 +12,9 @@ module PGMQ
       # @param queue_name [String] name of the queue
       # @param message [String] message as JSON string (for PostgreSQL JSONB)
       # @param headers [String, nil] optional headers as JSON string (for metadata, routing, tracing)
-      # @param delay [Numeric, Time] delay in seconds before message becomes visible (integer or float;
-      #   a float such as 1.5 needs PGMQ v1.10.0+), or an absolute Time at which the message becomes visible,
-      #   including ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
+      # @param delay [Numeric, ActiveSupport::Duration, Time] delay in seconds before message becomes visible (integer,
+      #   float or Duration; a float such as 1.5 needs PGMQ v1.10.0+), or an absolute Time at which the message
+      #   becomes visible, including ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [String] message ID as string
       # @raise [PGMQ::Errors::MessageInvalidError] if message is not a String, or headers is neither a String nor
       #   nil
@@ -71,9 +71,9 @@ module PGMQ
       # @param queue_name [String] name of the queue
       # @param messages [Array<String>] array of message payloads as JSON strings
       # @param headers [Array<String>, nil] optional array of headers as JSON strings (must match messages length)
-      # @param delay [Numeric, Time] delay in seconds before messages become visible (integer or float;
-      #   a float such as 1.5 needs PGMQ v1.10.0+), or an absolute Time at which the messages become visible,
-      #   including ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
+      # @param delay [Numeric, ActiveSupport::Duration, Time] delay in seconds before messages become visible (integer,
+      #   float or Duration; a float such as 1.5 needs PGMQ v1.10.0+), or an absolute Time at which the messages
+      #   become visible, including ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [Array<String>] array of message IDs
       # @raise [PGMQ::Errors::MessageInvalidError] if messages is not an Array, headers is neither an Array nor nil,
       #   headers length doesn't match messages length, a message is not a String, or a header is neither a String
