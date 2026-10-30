@@ -310,6 +310,5 @@ GitHub Actions workflows in `.github/workflows/`:
 - `test/test_helper.rb` - Minitest configuration + SimpleCov setup
 - `test/lib/` - Minitest/spec unit tests
 - `spec/integration/` - Standalone integration examples with real PostgreSQL
-- `DEVELOPMENT.md` - Comprehensive development documentation
 - `README.md` - User-facing documentation with all API examples
 - `CLAUDE.md` - AI assistant guidance (this file)
