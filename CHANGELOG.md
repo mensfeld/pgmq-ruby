@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Producer
+- **[Fix]** `produce_topic` and `produce_batch_topic` raise `PGMQ::Errors::MessageInvalidError` when a message is not
+  a String or its headers are neither a String nor `nil`, like `produce` and `produce_batch`. `produce_batch_topic`
+  stored a `nil` message as NULL, and `produce_topic` raised `PGMQ::Errors::ConnectionError`.
+
 ## 0.8.1 (2026-10-30)
 
 ### Producer
