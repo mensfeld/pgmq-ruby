@@ -130,7 +130,7 @@ PGMQ::Errors::BaseError (StandardError)
 - Maximum 47 characters (PGMQ limitation for table prefixes)
 - Must start with letter or underscore
 - Only letters, digits, underscores allowed
-- Case-insensitive (PGMQ lower-cases table names)
+- Names differing only in case share one table (PGMQ lower-cases table names) but get separate `pgmq.meta` rows: use one spelling per queue
 - Validated in `Client#validate_queue_name!`
 
 ### Modular Architecture Pattern

@@ -430,7 +430,8 @@ Queue names must follow PostgreSQL identifier rules with PGMQ-specific constrain
 - **Maximum 47 characters** (PGMQ enforces this limit for table prefixes)
 - Must start with a letter or underscore
 - Can contain only letters, digits, and underscores
-- Case-insensitive: PGMQ lower-cases the table names, so `Orders` and `orders` are the same queue
+- Names that differ only in case (`Orders`, `orders`) share one message table, because PGMQ lower-cases table names.
+  PGMQ still registers each spelling separately in `pgmq.meta`, so always use one spelling per queue (e.g. lower case)
 
 **Valid Queue Names:**
 
