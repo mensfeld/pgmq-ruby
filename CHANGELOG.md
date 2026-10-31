@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Queue Naming
+- **[Fix]** The `InvalidQueueNameError` message for a too-long queue name states the real limit: "exceeds maximum
+  length of 47 characters" (was 48; a 48-character name was already rejected). The README now gives 47 as the maximum
+  and documents queue names as case-insensitive (PGMQ lower-cases the table names).
+
 ## 0.8.1 (2026-10-30)
 
 ### Producer
