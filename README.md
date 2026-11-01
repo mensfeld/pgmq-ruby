@@ -23,7 +23,7 @@ PGMQ-Ruby is a Ruby client for PGMQ (PostgreSQL Message Queue). It provides dire
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-- [Configuration](#configuration)
+- [Connection Options](#connection-options)
 - [API Reference](#api-reference)
   - [Queue Management](#queue-management)
   - [Sending Messages](#sending-messages)
@@ -882,7 +882,7 @@ end
 client.disable_notify_insert("queue_name")
 
 # Block until a NOTIFY arrives on the queue's channel (or timeout expires)
-# Returns the payload string on notification, nil on timeout
+# Returns the channel name on notification, nil on timeout
 client.wait_for_notify("queue_name", timeout: 5)
 
 # Block form — inspect notification metadata
