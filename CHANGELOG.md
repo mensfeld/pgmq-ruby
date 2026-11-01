@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+- **[Fix]** The README `wait_for_notify` example said the call returns the notification payload; it returns the
+  channel name (`nil` on timeout).
+
 ## 0.8.1 (2026-10-30)
 
 ### Producer
