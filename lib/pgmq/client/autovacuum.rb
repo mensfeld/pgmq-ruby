@@ -106,6 +106,12 @@ module PGMQ
       # and the archive-skip rule here means the two paths cannot drift - +archive+ is a single truthiness test in one
       # place, and per-table overrides are merged onto the defaults in one place.
       #
+      # PGMQ folds queue names to lower case when it creates the backing tables (`pgmq.create('MyQueue')` produces
+      # `pgmq.q_myqueue`), so the table name is lower-cased to match the physical table before it is quoted. Without
+      # this, a mixed-case queue name would build `q_MyQueue`, and +quote_ident+ would preserve that case and target a
+      # non-existent relation. Identifiers cannot be passed as bind parameters, so the table name is quoted with the
+      # connection's +quote_ident+; the queue name has already passed {#validate_queue_name!} (strict identifier rules).
+      #
       # @param conn [PG::Connection] the connection to run the ALTER TABLE statements on
       # @param queue_name [String] name of the queue (already validated)
       # @param queue_settings [Hash] queue-table overrides, merged onto {DEFAULT_QUEUE_SETTINGS}
@@ -126,12 +132,8 @@ module PGMQ
 
       # Builds the SET clause of the ALTER TABLE statement for one pgmq table.
       #
-      # PGMQ folds queue names to lower case when it creates the backing tables (`pgmq.create('MyQueue')` produces
-      # `pgmq.q_myqueue`), so the caller lower-cases the table name before it quotes it with +quote_ident+.
-      #
-      # Identifiers cannot be passed as bind parameters. The queue name has already passed {#validate_queue_name!}
-      # (strict identifier rules); the parameter names are validated against the known default keys; and the values
-      # are coerced to Float/Integer, so no untrusted text reaches the statement.
+      # Parameter names cannot be bound, so they are validated against the known default keys, and the values are
+      # coerced to Float/Integer, so no untrusted text reaches the statement.
       #
       # @param settings [Hash{Symbol=>Numeric}] storage parameters to set
       # @return [String] the comma-separated storage parameter assignments
