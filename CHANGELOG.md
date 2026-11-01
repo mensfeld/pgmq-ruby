@@ -2,11 +2,27 @@
 
 ## Unreleased
 
+### Validation
+- **[Breaking]** Remove the contract layer (`PGMQ::Contractable`, `PGMQ::Contracts`, `config/locales/errors.yml`) and
+  the `MessageInvalidError`, `MultiQueueInvalidError` and `AutovacuumSettingsInvalidError` classes. Like rdkafka-ruby,
+  the client keeps only the inline checks it had before 0.8.0; message and argument validation belongs in a
+  higher-level library. Multi-queue argument errors, the `produce_batch`/`produce_batch_topic` headers length error and
+  an unknown `tune_autovacuum` storage parameter raise `ArgumentError` again. `PGMQ::Consumer.new` and the connection
+  settings still raise `PGMQ::Errors::ConfigurationError`. No longer checked:
+  - The message and headers types in `produce` and `produce_batch`. The value is bound as is: a Hash or `nil` is
+    stored as NULL, an Integer, Float, `true` or Array as JSON. Serialize payloads to JSON before producing.
+  - The messages and headers argument types in `produce_batch` and `produce_batch_topic`, and headers given with an
+    empty messages Array (the call returns `[]`).
+  - Non-numeric `tune_autovacuum` values before any table changes: they raise `ArgumentError` or `TypeError` from
+    `Float()`/`Integer()` when their table is altered.
+
 ### Queue Naming
 - **[Fix]** The `InvalidQueueNameError` message for a too-long queue name states the real limit: "exceeds maximum
   length of 47 characters" (was 48; a 48-character name was already rejected). The README now gives 47 as the maximum
   and no longer calls queue names case-sensitive: names differing only in case share one table (PGMQ lower-cases
-  table names) but get separate `pgmq.meta` rows, so use one spelling per queue.### Documentation
+  table names) but get separate `pgmq.meta` rows, so use one spelling per queue.
+
+### Documentation
 - **[Fix]** The README `wait_for_notify` example said the call returns the notification payload; it returns the
   channel name (`nil` on timeout).
 
