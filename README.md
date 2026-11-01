@@ -23,7 +23,7 @@ PGMQ-Ruby is a Ruby client for PGMQ (PostgreSQL Message Queue). It provides dire
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-- [Configuration](#configuration)
+- [Connection Options](#connection-options)
 - [API Reference](#api-reference)
   - [Queue Management](#queue-management)
   - [Sending Messages](#sending-messages)
