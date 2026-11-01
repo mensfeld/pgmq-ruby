@@ -91,7 +91,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | Conditional Filtering | Server-side JSONB filtering with `conditional:` | ✅ |
 | | Multi-Queue Ops | Read/pop/delete/archive from multiple queues | ✅ |
 | | Consumer | Minimal single-threaded `PGMQ::Consumer` loop over one or more queues with ack on success | ✅ |
-| | Queue Validation | 48-character limit and name validation | ✅ |
+| | Queue Validation | 47-character limit and name validation | ✅ |
 | | Connection Pooling | Thread-safe connection pool for concurrency | ✅ |
 | | Pluggable Serializers | JSON (default) with custom serializer support | ✅ |
 
@@ -427,10 +427,11 @@ queues = client.list_queues
 
 Queue names must follow PostgreSQL identifier rules with PGMQ-specific constraints:
 
-- **Maximum 48 characters** (PGMQ enforces this limit for table prefixes)
+- **Maximum 47 characters** (PGMQ enforces this limit for table prefixes)
 - Must start with a letter or underscore
 - Can contain only letters, digits, and underscores
-- Case-sensitive
+- Names that differ only in case (`Orders`, `orders`) share one message table, because PGMQ lower-cases table names.
+  PGMQ still registers each spelling separately in `pgmq.meta`, so always use one spelling per queue (e.g. lower case)
 
 **Valid Queue Names:**
 

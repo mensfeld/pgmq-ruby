@@ -169,7 +169,7 @@ describe PGMQ::Client do
         e = assert_raises(PGMQ::Errors::InvalidQueueNameError) do
           @client.__send__(:validate_queue_name!, long_name)
         end
-        assert_match(/exceeds maximum length of 48 characters.*current length: 48/, e.message)
+        assert_match(/exceeds maximum length of 47 characters.*current length: 48/, e.message)
       end
 
       it "rejects names with 60 characters" do
@@ -177,7 +177,7 @@ describe PGMQ::Client do
         e = assert_raises(PGMQ::Errors::InvalidQueueNameError) do
           @client.__send__(:validate_queue_name!, long_name)
         end
-        assert_match(/exceeds maximum length of 48 characters.*current length: 60/, e.message)
+        assert_match(/exceeds maximum length of 47 characters.*current length: 60/, e.message)
       end
 
       it "includes queue name in length error message" do
