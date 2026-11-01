@@ -129,6 +129,23 @@ describe PGMQ::Client::Autovacuum do
       end
     end
 
+    it "rejects a non-numeric archive value before it changes any table" do
+      assert_raises(ArgumentError) do
+        @client.tune_autovacuum(@queue_name, archive_settings: { autovacuum_vacuum_threshold: "many" })
+      end
+
+      assert_empty reloptions("q_#{@queue_name}")
+    end
+
+    it "rejects an unknown archive setting before it changes any table" do
+      e = assert_raises(ArgumentError) do
+        @client.tune_autovacuum(@queue_name, queue_settings: { fillfactor: 77 }, archive_settings: { evil: 1 })
+      end
+
+      assert_match(/Unknown storage parameter :evil/, e.message)
+      assert_empty reloptions("q_#{@queue_name}")
+    end
+
     it "tunes the correct table for a mixed-case queue name" do
       # PGMQ folds queue names to lower case for the backing tables, so tune_autovacuum must target the lower-cased
       # table (pgmq.q_<name>) rather than the mixed-case name verbatim.

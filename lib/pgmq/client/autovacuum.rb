@@ -47,7 +47,11 @@ module PGMQ
         autovacuum_vacuum_scale_factor
         autovacuum_analyze_scale_factor
       ].freeze
-      private_constant :FLOAT_SETTINGS
+
+      # Storage parameters that can be set: the union of the queue and archive default keys
+      STORAGE_PARAMS = (DEFAULT_QUEUE_SETTINGS.keys + DEFAULT_ARCHIVE_SETTINGS.keys).uniq.freeze
+
+      private_constant :FLOAT_SETTINGS, :STORAGE_PARAMS
 
       # Tunes autovacuum and storage parameters on a queue's underlying tables.
       #
@@ -109,34 +113,30 @@ module PGMQ
       # @param archive_settings [Hash] archive-table overrides, merged onto {DEFAULT_ARCHIVE_SETTINGS}
       # @return [void]
       def tune_autovacuum_on(conn, queue_name, queue_settings: {}, archive: true, archive_settings: {})
-        alter_storage(conn, "q_#{queue_name}", DEFAULT_QUEUE_SETTINGS.merge(symbolize(queue_settings)))
+        # Both clauses are built first, so an invalid archive setting raises before the queue table is altered
+        clauses = { "q_#{queue_name}" => storage_clause(DEFAULT_QUEUE_SETTINGS.merge(symbolize(queue_settings))) }
+        if archive
+          clauses["a_#{queue_name}"] = storage_clause(DEFAULT_ARCHIVE_SETTINGS.merge(symbolize(archive_settings)))
+        end
 
-        return unless archive
-
-        alter_storage(conn, "a_#{queue_name}", DEFAULT_ARCHIVE_SETTINGS.merge(symbolize(archive_settings)))
+        clauses.each do |table, clause|
+          conn.exec("ALTER TABLE pgmq.#{conn.quote_ident(table.downcase)} SET (#{clause})")
+        end
       end
 
-      # Issues a single ALTER TABLE setting the given storage parameters on one pgmq table.
+      # Builds the SET clause of the ALTER TABLE statement for one pgmq table.
       #
       # PGMQ folds queue names to lower case when it creates the backing tables (`pgmq.create('MyQueue')` produces
-      # `pgmq.q_myqueue`), so the table name is lower-cased to match the physical table before it is quoted. Without
-      # this, a mixed-case queue name would build `q_MyQueue`, and +quote_ident+ would preserve that case and target a
-      # non-existent relation.
+      # `pgmq.q_myqueue`), so the caller lower-cases the table name before it quotes it with +quote_ident+.
       #
-      # Identifiers cannot be passed as bind parameters, so the table name is quoted with the connection's
-      # +quote_ident+. The queue name has already passed {#validate_queue_name!} (strict identifier rules); the
-      # parameter names are validated against the known default keys; and the values are coerced to Float/Integer, so
-      # no untrusted text reaches the statement.
+      # Identifiers cannot be passed as bind parameters. The queue name has already passed {#validate_queue_name!}
+      # (strict identifier rules); the parameter names are validated against the known default keys; and the values
+      # are coerced to Float/Integer, so no untrusted text reaches the statement.
       #
-      # @param conn [PG::Connection] database connection
-      # @param table [String] unqualified table name (e.g. "q_orders")
       # @param settings [Hash{Symbol=>Numeric}] storage parameters to set
-      # @return [void]
-      def alter_storage(conn, table, settings)
-        qualified = "pgmq.#{conn.quote_ident(table.downcase)}"
-        clause = settings.map { |key, value| "#{storage_param_name(key)} = #{coerce_setting(key, value)}" }.join(", ")
-
-        conn.exec("ALTER TABLE #{qualified} SET (#{clause})")
+      # @return [String] the comma-separated storage parameter assignments
+      def storage_clause(settings)
+        settings.map { |key, value| "#{storage_param_name(key)} = #{coerce_setting(key, value)}" }.join(", ")
       end
 
       # Validates a storage-parameter name against the known keys before it is interpolated into SQL.
@@ -148,14 +148,9 @@ module PGMQ
       # @return [String] the validated parameter name
       # @raise [ArgumentError] if the key is not a recognised storage parameter
       def storage_param_name(key)
-        return key.to_s if known_storage_params.include?(key)
+        return key.to_s if STORAGE_PARAMS.include?(key)
 
-        raise ArgumentError, "Unknown storage parameter #{key.inspect}; allowed: #{known_storage_params.to_a.sort}"
-      end
-
-      # @return [Set<Symbol>] the union of queue and archive default keys
-      def known_storage_params
-        @known_storage_params ||= (DEFAULT_QUEUE_SETTINGS.keys + DEFAULT_ARCHIVE_SETTINGS.keys).to_set
+        raise ArgumentError, "Unknown storage parameter #{key.inspect}; allowed: #{STORAGE_PARAMS.sort}"
       end
 
       # Coerces a setting value to its SQL form: Float for scale factors, Integer for everything else. Raising on

@@ -251,6 +251,14 @@ describe PGMQ::Client::MultiQueue do
       assert_match(/cannot be empty/, e.message)
     end
 
+    it "limits to 50 queues" do
+      many_queues = (1..51).map { |i| "queue#{i}" }
+      e = assert_raises(ArgumentError) do
+        @client.read_multi_with_poll(many_queues, vt: 30)
+      end
+      assert_match(/cannot exceed 50/, e.message)
+    end
+
     it "gets first available from any queue" do
       # Only queue3 has messages
       @client.produce(@queue3, to_json_msg({ only_in_q3: true }))

@@ -13,8 +13,9 @@
     stored as NULL, an Integer, Float, `true` or Array as JSON. Serialize payloads to JSON before producing.
   - The messages and headers argument types in `produce_batch` and `produce_batch_topic`, and headers given with an
     empty messages Array (the call returns `[]`).
-  - Non-numeric `tune_autovacuum` values before any table changes: they raise `ArgumentError` or `TypeError` from
-    `Float()`/`Integer()` when their table is altered.
+  - `archive_settings` of `tune_autovacuum` (and `create` with `tune_autovacuum:`) with `archive: false`: they are
+    ignored again. With the archive tuned, an unknown or non-numeric setting still raises before any table changes,
+    as `ArgumentError` (or `TypeError` from `Float()`/`Integer()` for a value such as `nil`).
 
 ### Queue Naming
 - **[Fix]** The `InvalidQueueNameError` message for a too-long queue name states the real limit: "exceeds maximum
