@@ -4,10 +4,12 @@
 
 ### Producer
 - **[Fix]** `produce_topic` and `produce_batch_topic` raise `PGMQ::Errors::MessageInvalidError` when a message is not
-  a String or its headers are neither a String nor `nil`, like `produce` and `produce_batch`. Before,
-  `produce_batch_topic` stored a `nil` message as NULL. `produce_topic` stored Hash headers as NULL without an error
-  (such a call now raises), stored a `nil` message as NULL with a fractional delay, and raised
-  `PGMQ::Errors::ConnectionError` for other invalid messages.
+  a String or its headers are neither a String nor `nil`, like `produce` and `produce_batch`. Calls that succeeded
+  before now raise: Integer, Float, `true` and Array messages were stored as JSON; a `nil` message was stored as NULL
+  (`produce_batch_topic`, and `produce_topic` with a fractional delay); `false` headers were stored as JSON `false` by
+  `produce_batch_topic`; with an integer delay, `produce_topic` dropped `false` headers and stored Hash headers as NULL.
+  A Hash message, other Hash headers and a `nil` message in `produce_topic` with an integer delay raised
+  `PGMQ::Errors::ConnectionError`.
 
 ## 0.8.1 (2026-10-30)
 
