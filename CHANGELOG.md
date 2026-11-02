@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.2 (2026-11-02)
 
 ### Queue Naming
 - **[Fix]** The `InvalidQueueNameError` message for a too-long queue name states the real limit: "exceeds maximum
