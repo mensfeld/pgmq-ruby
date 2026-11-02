@@ -3,11 +3,12 @@
 ## Unreleased
 
 ### Producer
-- **[Fix]** `produce_topic` and `produce_batch_topic` raise `PGMQ::Errors::MessageInvalidError` when a message is not
-  a String or its headers are neither a String nor `nil`, like `produce` and `produce_batch`. Most such calls succeeded
-  before and now raise: non-String messages and headers were stored as JSON (Integer, Float, `true`, `false` and Array
-  values) or as NULL (a `nil` message; Hash headers in `produce_topic` with an integer delay), and `produce_topic` with
-  an integer delay dropped `false` headers. The other `nil` and Hash cases raised `PGMQ::Errors::ConnectionError`.
+- **[Breaking]** `produce_topic` and `produce_batch_topic` raise `PGMQ::Errors::MessageInvalidError` when a message is
+  not a String or its headers are neither a String nor `nil`, like `produce` and `produce_batch`. Most such calls
+  succeeded before and now raise: non-String messages and headers were stored as JSON (Integer, Float, `true`, `false`
+  and Array values) or as NULL (a `nil` message; Hash headers in `produce_topic` with an integer delay), and
+  `produce_topic` with an integer delay dropped `false` headers. The other `nil` and Hash cases raised
+  `PGMQ::Errors::ConnectionError`.
 
 ## 0.8.2 (2026-11-02)
 
