@@ -28,8 +28,8 @@ module PGMQ
   #   PGMQ::QueueName.sanitize!("!!!")           # => raises InvalidQueueNameError
   #   PGMQ::QueueName.sanitize("99 Problems!")   # => "q_99_problems"
   module QueueName
-    # Maximum queue name length. PGMQ creates tables with prefixes (+q_+, +a_+) and PostgreSQL caps identifiers at 63
-    # characters; PGMQ enforces 48 to leave room for those prefixes and suffixes.
+    # Queue names must be shorter than this. PGMQ creates tables with prefixes (+q_+, +a_+) and PostgreSQL caps
+    # identifiers at 63 characters; PGMQ rejects names of 48+ characters to leave room for those prefixes and suffixes.
     MAX_LENGTH = 48
 
     # A valid queue name: starts with a letter or underscore, then letters, digits, or underscores.
@@ -67,7 +67,7 @@ module PGMQ
 
       if str.length >= MAX_LENGTH
         raise Errors::InvalidQueueNameError,
-          "Queue name '#{str}' exceeds maximum length of #{MAX_LENGTH} characters " \
+          "Queue name '#{str}' exceeds maximum length of #{MAX_LENGTH - 1} characters " \
           "(current length: #{str.length})"
       end
 

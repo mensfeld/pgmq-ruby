@@ -60,7 +60,7 @@ bundle exec bin/console
 1. **PGMQ::Client** (`lib/pgmq/client.rb`)
    - Main interface for all PGMQ operations (modular architecture, ~130 lines)
    - Delegates connection management to PGMQ::Connection
-   - Validates queue names (48 char max, PostgreSQL identifier rules)
+   - Validates queue names (47 char max, PostgreSQL identifier rules)
    - Composed of 8 functional modules for separation of concerns:
      - **Transaction** (`lib/pgmq/transaction.rb`) - PostgreSQL transaction support
      - **QueueManagement** (`lib/pgmq/client/queue_management.rb`) - Queue lifecycle (create, drop, list)
@@ -127,10 +127,10 @@ PGMQ::Errors::BaseError (StandardError)
 
 ### Queue Name Validation
 
-- Maximum 48 characters (PGMQ limitation for table prefixes)
+- Maximum 47 characters (PGMQ limitation for table prefixes)
 - Must start with letter or underscore
 - Only letters, digits, underscores allowed
-- Case-sensitive
+- Names differing only in case share one table (PGMQ lower-cases table names) but get separate `pgmq.meta` rows: use one spelling per queue
 - Validated in `Client#validate_queue_name!`
 
 ### Modular Architecture Pattern

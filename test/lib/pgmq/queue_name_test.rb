@@ -45,7 +45,7 @@ describe PGMQ::QueueName do
 
     it "raises with length detail for names that are too long" do
       e = assert_raises(PGMQ::Errors::InvalidQueueNameError) { PGMQ::QueueName.validate!("a" * 48) }
-      assert_match(/exceeds maximum length of 48 characters.*current length: 48/, e.message)
+      assert_match(/exceeds maximum length of 47 characters.*current length: 48/, e.message)
     end
 
     it "raises with identifier detail for illegal characters" do

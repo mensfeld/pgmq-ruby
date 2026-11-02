@@ -4,12 +4,20 @@
 
 ### Producer
 - **[Fix]** `produce_topic` and `produce_batch_topic` raise `PGMQ::Errors::MessageInvalidError` when a message is not
-  a String or its headers are neither a String nor `nil`, like `produce` and `produce_batch`. Calls that succeeded
-  before now raise: Integer, Float, `true` and Array messages were stored as JSON; a `nil` message was stored as NULL
-  (`produce_batch_topic`, and `produce_topic` with a fractional delay); `false` headers were stored as JSON `false` by
-  `produce_batch_topic`; with an integer delay, `produce_topic` dropped `false` headers and stored Hash headers as NULL.
-  A Hash message, other Hash headers and a `nil` message in `produce_topic` with an integer delay raised
-  `PGMQ::Errors::ConnectionError`.
+  a String or its headers are neither a String nor `nil`, like `produce` and `produce_batch`. Most such calls succeeded
+  before and now raise: non-String messages and headers were stored as JSON (Integer, Float, `true`, `false` and Array
+  values) or as NULL (a `nil` message; Hash headers in `produce_topic` with an integer delay), and `produce_topic` with
+  an integer delay dropped `false` headers. The other `nil` and Hash cases raised `PGMQ::Errors::ConnectionError`.
+
+## 0.8.2 (2026-11-02)
+
+### Queue Naming
+- **[Fix]** The `InvalidQueueNameError` message for a too-long queue name states the real limit: "exceeds maximum
+  length of 47 characters" (was 48; a 48-character name was already rejected). The README now gives 47 as the maximum
+  and no longer calls queue names case-sensitive: names differing only in case share one table (PGMQ lower-cases
+  table names) but get separate `pgmq.meta` rows, so use one spelling per queue.### Documentation
+- **[Fix]** The README `wait_for_notify` example said the call returns the notification payload; it returns the
+  channel name (`nil` on timeout).
 
 ## 0.8.1 (2026-10-30)
 
