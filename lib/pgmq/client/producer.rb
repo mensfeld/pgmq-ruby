@@ -103,16 +103,8 @@ module PGMQ
         delay: 0
       )
         validate_queue_name!(queue_name)
-        BATCH_CONTRACT.validate!({ messages: messages, headers: headers }, Errors::MessageInvalidError)
+        validate_messages!(messages, headers)
         return [] if messages.empty?
-
-        messages.each_with_index do |message, index|
-          MESSAGE_CONTRACT.validate!(
-            { message: message, headers: headers && headers[index] },
-            Errors::MessageInvalidError,
-            scope: ["messages", index]
-          )
-        end
 
         result = with_connection do |conn|
           encoder = PG::TextEncoder::Array.new

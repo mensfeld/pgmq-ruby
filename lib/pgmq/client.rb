@@ -173,6 +173,28 @@ module PGMQ
       nil
     end
 
+    # Validates a batch of messages and their headers before they are bound
+    #
+    # @param messages [Array<String>] message payloads as JSON strings
+    # @param headers [Array<String, nil>, nil] headers as JSON strings, one per message
+    # @return [void]
+    # @raise [PGMQ::Errors::MessageInvalidError] if messages is not an Array, headers is neither an Array nor nil,
+    #   headers length doesn't match messages length, a message is not a String, or a header is neither a String nor
+    #   nil
+    def validate_messages!(messages, headers)
+      BATCH_CONTRACT.validate!({ messages: messages, headers: headers }, Errors::MessageInvalidError)
+
+      messages.each_with_index do |message, index|
+        MESSAGE_CONTRACT.validate!(
+          { message: message, headers: headers && headers[index] },
+          Errors::MessageInvalidError,
+          scope: ["messages", index]
+        )
+      end
+
+      nil
+    end
+
     # Builds the SQL argument and bind value for a +delay:+ given in seconds or as an absolute Time
     #
     # PostgreSQL rejects a Float such as +1.5+ for an +integer+ bind, so a non-Integer Numeric is passed to the

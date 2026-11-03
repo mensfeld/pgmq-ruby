@@ -73,6 +73,8 @@ module PGMQ
       # @param delay [Numeric, ActiveSupport::Duration] delay in seconds before message becomes visible (integer,
       #   float or Duration; a float such as 1.5 needs PGMQ v1.10.0+)
       # @return [Integer] count of queues the message was delivered to
+      # @raise [PGMQ::Errors::MessageInvalidError] if message is not a String, or headers is neither a String nor
+      #   nil
       #
       # @example Basic topic send
       #   count = client.produce_topic("orders.new", '{"order_id":123}')
@@ -83,6 +85,8 @@ module PGMQ
       #     headers: '{"trace_id":"abc"}',
       #     delay: 30)
       def produce_topic(routing_key, message, headers: nil, delay: 0)
+        MESSAGE_CONTRACT.validate!({ message: message, headers: headers }, Errors::MessageInvalidError)
+
         # send_topic takes whole seconds only, so a fractional delay goes through send_batch_topic
         if delay.is_a?(Numeric) && !delay.integer?
           return produce_batch_topic(routing_key, [message], headers: headers && [headers], delay: delay).size
@@ -122,7 +126,8 @@ module PGMQ
       #   become visible, including ActiveSupport::TimeWithZone (PGMQ v1.10.0+)
       # @return [Array<Hash>] array of hashes with :queue_name and :msg_id
       # @raise [PGMQ::Errors::MessageInvalidError] if messages is not an Array, headers is neither an Array nor nil,
-      #   or headers length doesn't match messages length
+      #   headers length doesn't match messages length, a message is not a String, or a header is neither a String
+      #   nor nil
       #
       # @example Batch topic send
       #   results = client.produce_batch_topic("orders.new", [
@@ -131,7 +136,7 @@ module PGMQ
       #   ])
       #   # => [{ queue_name: "new_orders", msg_id: "1" }, ...]
       def produce_batch_topic(routing_key, messages, headers: nil, delay: 0)
-        BATCH_CONTRACT.validate!({ messages: messages, headers: headers }, Errors::MessageInvalidError)
+        validate_messages!(messages, headers)
         return [] if messages.empty?
 
         result = with_connection do |conn|
