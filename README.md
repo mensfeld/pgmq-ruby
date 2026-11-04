@@ -93,7 +93,6 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 | | Consumer | Minimal single-threaded `PGMQ::Consumer` loop over one or more queues with ack on success | ✅ |
 | | Queue Validation | 47-character limit and name validation | ✅ |
 | | Connection Pooling | Thread-safe connection pool for concurrency | ✅ |
-| | Pluggable Serializers | JSON (default) with custom serializer support | ✅ |
 
 ## Requirements
 
@@ -1268,9 +1267,6 @@ bin/integrations
 
 # Run a specific integration spec
 bin/integrations spec/integration/basic_produce_consume_spec.rb
-
-# Run console
-bundle exec bin/console
 ```
 
 ## Author
