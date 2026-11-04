@@ -16,7 +16,9 @@
 - **[Fix]** The `InvalidQueueNameError` message for a too-long queue name states the real limit: "exceeds maximum
   length of 47 characters" (was 48; a 48-character name was already rejected). The README now gives 47 as the maximum
   and no longer calls queue names case-sensitive: names differing only in case share one table (PGMQ lower-cases
-  table names) but get separate `pgmq.meta` rows, so use one spelling per queue.### Documentation
+  table names) but get separate `pgmq.meta` rows, so use one spelling per queue.
+
+### Documentation
 - **[Fix]** The README `wait_for_notify` example said the call returns the notification payload; it returns the
   channel name (`nil` on timeout).
 
