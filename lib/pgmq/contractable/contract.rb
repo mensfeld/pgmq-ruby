@@ -21,7 +21,8 @@ module PGMQ
       DIG_MISS = Object.new
 
       # Empty array for scope default to avoid allocating a new Array on each `#call` / `#validate!` invocation. Safe
-      # because scope is never mutated - it is only used in `scope + rule.path` which creates a new Array.
+      # because scope is never mutated - it is only used in `scope + rule.path` which creates a new Array. Also passed
+      # to validators as `errors` until the first error.
       EMPTY_ARRAY = [].freeze
 
       private_constant :DIG_MISS, :EMPTY_ARRAY
@@ -77,7 +78,7 @@ module PGMQ
         #
         # @param block [Proc] validation rule, called with `(data, errors, contract)`. It must return either a
         #   non-Array (`true`/`nil`/`false`) for "no errors", or an `Array` of `[path, message]` error pairs (where
-        #   `path` is itself an `Array` of symbols).
+        #   `path` is itself an `Array` of symbols). `errors` holds the errors found so far and must not be mutated.
         #
         # @note The returned error `Array` is owned by the contract: `#call` prepends the current scope onto each pair
         #   in place and collects them, so a rule must return a freshly built `Array` on every call.
@@ -102,39 +103,41 @@ module PGMQ
       #   needed if contract starts from root
       # @return [Result] validation result
       def call(data, scope: EMPTY_ARRAY)
-        errors = []
+        # Allocated on the first error, so valid data allocates no Array
+        errors = nil
 
         # A non-Hash root has no keys to dig, so every required rule reports missing
         data_is_hash = data.is_a?(Hash)
 
         self.class.rules.each do |rule|
           if rule.type == :virtual
-            result = rule.validator.call(data, errors, self)
+            result = rule.validator.call(data, errors || EMPTY_ARRAY, self)
 
             # Any non-Array result (true, but also nil/false) means "no errors"
             next unless result.is_a?(Array)
+            next if result.empty?
 
             result.each do |sub_result|
               sub_result[0] = scope + sub_result[0]
             end
 
-            errors.push(*result)
+            (errors ||= []).push(*result)
           else
             for_checking = data_is_hash ? dig(data, rule.path) : DIG_MISS
 
             if DIG_MISS.equal?(for_checking)
-              errors << [scope + rule.path, :missing] if rule.type == :required
+              (errors ||= []) << [scope + rule.path, :missing] if rule.type == :required
             else
-              result = rule.validator.call(for_checking, data, errors, self)
+              result = rule.validator.call(for_checking, data, errors || EMPTY_ARRAY, self)
 
               next if result == true
 
-              errors << [scope + rule.path, result || :format]
+              (errors ||= []) << [scope + rule.path, result || :format]
             end
           end
         end
 
-        return Result.success if errors.empty?
+        return Result.success unless errors
 
         Result.new(errors, self)
       end
