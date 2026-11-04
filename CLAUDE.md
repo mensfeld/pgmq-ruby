@@ -44,15 +44,6 @@ bundle exec rake test
 ```
 
 
-### Interactive Development
-
-```bash
-# Start IRB console with PGMQ loaded
-bundle exec bin/console
-
-# Console automatically connects to test database at localhost:5433
-```
-
 ## Architecture
 
 ### Core Components
