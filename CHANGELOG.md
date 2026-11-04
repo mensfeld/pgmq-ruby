@@ -13,6 +13,8 @@
 ### Validation
 - **[Change]** A contract check allocates its errors Array on the first error only, so valid input allocates one
   object less per validated message in `produce`, `produce_batch`, `produce_topic` and `produce_batch_topic`.
+  Until then a `PGMQ::Contractable::Contract` rule gets a frozen empty `errors` Array: a custom rule that appends to it
+  raises `FrozenError`.
 
 ## 0.8.2 (2026-11-02)
 

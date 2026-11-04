@@ -221,12 +221,14 @@ describe PGMQ::Contractable::Contract do
         self.error_messages = { "format" => "is invalid" }
 
         virtual { |_data, errors, _contract| seen << errors.dup && nil }
+        optional(:name) { |_name, _data, errors, _contract| seen << errors.dup && true }
         required(:id) { |id| id.is_a?(String) }
+        required(:kind) { |_kind, _data, errors, _contract| seen << errors.dup && true }
         virtual { |_data, errors, _contract| seen << errors.dup && nil }
       end
 
-      assert_equal({ id: "is invalid" }, klass.new.call({ id: 1 }).errors)
-      assert_equal [[], [[%i[id], :format]]], seen
+      assert_equal({ id: "is invalid" }, klass.new.call({ id: 1, name: "a", kind: "b" }).errors)
+      assert_equal [[], [], [[%i[id], :format]], [[%i[id], :format]]], seen
     end
   end
 end
