@@ -161,8 +161,8 @@ module PGMQ
     #
     # Use this to recover from a connection that libpq still reports as +CONNECTION_OK+ but which is in fact wedged -
     # e.g. after a wall-clock timeout (+Timeout.timeout+) interrupted a query mid-flight, leaving the socket poisoned so
-    # it re-hangs on reuse. {#verify_connection!} cannot catch that case (the connection does not report
-    # +CONNECTION_BAD+), so the caller must discard it explicitly; +reload+ is the safe, pool-wide way to do so.
+    # it re-hangs on reuse. {#verify_connection!} cannot catch that case (the connection still reports
+    # +CONNECTION_OK+), so the caller must discard it explicitly; +reload+ is the safe, pool-wide way to do so.
     #
     # @return [void]
     # @example Discard the pool after a query had to be force-interrupted
@@ -240,15 +240,17 @@ module PGMQ
 
     # Verifies a connection is alive and working.
     #
-    # Also resets when the connection reports `PG::CONNECTION_BAD`, which happens when the server (or an intermediate
-    # pooler such as PgBouncer) has closed the socket while the client-side `PG::Connection` object still exists.
-    # `#finished?` alone only catches connections closed explicitly from the client side.
+    # Also resets when the connection reports any status other than `PG::CONNECTION_OK`: `CONNECTION_BAD` when the
+    # server (or an intermediate pooler such as PgBouncer) closed the socket while the client-side `PG::Connection`
+    # object still exists, and an intermediate state (`CONNECTION_STARTED`, `CONNECTION_MADE`, ...) when a previous
+    # reset or connect was interrupted before it completed. libpq refuses to send on either. `#finished?` alone only
+    # catches connections closed explicitly from the client side.
     #
     # @param conn [PG::Connection] connection to verify
     # @raise [PG::Error] if the reset itself fails
     def verify_connection!(conn)
       return conn.reset if conn.finished?
-      return conn.reset if conn.status == PG::CONNECTION_BAD
+      return conn.reset unless conn.status == PG::CONNECTION_OK
 
       nil
     end

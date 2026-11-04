@@ -16,6 +16,14 @@
   Until then a `PGMQ::Contractable::Contract` rule gets a frozen empty `errors` Array: a custom rule that appends to it
   raises `FrozenError`.
 
+### Connection Management
+- **[Fix]** `PGMQ::Connection#verify_connection!` resets a pooled connection whose status is anything other than
+  `PG::CONNECTION_OK` (#217). It reset only `CONNECTION_BAD` before, so a connection left in an intermediate state
+  (`CONNECTION_STARTED`, `CONNECTION_MADE`, ...) by a reset or connect interrupted before it completed (a
+  `Thread#raise` during `PG::Connection#reset`, a `reset_start` never polled to completion) passed the health check,
+  and every call on it, the `auto_reconnect` retry included, raised `PGMQ::Errors::ConnectionError` (`PG::UnableToSend:
+  no connection to the server`) until `reload` or a process restart. The next checkout now resets it.
+
 ## 0.8.2 (2026-11-02)
 
 ### Queue Naming
