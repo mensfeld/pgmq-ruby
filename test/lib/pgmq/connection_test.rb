@@ -111,6 +111,37 @@ describe PGMQ::Connection do
 
       connection.close
     end
+
+    it "resets a connection left mid-reset (CONNECTION_STARTED) on the next checkout" do
+      connection = PGMQ::Connection.new(@conn_params, pool_size: 1)
+
+      # reset_start closes the socket and begins a reconnect that only advances when polled - the state an
+      # interrupted reset leaves behind. libpq refuses to send on it.
+      connection.with_connection(&:reset_start)
+
+      result = connection.with_connection { |conn| conn.exec("SELECT 1").getvalue(0, 0) }
+
+      assert_equal "1", result
+    ensure
+      connection&.close
+    end
+
+    it "recovers within the auto_reconnect retry when a send fails on a connection left mid-reset" do
+      connection = PGMQ::Connection.new(@conn_params, pool_size: 1, auto_reconnect: true)
+
+      attempts = 0
+      result = connection.with_connection do |conn|
+        attempts += 1
+        conn.reset_start if attempts == 1
+
+        conn.exec("SELECT 1").getvalue(0, 0)
+      end
+
+      assert_equal "1", result
+      assert_equal 2, attempts, "expected the send on the mid-reset connection to fail once, then the retry to succeed"
+    ensure
+      connection&.close
+    end
   end
 
   describe "pool reload" do
@@ -558,6 +589,30 @@ describe PGMQ::Connection do
       # Return CONNECTION_BAD for the first query only so the subsequent
       # reset (which re-checks status) can succeed.
       pg_conn.stubs(:status).returns(PG::CONNECTION_BAD, PG::CONNECTION_OK)
+      pg_conn.expects(:reset).once.returns(pg_conn)
+
+      connection.send(:verify_connection!, pg_conn)
+    ensure
+      pg_conn.close if pg_conn && !pg_conn.finished?
+    end
+
+    it "resets connections in an intermediate state (CONNECTION_STARTED) without finished? flipping true" do
+      pg_conn = PG.connect(TEST_DB_PARAMS)
+
+      # Simulate a reset or connect interrupted before it completed (e.g. a Thread#raise during the polling loop):
+      # the connection is neither finished nor CONNECTION_BAD, but libpq refuses to send on it.
+      pg_conn.stubs(:status).returns(PG::CONNECTION_STARTED, PG::CONNECTION_OK)
+      pg_conn.expects(:reset).once.returns(pg_conn)
+
+      connection.send(:verify_connection!, pg_conn)
+    ensure
+      pg_conn.close if pg_conn && !pg_conn.finished?
+    end
+
+    it "resets connections in any other non-OK state (CONNECTION_MADE)" do
+      pg_conn = PG.connect(TEST_DB_PARAMS)
+
+      pg_conn.stubs(:status).returns(PG::CONNECTION_MADE, PG::CONNECTION_OK)
       pg_conn.expects(:reset).once.returns(pg_conn)
 
       connection.send(:verify_connection!, pg_conn)
