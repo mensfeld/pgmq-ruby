@@ -142,7 +142,7 @@ module PGMQ
 
           begin
             yield conn
-          rescue PG::ConnectionBad, PG::UnableToSend
+          rescue *LOST_CONNECTION_ERRORS
             reset_lost_connection(conn) if @owns_connections
             raise
           end
@@ -202,6 +202,10 @@ module PGMQ
 
     private
 
+    # libpq's dedicated connection-failure classes. A pooled connection that raises one of them mid-operation is reset.
+    LOST_CONNECTION_ERRORS = [PG::ConnectionBad, PG::UnableToSend].freeze
+    private_constant :LOST_CONNECTION_ERRORS
+
     # Messages libpq raises when the server/pooler has already torn down the socket. The list has grown organically with
     # each pooler/TLS variant we see in the wild; the class check below catches future variants that libpq raises as
     # `PG::ConnectionBad` or `PG::UnableToSend` without waiting for a new message to hit production.
@@ -231,7 +235,7 @@ module PGMQ
     # @return [Boolean] true if the connection was lost and a retry on a
     #   fresh connection is appropriate
     def connection_lost_error?(error)
-      return true if error.is_a?(PG::ConnectionBad) || error.is_a?(PG::UnableToSend)
+      return true if LOST_CONNECTION_ERRORS.any? { |klass| error.is_a?(klass) }
 
       extra_classes = self.class.reconnectable_error_classes
       return true if extra_classes.any? { |klass| error.is_a?(klass) }
