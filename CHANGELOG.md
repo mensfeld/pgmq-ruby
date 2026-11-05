@@ -23,6 +23,12 @@
   `Thread#raise` during `PG::Connection#reset`, a `reset_start` never polled to completion) passed the health check,
   and every call on it, the `auto_reconnect` retry included, raised `PGMQ::Errors::ConnectionError` (`PG::UnableToSend:
   no connection to the server`) until `reload` or a process restart. The next checkout now resets it.
+- **[Fix]** `PGMQ::Connection#with_connection` resets a pooled connection when the block raises `PG::ConnectionBad`
+  or `PG::UnableToSend`, before the connection goes back to the pool. A connection can pass the checkout health check
+  and still fail on the next send; it went back to the pool broken, and with `auto_reconnect: false` (or when it still
+  reported `PG::CONNECTION_OK`) every later checkout failed the same way until `reload`. The caller still gets
+  `PGMQ::Errors::ConnectionError`. When the reset fails too, the connection is closed, and the next checkout resets it.
+  Connections returned by a callable (e.g. ActiveRecord's raw connection) are not reset or closed.
 
 ## 0.8.2 (2026-11-02)
 
