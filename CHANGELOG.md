@@ -27,8 +27,9 @@
   or `PG::UnableToSend`, before the connection goes back to the pool. A connection can pass the checkout health check
   and still fail on the next send; it went back to the pool broken, and with `auto_reconnect: false` (or when it still
   reported `PG::CONNECTION_OK`) every later checkout failed the same way until `reload`. The caller still gets
-  `PGMQ::Errors::ConnectionError`. When the reset fails too, the connection is closed, and the next checkout resets it.
-  Connections returned by a callable (e.g. ActiveRecord's raw connection) are not reset or closed.
+  `PGMQ::Errors::ConnectionError`. When the reset fails too, the connection is closed: with `auto_reconnect` the next
+  checkout resets it; without it, the next operation on it fails once and that failure resets it. Connections returned
+  by a callable (e.g. ActiveRecord's raw connection) are not reset or closed.
 
 ## 0.8.2 (2026-11-02)
 

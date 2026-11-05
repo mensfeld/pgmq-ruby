@@ -270,7 +270,8 @@ module PGMQ
     # {#verify_connection!} at checkout (`CONNECTION_OK`) and still fail on the next send.
     #
     # A failing reset must not replace the error the caller sees, so it is swallowed and the connection is closed
-    # instead: the next checkout sees it as `finished?` and resets it.
+    # instead. With `auto_reconnect`, the next checkout sees it as `finished?` and resets it. Without it, the next
+    # operation on it fails with `PG::ConnectionBad` ("connection is closed"), and that failure resets it.
     #
     # @param conn [PG::Connection] connection the failed operation used
     # @return [void]
