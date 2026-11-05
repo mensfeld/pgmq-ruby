@@ -307,6 +307,9 @@ Every PGMQ operation checks out a pooled connection through `client.with_connect
 The method is public, so you can run PostgreSQL statements PGMQ does not wrap
 without standing up a second connection pool. The connection is health-checked
 (when `auto_reconnect` is enabled) and returned to the pool when the block exits.
+If the block raises `PG::ConnectionBad` or `PG::UnableToSend`, the connection is
+reset before it goes back to the pool (connections from a callable are left as
+they are); you still get `PGMQ::Errors::ConnectionError`.
 
 ```ruby
 # Fire a custom NOTIFY alongside your queues
