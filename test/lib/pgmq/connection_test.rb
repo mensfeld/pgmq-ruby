@@ -561,6 +561,148 @@ describe PGMQ::Connection do
     end
   end
 
+  describe "resetting a connection lost mid-operation" do
+    let(:connection) { PGMQ::Connection.new(TEST_DB_PARAMS, pool_size: 1, auto_reconnect: false) }
+    let(:pooled) { connection.with_connection { |conn| conn } }
+
+    after { connection.close }
+
+    it "resets the connection and re-raises on PG::ConnectionBad" do
+      pooled.expects(:reset).once
+
+      error = assert_raises(PGMQ::Errors::ConnectionError) do
+        connection.with_connection { raise PG::ConnectionBad, "server closed the connection" }
+      end
+
+      assert_kind_of PG::ConnectionBad, error.cause
+    end
+
+    it "resets the connection and re-raises on PG::UnableToSend" do
+      pooled.expects(:reset).once
+
+      error = assert_raises(PGMQ::Errors::ConnectionError) do
+        connection.with_connection { raise PG::UnableToSend, "no connection to the server" }
+      end
+
+      assert_kind_of PG::UnableToSend, error.cause
+    end
+
+    it "does not reset the connection on a query error" do
+      pooled.expects(:reset).never
+
+      error = assert_raises(PGMQ::Errors::ConnectionError) do
+        connection.with_connection { |conn| conn.exec("SELECT * FROM pgmq_missing_table") }
+      end
+
+      assert_kind_of PG::UndefinedTable, error.cause
+    end
+
+    it "keeps the original error and closes the connection when the reset fails" do
+      pooled.expects(:reset).once.raises(PG::ConnectionBad, "reset failed")
+
+      error = assert_raises(PGMQ::Errors::ConnectionError) do
+        connection.with_connection { raise PG::UnableToSend, "no connection to the server" }
+      end
+
+      assert_kind_of PG::UnableToSend, error.cause
+      assert_includes error.message, "no connection to the server"
+      assert_predicate pooled, :finished?
+    end
+
+    it "gives the next checkout a working connection after a failed reset when auto_reconnect is enabled" do
+      connection = PGMQ::Connection.new(TEST_DB_PARAMS, pool_size: 1, auto_reconnect: true)
+      pooled = connection.with_connection { |conn| conn }
+      admin = PG.connect(TEST_DB_PARAMS)
+      admin.exec_params("SELECT pg_terminate_backend($1)", [pooled.backend_pid])
+      pooled.stubs(:reset).raises(PG::ConnectionBad, "reset failed")
+
+      assert_raises(PGMQ::Errors::ConnectionError) do
+        connection.with_connection { |conn| conn.exec("SELECT 1") }
+      end
+
+      assert_predicate pooled, :finished?
+
+      pooled.unstub(:reset)
+
+      assert_equal "1", connection.with_connection { |conn| conn.exec("SELECT 1").getvalue(0, 0) }
+    ensure
+      admin&.close
+      connection&.close
+    end
+
+    it "resets a connection closed by a failed reset on its next failure when auto_reconnect is disabled" do
+      pooled.expects(:reset).once.raises(PG::ConnectionBad, "reset failed")
+
+      assert_raises(PGMQ::Errors::ConnectionError) do
+        connection.with_connection { raise PG::UnableToSend, "no connection to the server" }
+      end
+
+      pooled.unstub(:reset)
+
+      error = assert_raises(PGMQ::Errors::ConnectionError) do
+        connection.with_connection { |conn| conn.exec("SELECT 1") }
+      end
+
+      assert_includes error.message, "connection is closed"
+      assert_equal "1", connection.with_connection { |conn| conn.exec("SELECT 1").getvalue(0, 0) }
+    end
+
+    it "resets once when with_connection calls are nested" do
+      pooled.expects(:reset).once
+
+      assert_raises(PGMQ::Errors::ConnectionError) do
+        connection.with_connection do
+          connection.with_connection { raise PG::ConnectionBad, "server closed the connection" }
+        end
+      end
+    end
+
+    it "does not reset connections returned by a callable" do
+      own_conn = PG.connect(TEST_DB_PARAMS)
+      callable_connection = PGMQ::Connection.new(-> { own_conn }, pool_size: 1, auto_reconnect: false)
+      own_conn.expects(:reset).never
+      own_conn.expects(:close).never
+
+      assert_raises(PGMQ::Errors::ConnectionError) do
+        callable_connection.with_connection { raise PG::ConnectionBad, "server closed the connection" }
+      end
+    ensure
+      own_conn.unstub(:close)
+      own_conn.close
+    end
+
+    it "gives the next checkout a working connection after the backend was terminated" do
+      admin = PG.connect(TEST_DB_PARAMS)
+      admin.exec_params("SELECT pg_terminate_backend($1)", [pooled.backend_pid])
+
+      assert_raises(PGMQ::Errors::ConnectionError) do
+        connection.with_connection { |conn| conn.exec("SELECT 1") }
+      end
+
+      assert_equal "1", connection.with_connection { |conn| conn.exec("SELECT 1").getvalue(0, 0) }
+    ensure
+      admin&.close
+    end
+
+    it "gives the next checkout a working connection after the backend died inside a transaction" do
+      client = PGMQ::Client.new(connection)
+      admin = PG.connect(TEST_DB_PARAMS)
+
+      assert_raises(PGMQ::Errors::ConnectionError) do
+        client.transaction do |txn|
+          txn.with_connection do |conn|
+            admin.exec_params("SELECT pg_terminate_backend($1)", [conn.backend_pid])
+            conn.exec("SELECT 1")
+          end
+        end
+      end
+
+      assert_equal "1", connection.with_connection { |conn| conn.exec("SELECT 1").getvalue(0, 0) }
+    ensure
+      admin&.close
+    end
+  end
+
   describe "verify_connection! (private)" do
     let(:connection) { PGMQ::Connection.new(TEST_DB_PARAMS, pool_size: 1) }
 

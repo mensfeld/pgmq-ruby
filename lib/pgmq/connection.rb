@@ -116,10 +116,16 @@ module PGMQ
       @pool_size = pool_size
       @pool_timeout = pool_timeout
       @auto_reconnect = auto_reconnect
+      # A callable hands us connections it may share with its owner (e.g. ActiveRecord's raw connection), so we never
+      # reset or close them after a failure; only connections we open ourselves are reset.
+      @owns_connections = !conn_params.respond_to?(:call)
       @pool = create_pool
     end
 
     # Executes a block with a connection from the pool
+    #
+    # When the block raises `PG::ConnectionBad` or `PG::UnableToSend`, the connection is reset before it goes back to
+    # the pool, so the next checkout gets a working one. Connections from a callable are left as they are.
     #
     # @yield [PG::Connection] database connection
     # @return [Object] result of the block
@@ -134,7 +140,12 @@ module PGMQ
           # Health check: verify connection is alive
           verify_connection!(conn) if @auto_reconnect
 
-          yield conn
+          begin
+            yield conn
+          rescue *LOST_CONNECTION_ERRORS
+            reset_lost_connection(conn) if @owns_connections
+            raise
+          end
         end
       rescue PG::Error => e
         attempts += 1
@@ -191,6 +202,10 @@ module PGMQ
 
     private
 
+    # libpq's dedicated connection-failure classes. A pooled connection that raises one of them mid-operation is reset.
+    LOST_CONNECTION_ERRORS = [PG::ConnectionBad, PG::UnableToSend].freeze
+    private_constant :LOST_CONNECTION_ERRORS
+
     # Messages libpq raises when the server/pooler has already torn down the socket. The list has grown organically with
     # each pooler/TLS variant we see in the wild; the class check below catches future variants that libpq raises as
     # `PG::ConnectionBad` or `PG::UnableToSend` without waiting for a new message to hit production.
@@ -220,7 +235,7 @@ module PGMQ
     # @return [Boolean] true if the connection was lost and a retry on a
     #   fresh connection is appropriate
     def connection_lost_error?(error)
-      return true if error.is_a?(PG::ConnectionBad) || error.is_a?(PG::UnableToSend)
+      return true if LOST_CONNECTION_ERRORS.any? { |klass| error.is_a?(klass) }
 
       extra_classes = self.class.reconnectable_error_classes
       return true if extra_classes.any? { |klass| error.is_a?(klass) }
@@ -253,6 +268,21 @@ module PGMQ
       return conn.reset unless conn.status == PG::CONNECTION_OK
 
       nil
+    end
+
+    # Resets a connection that failed mid-operation so it does not go back to the pool broken. A connection can pass
+    # {#verify_connection!} at checkout (`CONNECTION_OK`) and still fail on the next send.
+    #
+    # A failing reset must not replace the error the caller sees, so it is swallowed and the connection is closed
+    # instead. With `auto_reconnect`, the next checkout sees it as `finished?` and resets it. Without it, the next
+    # operation on it fails with `PG::ConnectionBad` ("connection is closed"), and that failure resets it.
+    #
+    # @param conn [PG::Connection] connection the failed operation used
+    # @return [void]
+    def reset_lost_connection(conn)
+      conn.reset
+    rescue
+      conn.close unless conn.finished?
     end
 
     # Normalizes various connection parameter formats
