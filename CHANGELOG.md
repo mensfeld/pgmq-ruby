@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0 (2026-11-10)
 
 ### Producer
 - **[Breaking]** `produce_topic` and `produce_batch_topic` raise `PGMQ::Errors::MessageInvalidError` when a message is
