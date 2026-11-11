@@ -15,7 +15,7 @@ module PGMQ
   #   conn = PGMQ::Connection.new("postgres://localhost/mydb")
   #
   # @example With connection hash
-  #   conn = PGMQ::Connection.new(host: 'localhost', dbname: 'mydb')
+  #   conn = PGMQ::Connection.new({ host: 'localhost', dbname: 'mydb' })
   #
   # @example With Rails ActiveRecord (reuses Rails connection pool)
   #   conn = PGMQ::Connection.new(-> { ActiveRecord::Base.connection.raw_connection })

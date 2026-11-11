@@ -19,13 +19,13 @@ loader.setup
 #   require 'pgmq'
 #
 #   # Create client with connection parameters
-#   client = PGMQ::Client.new(
+#   client = PGMQ::Client.new({
 #     host: 'localhost',
 #     port: 5432,
 #     dbname: 'mydb',
 #     user: 'postgres',
 #     password: 'postgres'
-#   )
+#   })
 #
 #   # Or with connection string
 #   client = PGMQ::Client.new('postgres://localhost/mydb')
