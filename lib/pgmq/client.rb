@@ -7,12 +7,12 @@ module PGMQ
   # integration), use pgmq-framework.
   #
   # @example Basic usage
-  #   client = PGMQ::Client.new(
+  #   client = PGMQ::Client.new({
   #     host: 'localhost',
   #     dbname: 'mydb',
   #     user: 'postgres',
   #     password: 'postgres'
-  #   )
+  #   })
   #   client.create('my_queue')
   #   msg_id = client.produce('my_queue', '{"data":"value"}')
   #   msg = client.read('my_queue', vt: 30)
@@ -64,13 +64,13 @@ module PGMQ
     #   client = PGMQ::Client.new('postgres://user:pass@localhost/db')
     #
     # @example Connection hash
-    #   client = PGMQ::Client.new(host: 'localhost', dbname: 'mydb', user: 'postgres')
+    #   client = PGMQ::Client.new({ host: 'localhost', dbname: 'mydb', user: 'postgres' })
     #
     # @example Inject existing connection (for Rails)
     #   client = PGMQ::Client.new(-> { ActiveRecord::Base.connection.raw_connection })
     #
     # @example Disable auto-reconnect
-    #   client = PGMQ::Client.new(auto_reconnect: false)
+    #   client = PGMQ::Client.new('postgres://user:pass@localhost/db', auto_reconnect: false)
     def initialize(
       conn_params = nil,
       pool_size: Connection::DEFAULT_POOL_SIZE,

@@ -161,22 +161,22 @@ All modules are automatically loaded via Zeitwerk.
 client = PGMQ::Client.new('postgres://localhost:5433/pgmq_test')
 
 # Connection hash
-client = PGMQ::Client.new(
+client = PGMQ::Client.new({
   host: 'localhost',
   port: 5433,
   dbname: 'pgmq_test',
   user: 'postgres',
   password: 'postgres'
-)
+})
 
 # Connection hash using ENV variables (user manages ENV themselves)
-client = PGMQ::Client.new(
+client = PGMQ::Client.new({
   host: ENV.fetch('PG_HOST', 'localhost'),
   port: ENV.fetch('PG_PORT', 5432).to_i,
   dbname: ENV.fetch('PG_DATABASE', 'pgmq'),
   user: ENV.fetch('PG_USER', 'postgres'),
   password: ENV.fetch('PG_PASSWORD', 'postgres')
-)
+})
 
 # Rails integration (reuses Rails connection pool)
 client = PGMQ::Client.new(-> { ActiveRecord::Base.connection.raw_connection })

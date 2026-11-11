@@ -182,13 +182,13 @@ gem install pgmq-ruby
 require 'pgmq'
 
 # Connect to database
-client = PGMQ::Client.new(
+client = PGMQ::Client.new({
   host: 'localhost',
   port: 5432,
   dbname: 'mydb',
   user: 'postgres',
   password: 'secret'
-)
+})
 
 # Create a queue
 client.create('orders')
@@ -245,15 +245,20 @@ PGMQ-Ruby supports multiple ways to connect:
 
 ```ruby
 client = PGMQ::Client.new(
-  host: 'localhost',
-  port: 5432,
-  dbname: 'mydb',
-  user: 'postgres',
-  password: 'secret',
+  {
+    host: 'localhost',
+    port: 5432,
+    dbname: 'mydb',
+    user: 'postgres',
+    password: 'secret'
+  },
   pool_size: 5,        # Default: 5
   pool_timeout: 5      # Default: 5 seconds
 )
 ```
+
+Wrap the connection hash in braces. Without them, Ruby passes `host:`, `port:` and the other keys as keyword
+arguments, and `PGMQ::Client.new` raises `ArgumentError` (unknown keywords).
 
 ### Connection String
 
