@@ -3,9 +3,9 @@
 ## Unreleased
 
 ### Documentation
-- **[Fix]** The README and YARD connection-hash examples passed the hash without braces, so `PGMQ::Client.new` raised
-  `ArgumentError` (unknown keywords). They now wrap the hash in braces. The YARD auto-reconnect example passed no
-  connection parameters and raised `PGMQ::Errors::ConfigurationError`; it now passes a connection string.
+- **[Fix]** The README and YARD connection-hash examples passed the hash without braces, so `PGMQ::Client.new` and
+  `PGMQ::Connection.new` raised `ArgumentError`. They now wrap the hash in braces. The YARD auto-reconnect example
+  passed no connection parameters and raised `PGMQ::Errors::ConfigurationError`; it now passes a connection string.
 
 ## 0.9.0 (2026-11-10)
 
