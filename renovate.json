@@ -13,6 +13,11 @@
     "package.json"
   ],
   "minimumReleaseAge": "7 days",
+  "bundler": {
+    "managerFilePatterns": [
+      "/(^|/)Gemfile\\.lint$/"
+    ]
+  },
   "github-actions": {
     "enabled": true,
     "pinDigests": true
