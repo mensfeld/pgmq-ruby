@@ -34,7 +34,7 @@ module PGMQ
         hashed = {}
 
         errors.each do |error|
-          scope = error.first.map(&:to_s).join(".").to_sym
+          scope = error.first.join(".").to_sym
 
           # This will allow for usage of custom messages instead of yaml keys if needed
           hashed[scope] = if error.last.is_a?(String)
