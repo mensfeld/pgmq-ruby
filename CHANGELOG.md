@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Infrastructure
+- **[Change]** Drop PostgreSQL 14 from CI and the README requirements: PGMQ v1.13.2 supports PostgreSQL 15-18 and no longer rebuilds the `pg14-pgmq` image. PostgreSQL 14 reached end of life on 2026-11-12.
+
 ### Documentation
 - **[Fix]** The README and YARD connection-hash examples passed the hash without braces, so `PGMQ::Client.new` and
   `PGMQ::Connection.new` raised `ArgumentError`. They now wrap the hash in braces. The YARD auto-reconnect example
