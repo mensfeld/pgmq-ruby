@@ -9,7 +9,7 @@ module PGMQ
       # Purges all messages from a queue
       #
       # @param queue_name [String] name of the queue
-      # @return [Integer] number of messages purged
+      # @return [String] number of messages purged
       #
       # @example
       #   count = client.purge_queue("old_queue")
