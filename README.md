@@ -315,7 +315,17 @@ without standing up a second connection pool. The connection is health-checked
 (when `auto_reconnect` is enabled) and returned to the pool when the block exits.
 If the block raises `PG::ConnectionBad` or `PG::UnableToSend`, the connection is
 reset before it goes back to the pool (connections from a callable are left as
-they are); you still get `PGMQ::Errors::ConnectionError`.
+they are).
+
+With `auto_reconnect: true` (the default), a lost-connection error (see
+[Extending the lost-connection error matchers](#extending-the-lost-connection-error-matchers))
+makes `with_connection` run the **whole block** once more, on whichever
+connection the pool hands out next. If that run succeeds, the call returns
+normally and you see no error. You get `PGMQ::Errors::ConnectionError` only
+when the second run fails too, or right away with `auto_reconnect: false`.
+Statements that ran before the connection was lost (e.g. a `pg_notify`) can
+therefore run twice: keep the block safe to run twice, or disable
+`auto_reconnect`.
 
 ```ruby
 # Fire a custom NOTIFY alongside your queues
@@ -374,11 +384,10 @@ pattern) raise `PGMQ::Errors::ConfigurationError` immediately so
 misconfiguration can't silently disable retries.
 
 > **Reserve these options for connection-level failures.** A "reconnectable"
-> error means the socket is dead and a retry on a fresh connection is safe.
-> Do **not** add patterns or classes for query-level errors (deadlocks,
-> constraint violations, statement timeouts) - those will replay your
-> operation against a healthy connection and may cause duplicate work or
-> mask bugs.
+> error should mean the socket is dead. Do **not** add patterns or classes for
+> query-level errors (deadlocks, constraint violations, statement timeouts) -
+> those will replay your operation against a healthy connection and may cause
+> duplicate work or mask bugs.
 
 **Connection Pool Benefits:**
 - **Thread-safe** - Multiple threads can safely share a single client

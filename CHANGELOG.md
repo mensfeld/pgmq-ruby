@@ -6,6 +6,11 @@
 - **[Change]** Drop PostgreSQL 14 from CI and the README requirements: PGMQ v1.13.2 supports PostgreSQL 15-18 and no longer rebuilds the `pg14-pgmq` image. PostgreSQL 14 reached end of life on 2026-11-12.
 
 ### Documentation
+- **[Fix]** The `with_connection` docs said a block that loses its connection still raises
+  `PGMQ::Errors::ConnectionError` (README, 0.9.0 entry) and that the retry happens only before any SQL is sent (YARD of
+  `PGMQ::Client#with_connection`). With `auto_reconnect: true` (the default), a lost-connection error makes the whole
+  block run once more, also after it sent SQL, and a retry that succeeds raises nothing. The README and YARD now say so
+  and ask for a block that is safe to run twice, or `auto_reconnect: false`.
 - **[Fix]** The README and YARD connection-hash examples passed the hash without braces, so `PGMQ::Client.new` and
   `PGMQ::Connection.new` raised `ArgumentError`. They now wrap the hash in braces. The YARD auto-reconnect example
   passed no connection parameters and raised `PGMQ::Errors::ConfigurationError`; it now passes a connection string.

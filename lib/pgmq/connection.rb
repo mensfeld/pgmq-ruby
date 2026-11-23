@@ -32,9 +32,10 @@ module PGMQ
     private_constant :CONTRACT
 
     class << self
-      # Additional error message patterns (String or Regexp) that mean the connection is dead and a retry on a fresh
-      # socket is safe. Strings are matched as case-insensitive substrings; Regexps match the original message. The
-      # built-in LOST_CONNECTION_MESSAGES are always checked first - this list is appended to them.
+      # Additional error message patterns (String or Regexp) that mean the connection is dead. With +auto_reconnect+, a
+      # match makes {PGMQ::Connection#with_connection} run its block once more. Strings are matched as case-insensitive
+      # substrings; Regexps match the original message. The built-in LOST_CONNECTION_MESSAGES are always checked first -
+      # this list is appended to them.
       #
       # Thread-safe: reads are lock-free (frozen array swap); writes should be done at boot time before forking workers.
       #
@@ -127,10 +128,14 @@ module PGMQ
     # When the block raises `PG::ConnectionBad` or `PG::UnableToSend`, the connection is reset before it goes back to
     # the pool, so the next checkout gets a working one. Connections from a callable are left as they are.
     #
+    # With `auto_reconnect`, a lost-connection error (see {#connection_lost_error?}) raised by the health check or the
+    # block makes the whole block run once more, on whichever connection the pool hands out next. Statements the first
+    # run already sent can run twice. A retry that succeeds returns normally.
+    #
     # @yield [PG::Connection] database connection
     # @return [Object] result of the block
-    # @raise [PGMQ::Errors::ConnectionError] if the block raises any `PG::Error` (the original is in `#cause`), or a
-    #   connection cannot be obtained
+    # @raise [PGMQ::Errors::ConnectionError] if the block raises any `PG::Error` (the original is in `#cause`) and it is
+    #   not retried or the retry fails too, or a connection cannot be obtained
     def with_connection
       retries = @auto_reconnect ? 1 : 0
       attempts = 0
@@ -232,8 +237,7 @@ module PGMQ
     # patterns (strings matched as case-insensitive substrings, Regexps matched against the original message).
     #
     # @param error [PG::Error] the error to check
-    # @return [Boolean] true if the connection was lost and a retry on a
-    #   fresh connection is appropriate
+    # @return [Boolean] true if the connection was lost and a retry is appropriate
     def connection_lost_error?(error)
       return true if LOST_CONNECTION_ERRORS.any? { |klass| error.is_a?(klass) }
 

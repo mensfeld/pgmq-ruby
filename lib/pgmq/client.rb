@@ -118,9 +118,10 @@ module PGMQ
     # Checks out a pooled connection and yields the raw +PG::Connection+ for arbitrary SQL.
     #
     # All PGMQ operations run through this method internally, so it carries the same guarantees: a connection is taken
-    # from the pool, health-checked when +auto_reconnect+ is enabled, and a single retry on a fresh connection is
-    # attempted if the checked-out connection turns out to be dead before any SQL is sent (see
-    # {PGMQ::Connection#with_connection}). The connection is returned to the pool when the block exits.
+    # from the pool, health-checked when +auto_reconnect+ is enabled, and returned to the pool when the block exits.
+    # With +auto_reconnect+ (the default), a lost-connection error makes the whole block run once more, on whichever
+    # connection the pool hands out next, also when the block already sent SQL: keep the block safe to run twice (see
+    # {PGMQ::Connection#with_connection}).
     #
     # Exposed so callers can issue PostgreSQL statements PGMQ does not wrap without standing up a second pool: ad-hoc
     # +NOTIFY+, +LISTEN+, advisory locks, custom monitoring queries, or DDL that lives alongside your queue tables.
@@ -128,8 +129,8 @@ module PGMQ
     #
     # @yield [PG::Connection] a pooled, health-checked database connection
     # @return [Object] the return value of the block
-    # @raise [PGMQ::Errors::ConnectionError] if the block raises any `PG::Error` (the original is in `#cause`), or a
-    #   connection cannot be obtained
+    # @raise [PGMQ::Errors::ConnectionError] if the block raises any `PG::Error` (the original is in `#cause`) and it is
+    #   not retried or the retry fails too, or a connection cannot be obtained
     #
     # @example Fire a custom NOTIFY on the PGMQ pool
     #   client.with_connection do |conn|
