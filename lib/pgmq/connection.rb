@@ -32,9 +32,10 @@ module PGMQ
     private_constant :CONTRACT
 
     class << self
-      # Additional error message patterns (String or Regexp) that mean the connection is dead and a retry on a fresh
-      # socket is safe. Strings are matched as case-insensitive substrings; Regexps match the original message. The
-      # built-in LOST_CONNECTION_MESSAGES are always checked first - this list is appended to them.
+      # Additional error message patterns (String or Regexp) that mean the connection is dead. With +auto_reconnect+, a
+      # match makes {PGMQ::Connection#with_connection} run its block once more. Strings are matched as case-insensitive
+      # substrings; Regexps match the original message. The built-in LOST_CONNECTION_MESSAGES are always checked first -
+      # this list is appended to them.
       #
       # Thread-safe: reads are lock-free (frozen array swap); writes should be done at boot time before forking workers.
       #
