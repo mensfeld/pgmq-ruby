@@ -97,7 +97,7 @@ This gem provides complete support for all core PGMQ SQL functions. Based on the
 ## Requirements
 
 - Ruby 3.3+
-- PostgreSQL 14-18 with PGMQ extension installed
+- PostgreSQL 15-18 with PGMQ extension installed
 - PGMQ v1.13.1 or newer recommended: earlier versions have a high-severity privilege escalation ([GHSA-mwqf-p4r3-798v](https://github.com/pgmq/pgmq/security/advisories/GHSA-mwqf-p4r3-798v))
 
 ### Installing PGMQ Extension
