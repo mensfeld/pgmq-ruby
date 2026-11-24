@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 (2026-11-24)
 
 ### Infrastructure
 - **[Change]** Drop PostgreSQL 14 from CI and the README requirements: PGMQ v1.13.2 supports PostgreSQL 15-18 and no longer rebuilds the `pg14-pgmq` image. PostgreSQL 14 reached end of life on 2026-11-12.
