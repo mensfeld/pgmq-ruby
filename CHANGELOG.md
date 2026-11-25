@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 (2026-11-24)
 
 ### Infrastructure
+- **[Fix]** The release job installs its gems into `vendor/bundle` instead of the Ruby install, so json 3.x from `Gemfile.lock` does not reach `sigstore-cli 0.2.3` (run outside the bundle by `rubygems/release-gem`), which crashed with it and made the gem go out without a Sigstore attestation. `rubygems/release-gem` is bumped to v1.4.2, which fixes the release wait that failed the job under Ruby 4.0.
 - **[Change]** Drop PostgreSQL 14 from CI and the README requirements: PGMQ v1.13.2 supports PostgreSQL 15-18 and no longer rebuilds the `pg14-pgmq` image. PostgreSQL 14 reached end of life on 2026-11-12.
 
 ### Documentation
