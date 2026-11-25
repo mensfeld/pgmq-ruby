@@ -77,7 +77,7 @@ module PGMQ
       #
       # @param queue_name [String] name of the queue
       # @param msg_ids [Array<Integer>] array of message IDs to delete
-      # @return [Array<Integer>] array of successfully deleted message IDs
+      # @return [Array<String>] array of successfully deleted message IDs
       #
       # @example
       #   deleted = client.delete_batch("orders", [101, 102, 103])
@@ -117,7 +117,7 @@ module PGMQ
       #     'notifications' => [5, 6],
       #     'emails' => [10]
       #   })
-      #   # => { 'orders' => [1, 2, 3], 'notifications' => [5, 6], 'emails' => [10] }
+      #   # => { 'orders' => ['1', '2', '3'], 'notifications' => ['5', '6'], 'emails' => ['10'] }
       #
       # @example Clean up after batch processing across queues
       #   messages = client.read_multi(['q1', 'q2', 'q3'], qty: 10)
@@ -172,7 +172,7 @@ module PGMQ
       #
       # @param queue_name [String] name of the queue
       # @param msg_ids [Array<Integer>] array of message IDs to archive
-      # @return [Array<Integer>] array of successfully archived message IDs
+      # @return [Array<String>] array of successfully archived message IDs
       #
       # @example
       #   archived = client.archive_batch("orders", [101, 102, 103])
